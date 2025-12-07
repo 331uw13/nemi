@@ -6,7 +6,7 @@
 #include <sys/types.h>
 
 #include "rgb_color.h"
-
+#include "vec2.h"
 
 #define ATTR_NONE       -1
 #define ATTR_RESET      0
@@ -30,7 +30,6 @@ enum char_colors : int {
     CHAR_COLOR_MAGENTA,
     CHAR_COLOR_CYAN,
     CHAR_COLOR_WHITE,
-    CHAR_COLOR_DEFAULT,
     CHAR_COLOR_BRIGHT_BLACK,
     CHAR_COLOR_BRIGHT_RED,
     CHAR_COLOR_BRIGHT_GREEN,
@@ -39,6 +38,7 @@ enum char_colors : int {
     CHAR_COLOR_BRIGHT_MAGENTA,
     CHAR_COLOR_BRIGHT_CYAN,
     CHAR_COLOR_BRIGHT_WHITE,
+    CHAR_COLOR_DEFAULT,
 
     CHAR_COLOR__END,
 };
@@ -69,6 +69,7 @@ void         tline_clear(struct tline* line);
 void         tline_add(struct nemi* st, struct tline* line, char* buffer, size_t size);
 void         tline_add_ch(struct tline* line, struct tchar* ch);
 
+void         tline_render(struct nemi* st, struct tline* line, struct vec2i pos);
 
 
 #endif

@@ -33,7 +33,7 @@ static bool line_prep_mem_add(struct tline* line, uint32_t size_add) {
     line->chars = new_ptr;
     line->num_chars_alloc = new_num_alloc;
 
-    printf("%s -> %li\n", __func__, line->num_chars_alloc);
+    //printf("%s -> %li\n", __func__, line->num_chars_alloc);
     return true;
 }
 
@@ -124,43 +124,71 @@ void tline_add(struct nemi* st, struct tline* line, char* buffer, size_t size) {
     es_ch.ch = 0;
     es_ch.attr = ATTR_NONE;
     es_ch.attr_bg = false;
-    es_ch.color = (struct rgb_color){ 0, 0, 0 };
+    es_ch.color = get_palette_color(st, CHAR_COLOR_DEFAULT);
 
-    while(ch < buffer+size) {
-        if(*ch == 0x1B) {
+    while(ch && ch < buffer+size) {
 
-            struct escape_seq es;
-            ch = get_escape_seq_args(&es, buffer, ch, size);
+        if(*ch != 0x1B) {
+            es_ch.ch = *ch;
+            tline_add_ch(line, &es_ch);
 
-
-            for(uint16_t i = 0; i < es.num_args; i++) {
-                for(size_t j = 0; j < ARRAY_LEN(ESCAPE_SEQ_MAP); j++) {
-                    const struct escape_seq_map_elem* elem = &ESCAPE_SEQ_MAP[j];
-
-                    if(es.args[i] == elem->num) {
-                        if(elem->attr >= CHAR_COLOR__BEGIN
-                        && elem->attr  < CHAR_COLOR__END) {
-                            es_ch.color = st->palette[ CHAR_COLOR__END - elem->attr ];
-                        }
-                        else {
-                            es_ch.attr = elem->attr;
-                        }
-                            
-                        es_ch.attr_bg = elem->attr_bg;
-                    }
-
-                }
-            }
-
-
+            ch++;
             continue;
         }
 
-        es_ch.ch = *ch;
-        tline_add_ch(line, &es_ch);
+        struct escape_seq es;
+        ch = get_escape_seq_args(&es, buffer, ch, size);
+
+
+        for(uint16_t i = 0; i < es.num_args; i++) {
+            for(size_t j = 0; j < ARRAY_LEN(ESCAPE_SEQ_MAP); j++) {
+                const struct escape_seq_map_elem* elem = &ESCAPE_SEQ_MAP[j];
+
+                if(es.args[i] != elem->num) {
+                    continue;
+                }
+
+                if(elem->attr >= CHAR_COLOR__BEGIN
+                && elem->attr  < CHAR_COLOR__END) {
+                    // Set color attribute.
+                    es_ch.color = st->palette[ CHAR_COLOR__END - elem->attr ];
+                }
+                else {
+                    if(elem->attr == ATTR_RESET) {
+                        es_ch.attr = ATTR_NONE;
+                        es_ch.color = get_palette_color(st, CHAR_COLOR_DEFAULT);
+                    }
+                    else {
+                        // Add style attribute.
+                        es_ch.attr |= elem->attr;
+                    }
+                }
+                    
+                es_ch.attr_bg = elem->attr_bg;
+            }
+        }
+    }
+}
+
+void tline_render(struct nemi* st, struct tline* line, struct vec2i pos) {
+    
+    struct tchar* ch = &line->chars[0];
+    while(ch < line->chars + line->num_chars) {
+    
+
+        leaf_set_font_color(&st->font,
+                (float)ch->color.red / 255.0f,
+                (float)ch->color.grn / 255.0f,
+                (float)ch->color.blu / 255.0f);
+    
+        pos.x += leaf_draw_char(&st->font, pos.x, pos.y, ch->ch);
+
+
 
         ch++;
     }
+
 }
+
 
 

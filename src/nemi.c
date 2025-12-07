@@ -104,6 +104,10 @@ void set_palette_color(struct nemi* st, int color_id, struct rgb_color color) {
     st->palette[CHAR_COLOR__END - color_id] = color;
 }
 
+struct rgb_color get_palette_color(struct nemi* st, int color_id) {
+    return st->palette[CHAR_COLOR__END - color_id];
+}
+
 void init_default_palette(struct nemi* st) {
     set_palette_color(st, CHAR_COLOR_DEFAULT,        (struct rgb_color){ 180, 160, 150 });
     set_palette_color(st, CHAR_COLOR_BLACK,          (struct rgb_color){ 30,  30,  30 });

@@ -45,6 +45,7 @@ void         push_char_input(struct nemi* st, char ch);
 void         end_frame(struct nemi* st);
 void         init_default_palette(struct nemi* st);
 
-void         set_palette_color(struct nemi* st, int color_id, struct rgb_color color);
+void             set_palette_color(struct nemi* st, int color_id, struct rgb_color color);
+struct rgb_color get_palette_color(struct nemi* st, int color_id);
 
 #endif
