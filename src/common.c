@@ -26,6 +26,20 @@ char* get_escape_seq_args(struct escape_seq* es, char* buf, char* ptr, size_t si
         ptr++;
     }
 
+    if(*ptr == '?') {
+        // Skip private mode sequences for now..
+        while(ptr < buf + size) {
+            if((*ptr == 'l') || (*ptr == 'h')) {
+                ptr++;
+                break;
+            }
+            ptr++;
+        }
+
+        return ptr;
+    }
+
+
     char argbuf[16] = { 0 };
     size_t argbuf_idx = 0;
 

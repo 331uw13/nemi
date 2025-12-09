@@ -32,6 +32,8 @@ static bool line_prep_mem_add(struct tline* line, uint32_t size_add) {
 
     line->chars = new_ptr;
     line->num_chars_alloc = new_num_alloc;
+    line->num_newlines = 0;
+    line->height = 0;
 
     //printf("%s -> %li\n", __func__, line->num_chars_alloc);
     return true;
@@ -139,7 +141,7 @@ void tline_add(struct nemi* st, struct tline* line, char* buffer, size_t size) {
         struct escape_seq es;
         ch = get_escape_seq_args(&es, buffer, ch, size);
 
-
+        // Add character attributes if any is found.
         for(uint16_t i = 0; i < es.num_args; i++) {
             for(size_t j = 0; j < ARRAY_LEN(ESCAPE_SEQ_MAP); j++) {
                 const struct escape_seq_map_elem* elem = &ESCAPE_SEQ_MAP[j];
@@ -170,11 +172,16 @@ void tline_add(struct nemi* st, struct tline* line, char* buffer, size_t size) {
     }
 }
 
-void tline_render(struct nemi* st, struct tline* line, struct vec2i pos) {
-    
+int tline_render(struct nemi* st, struct tline* line, struct vec2i pos) {
+    int num_newlines = 0;
     struct tchar* ch = &line->chars[0];
     while(ch < line->chars + line->num_chars) {
-    
+
+        if(ch->ch == '\n') {
+            pos.y += st->font.char_height + st->line_padding_y;
+            pos.x = 10;
+            num_newlines++;
+        }
 
         leaf_set_font_color(&st->font,
                 (float)ch->color.red / 255.0f,
@@ -183,11 +190,10 @@ void tline_render(struct nemi* st, struct tline* line, struct vec2i pos) {
     
         pos.x += leaf_draw_char(&st->font, pos.x, pos.y, ch->ch);
 
-
-
         ch++;
     }
 
+    return num_newlines;
 }
 
 

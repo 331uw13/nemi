@@ -193,8 +193,8 @@ void leaf_unload_font(struct font_t* font) {
 
 void leaf_set_font_scale(struct font_t* font, float scale) {
     font->scale = scale;
-    font->char_width = font->max_bitmap_width * scale;
-    font->char_height = font->max_bitmap_height * scale;
+    font->char_width = (font->max_bitmap_width * scale) / 2;
+    font->char_height = (font->max_bitmap_height * scale) / 2;
    
     leaf_set_font_space_width(font, font->real_space_width);
     leaf_set_font_tab_width(font, font->real_tab_width);

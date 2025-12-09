@@ -25,6 +25,15 @@ void glfw_char_callback(GLFWwindow* window, uint32_t codepoint) {
     }
 }
 
+void glfw_window_resize_callback(GLFWwindow* window, int width, int height) {
+    struct nemi* st = (struct nemi*)glfwGetWindowUserPointer(window);
+
+    st->lfctx->win_width = width;
+    st->lfctx->win_height = height;
+
+    glViewport(0, 0, width, height);
+}
+
 void push_key_input(struct nemi* st, int key) {
     for(int i = NEMI_KEYINBUF_MAX-1; i > 0; i--) {
         st->key_inputs[i] = st->key_inputs[i-1];
@@ -66,8 +75,14 @@ struct nemi* start_session() {
     st->terminal = spawn_terminal(st);
 
     glfwSetWindowUserPointer(st->lfctx->glfw_win, st);
-    glfwSetKeyCallback(st->lfctx->glfw_win, glfw_key_callback);
-    glfwSetCharCallback(st->lfctx->glfw_win, glfw_char_callback);
+    glfwSetKeyCallback        (st->lfctx->glfw_win, glfw_key_callback);
+    glfwSetCharCallback       (st->lfctx->glfw_win, glfw_char_callback);
+    glfwSetWindowSizeCallback (st->lfctx->glfw_win, glfw_window_resize_callback);
+
+    const size_t renderer_memory_size = 1024 * sizeof(float);
+    leaf_init_renderer(st->lfctx, renderer_memory_size);
+
+    st->line_padding_y = 2;
 
     return st;
 }
@@ -81,6 +96,7 @@ void quit_session(struct nemi* st) {
         close_terminal(&st->terminals[i]);
     }
 
+    leaf_free_renderer(st->lfctx);
     leaf_quit(st->lfctx);
 }
 
@@ -127,5 +143,12 @@ void init_default_palette(struct nemi* st) {
     set_palette_color(st, CHAR_COLOR_BRIGHT_MAGENTA, (struct rgb_color){ 255, 30,  255 });
     set_palette_color(st, CHAR_COLOR_BRIGHT_CYAN,    (struct rgb_color){ 30,  255, 255 });
     set_palette_color(st, CHAR_COLOR_BRIGHT_WHITE,   (struct rgb_color){ 255, 255, 255 });
+}
+
+void to_grid_pos(struct nemi* st, int* x, int* y) {
+    *x *= st->font.char_width;
+    *y *= st->font.char_height;
+    *x += 10;
+    *y += 10;
 }
 

@@ -38,7 +38,7 @@ float leaf_draw_char
 
     // Move glyph to its base line.
     // For example 'g', 'j', '*'...  are at differen Y levels.
-    float yfix = (font->char_height - glyph->height*font->scale) / 2;
+    float yfix = (font->char_height*2 - glyph->height*font->scale) / 2;
     yfix += ((glyph->height - glyph->bearing_y) * font->scale) / 2;
 
 
@@ -47,7 +47,7 @@ float leaf_draw_char
 
 
     if(font->center_char_to_cell) {
-        xF += (font->char_width - ch_width) / 4.0f;
+        xF += (font->char_width*2 - ch_width) / 4.0f;
     }
 
 
@@ -86,7 +86,7 @@ float leaf_draw_char
         ret_width = ch_width / 2.0f;
     }
     else {
-        ret_width = (float)font->char_width / 2.0f;
+        ret_width = (float)font->char_width;
     }
 
     return ret_width;

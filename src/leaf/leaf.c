@@ -46,7 +46,7 @@ struct leaf_ctx_t* leaf_open(const char* title, int width, int height) {
     }
 
 
-    glfwWindowHint(GLFW_RESIZABLE, false); // TODO: Make this optional.
+    //glfwWindowHint(GLFW_RESIZABLE, false); // TODO: Make this optional.
 
     ctx->glfw_win = glfwCreateWindow(width, height, title, NULL, NULL);
     if(!ctx->glfw_win) {
@@ -56,7 +56,7 @@ struct leaf_ctx_t* leaf_open(const char* title, int width, int height) {
         goto out;
     }
 
-    glfwSetWindowSizeLimits(ctx->glfw_win, width, height, GLFW_DONT_CARE, GLFW_DONT_CARE);
+    //glfwSetWindowSizeLimits(ctx->glfw_win, width, height, GLFW_DONT_CARE, GLFW_DONT_CARE);
     glfwMakeContextCurrent(ctx->glfw_win);
     
     GLenum glew_err = glewInit();

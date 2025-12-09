@@ -1,7 +1,27 @@
 #include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+
 #include "nemi.h"
 
 #include "tline.h"
+
+
+void print_literal(const char* text, size_t len) {
+   
+    for(size_t i = 0; i < len; i++) {
+        char ch = text[i];
+
+        if(ch == 0x1B) {
+            printf("\033[34m\\x1b\033[0m");
+            continue;
+        }
+
+        printf("%c", ch);
+    }
+    printf("\n");
+    printf("\033[90m––––––––––––––––––-----------------------------------\033[0m\n");
+}
 
 
 
@@ -14,30 +34,36 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-
-    struct tline line = create_tline();
-
-
-    char* test = "\033[32mGreen text. \033[31mRed text. \033[0mReset.";
-    tline_add(st, &line, test, strlen(test));
-
+        
+    char tmp_buffer[1024*4] = { 0 };
 
     while(!glfwWindowShouldClose(st->lfctx->glfw_win)) {
         glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
+        if(st->last_char_in == 'r') {
+            
+            const char* test = "ls -al";
+            execute_cmd(st->terminal, test, strlen(test));
+            //write(st->terminal->master_fd, test, strlen(test));
+        }
 
-        tline_render(st, &line, (struct vec2i){ 100, 100 });
+        size_t rd_bytes = 0;
+        read_terminal(st->terminal, &rd_bytes, tmp_buffer, sizeof(tmp_buffer)-1);
+        if(rd_bytes > 0) {
+            print_literal(tmp_buffer, rd_bytes);
+            push_terminal_line(st, st->terminal, tmp_buffer, rd_bytes);
+        
+            //move_cursor_to_end(st->terminal);
+        }
+
+        render_terminal(st, st->terminal);
 
 
         end_frame(st);
     }
 
-
-    free_tline(&line);
-
     quit_session(st);
-    printf("\033[90mreturn 0\033[0m\n");
     return 0;
 }
 

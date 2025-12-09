@@ -29,7 +29,7 @@ void               leaf_quit(struct leaf_ctx_t* ctx);
 // Normalize coordinates from (0 <-> win_width/height) to (-1.0 <-> +1.0)
 void leaf_normalize_coords(float x_in, float y_in, float* x_out, float* y_out);
 
-void leaf_init_renderer(struct leaf_ctx_t* ctx, size_t max_num_vertices);
+void leaf_init_renderer(struct leaf_ctx_t* ctx, size_t vbo_memsize);
 void leaf_free_renderer(struct leaf_ctx_t* ctx);
 
 //void leaf_render_vertices(struct leaf_ctx_t* ctx);

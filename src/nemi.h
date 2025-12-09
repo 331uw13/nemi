@@ -20,6 +20,7 @@ struct nemi {
     struct font_t      font;
     
 
+    int                line_padding_y;
 
     struct terminal    terminals [NEMI_TERMINALS_MAX];
     uint16_t           num_terminals;
@@ -47,5 +48,7 @@ void         init_default_palette(struct nemi* st);
 
 void             set_palette_color(struct nemi* st, int color_id, struct rgb_color color);
 struct rgb_color get_palette_color(struct nemi* st, int color_id);
+
+void             to_grid_pos(struct nemi* st, int* x, int* y);
 
 #endif

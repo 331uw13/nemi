@@ -20,6 +20,8 @@
 #define ATTR_HIDDEN     (1 << 6)
 #define ATTR_STRIKETH   (1 << 7) // Strike through.
 
+// Attributes and character colors must not overlap
+// because their numbers are mapped to them. See "tline.c" for better info.
 enum char_colors : int {
     CHAR_COLOR__BEGIN = (1 << 8),
     CHAR_COLOR_BLACK,
@@ -58,6 +60,9 @@ struct tline {
     struct tchar* chars;
     size_t        num_chars;
     size_t        num_chars_alloc;
+
+    int num_newlines;
+    int height;
 };
 
 struct nemi;
@@ -66,10 +71,10 @@ struct tline create_tline();
 void         free_tline(struct tline* line);
 void         tline_clear(struct tline* line);
 
-void         tline_add(struct nemi* st, struct tline* line, char* buffer, size_t size);
-void         tline_add_ch(struct tline* line, struct tchar* ch);
+void tline_add(struct nemi* st, struct tline* line, char* buffer, size_t size);
+void tline_add_ch(struct tline* line, struct tchar* ch);
 
-void         tline_render(struct nemi* st, struct tline* line, struct vec2i pos);
-
+// Returns number of newlines in 'line'
+int  tline_render(struct nemi* st, struct tline* line, struct vec2i pos);
 
 #endif
