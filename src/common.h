@@ -8,8 +8,9 @@
 
 
 void freeif(void* ptr);
+int  clampi(int x, int min, int max);
 void print_literal(const char* text, size_t len);
-
+bool chararray_contains(char* buf, size_t size, char ch);
 
 
 #define ESCAPE_SEQ_MAX_ARGS 16
@@ -20,6 +21,7 @@ struct escape_seq {
     uint16_t num_args;
 };
 
+// TODO: Rename this function.
 // This function splits ANSI escape sequence
 // arguments into integers which can later be processed.
 // For example:
@@ -29,6 +31,6 @@ struct escape_seq {
 // 'ptr' is supposed to be where to start.
 char* get_escape_seq_args(struct escape_seq* es, char* buf, char* ptr, size_t size);
 
-bool chararray_contains(char* buf, size_t size, char ch);
+
 
 #endif

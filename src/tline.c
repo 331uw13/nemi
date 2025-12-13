@@ -33,6 +33,7 @@ static bool line_prep_mem_add(struct tline* line, uint32_t size_add) {
 
     line->chars = new_ptr;
     line->num_chars_alloc = new_num_alloc;
+    
 
     return true;
 }
@@ -119,26 +120,34 @@ void tline_add_ch_to_currln
     if(!term->currln) {
         term->currln = &term->lines[0];
     }
-    if(!line_prep_mem_add(term->currln, 1)) {
+    if(!line_prep_mem_add(term->currln, 2)) {
         return;
     }
+    term->currln = &term->lines[term->curs.pos.y];
 
     if(ch->ch == '\n') {
         // Ignore empty lines.
         if(term->currln->num_chars > 0) {
             
-            term_prep_line_add(term, __func__);
+            terminal_prep_lines_add(term, 1);
 
             term->num_lines++;
-            term->currln = &term->lines[term->num_lines];
+            move_curs_to(term, 0, term->curs.pos.y + 1);
         }
         return;
     }
 
     // Support only ASCII characters for now.
     if(ch->ch >= 0x20 && ch->ch <= 0x7E) {
-        term->currln->chars[term->currln->num_chars] = *ch;
+        //printf("--------------------------\n"); 
+        term->curs.pos.x = clampi(term->curs.pos.x, 0, term->currln->num_chars);
+        term->currln->chars[term->curs.pos.x] = *ch;
         term->currln->num_chars++;
+        
+        term->currln->chars[term->currln->num_chars].ch = '\0';
+
+        term->num_added_tchars++;
+        move_curs_off(term, 1, 0);
     }
 
     return;
@@ -163,13 +172,25 @@ void tline_add_buf_to_currln
         term->currln = &term->lines[0];
     }
 
-    while(ch && ch < buffer+size) {
+    while(ch && ch < buffer + size) {
+
+        if(*ch == 0x08) {
+            tline_backspace_currln(term);
+        }
 
         if(*ch != 0x1B) {
             es_ch.ch = *ch;
             tline_add_ch_to_currln(term, &es_ch);
             ch++;
             continue;
+        }
+        else {
+            char* tmpptr = NULL;
+            tmpptr = terminal_handle_csi(st, term, ch, buffer, size);
+            if(tmpptr) {
+                ch = tmpptr;
+                continue;
+            }
         }
 
         if(*ch == 0) {
@@ -179,13 +200,11 @@ void tline_add_buf_to_currln
 
 
 
-        // Parse escape sequences.
+        // Parse color escape sequences.
         
         struct escape_seq es;
         ch = get_escape_seq_args(&es, buffer, ch, size);
 
-
-        // Add character attributes if any is found.
         for(uint16_t i = 0; i < es.num_args; i++) {
             int arg = es.args[i];
 
@@ -224,6 +243,19 @@ void tline_add_buf_to_currln
 }
 
 void tline_backspace_currln(struct terminal* term) {
+    if(!term->currln) {
+        return;
+    }
+
+    if(term->currln->num_chars == 0) {
+        return;
+    }
+
+    memset(&term->currln->chars[ term->currln->num_chars-1 ],
+            0, sizeof(*term->currln));
+
+    term->currln->num_chars--;
+
 }
 
 void tline_render(struct nemi* st, struct terminal* term, struct tline* line, int line_row) {

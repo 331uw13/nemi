@@ -1,4 +1,4 @@
-FLAGS = -O2 -Wall -Wextra
+FLAGS = -ggdb -Wall -Wextra
 CC = gcc
 
 TARGET_NAME = nemi

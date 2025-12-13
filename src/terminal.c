@@ -4,6 +4,7 @@
 #include <pty.h>
 #include <poll.h>
 #include <stdio.h>
+#include <errno.h>
 
 #include "terminal.h"
 #include "nemi.h"
@@ -28,9 +29,9 @@ struct terminal* spawn_terminal(struct nemi* st) {
     term->num_lines_alloc = 0;
     term->flags = 0;
     term->scroll = (struct vec2i){ 0, 0 };   
-    term->cursor.pos = (struct vec2i){ 0, 0 };
+    term->curs.pos = (struct vec2i){ 0, 0 };
     term->line_height = st->font.char_height + st->cfg.line_padding_y;
-
+    term->num_added_tchars = 0;
     terminal_handle_resize_event(st, term);
 
     memset(term->title, 0, sizeof(term->title));
@@ -73,12 +74,9 @@ void read_terminal(struct nemi* st, struct terminal* term) {
     size_t out_index = 0;
 
     const int timeout_ms = 10;
-    bool last_flushed = false;
-
-    size_t old_num_lines = term->num_lines;
-
-    // Assume last line ends with LF ('\n')
-    //term->flags |= TERMFLG_LASTLN_HAS_LF;
+    term->num_added_tchars = 0;
+    term->flags &= ~NO_AUTO_CURSOR_MOVE_X;
+    term->flags &= ~NO_AUTO_CURSOR_MOVE_Y;
 
     while(true) {
         int retv = poll(&pfd, num_fds, timeout_ms);
@@ -117,18 +115,12 @@ void read_terminal(struct nemi* st, struct terminal* term) {
         }
     }
 
-    /*
-    if(!(term->flags & TERMFLG_LASTLN_HAS_LF)) {
-        //term->num_lines++;
-    }
-    */
-
-    if(old_num_lines != term->num_lines) {
+    if(term->num_added_tchars > 0) {
         terminal_handle_data_event(st, term);
     }
 }
 
-bool term_prep_line_add(struct terminal* term, const char* caller_func) {
+bool terminal_prep_lines_add(struct terminal* term, int num_add) {
     if(!term) {
         return false;
     }
@@ -136,18 +128,16 @@ bool term_prep_line_add(struct terminal* term, const char* caller_func) {
         return false;
     }
 
-    if(term->num_lines + 1 < term->num_lines_alloc) {
+    if(term->num_lines + num_add < term->num_lines_alloc) {
         return true;
     }
 
-    const size_t num_alloc_more = 100;
+    const size_t num_alloc_more = num_add + 100;
     const size_t new_num_alloc = term->num_lines_alloc + num_alloc_more;
 
     struct tline* new_ptr = realloc(term->lines, new_num_alloc * sizeof *term->lines);
     if(!new_ptr) {
-        // TODO: Create better error handling system, This sucks.
-        fprintf(stderr, "Some terminal experienced memory error. %s() Called from %s()\n",
-                __func__, caller_func);
+        fprintf(stderr, "Terminal experienced memory error | %s\n", strerror(errno));
         return false;
     }
 
@@ -158,13 +148,14 @@ bool term_prep_line_add(struct terminal* term, const char* caller_func) {
         term->lines[i] = create_tline();
     }
 
+    term->currln = &term->lines[term->curs.pos.y];
     term->num_lines_alloc = new_num_alloc;
 
     return true;
 }
 
 void terminal_add_chars(struct nemi* st, struct terminal* term, char* buffer, size_t size) {
-    if(!term_prep_line_add(term, __func__)) {
+    if(!terminal_prep_lines_add(term, 1)) {
         return;
     }
 
@@ -178,8 +169,7 @@ void execute_cmd(struct terminal* term, char* cmd_str, size_t cmd_len) {
     if(cmd_len == 0) {
         return;
     }
-
-    // Dont echo the command which was executed.
+    
     term->flags |= NO_INPUT_ECHO; 
     
     write(term->master_fd, cmd_str, cmd_len);
@@ -188,25 +178,15 @@ void execute_cmd(struct terminal* term, char* cmd_str, size_t cmd_len) {
     }
 }
 
-void move_cursor_to_prompt(struct terminal* term) {
-    struct tline* last_line = get_terminal_lastln(term);
-    if(!last_line) {
-        return;
-    }
-
-    term->cursor.pos.x = last_line->num_chars;
-    term->cursor.pos.y = term->num_lines;
-}
-
 static void render_terminal_cursor(struct nemi* st, struct terminal* term) {
 
-    int cursor_drw_x = term->cursor.pos.x;
-    int cursor_drw_y = term->cursor.pos.y;
+    int cursor_drw_x = term->curs.pos.x;
+    int cursor_drw_y = term->curs.pos.y;
 
     to_grid_pos(st, &cursor_drw_x, &cursor_drw_y);
 
     leaf_draw_rect(
-            cursor_drw_x,
+            cursor_drw_x + term->scroll.x,
             cursor_drw_y + term->scroll.y,
             st->font.char_width,
             st->font.char_height,
@@ -238,9 +218,6 @@ void render_terminal(struct nemi* st, struct terminal* term) {
 }
 
 void scroll_terminal_down(struct nemi* st, struct terminal* term) {
-    //int end = get_terminal_num_newlines(term) * term->line_height;
-    //term->scroll.y = -end + ((term->rows-1) * term->line_height - st->cfg.rows_end_padding);
-
     int end = term->num_lines * term->line_height;
     term->scroll.y = -end + ((term->rows - 1) * term->line_height - st->cfg.rows_end_padding);
 }
@@ -251,8 +228,6 @@ void scroll_terminal(struct nemi* st, struct terminal* term, struct vec2i offset
 }
 
 bool terminal_onlastpage(struct terminal* term) {
-    //return (term->scroll.y + term->rows * term->line_height >= term->num_lines);
-
     int scroll = term->scroll.y / term->line_height;
     return (-scroll > term->num_lines - term->rows);
 }
@@ -296,8 +271,29 @@ void terminal_clear(struct terminal* term) {
     term->num_lines = 0;
     term->scroll.y = 0;
     term->scroll.x = 0;
-    term->currln = &term->lines[0];
+    move_curs_to(term, 0, 0);
     write(term->master_fd, "\n", 1);
+}
+
+void move_curs_to(struct terminal* term, int x, int y) {
+    if(y < 0) {
+        y = 0;
+    }
+
+    term->curs.pos.x = x;
+    term->curs.pos.y = y;
+
+    if(y > term->num_lines) {
+        terminal_prep_lines_add(term, y - term->num_lines);
+        term->num_lines += (y - term->num_lines);
+    }
+
+    term->currln = &term->lines[term->curs.pos.y];
+    term->curs.pos.x = clampi(term->curs.pos.x, 0, term->currln->num_chars);
+}
+
+void move_curs_off(struct terminal* term, int xoff, int yoff) {
+    move_curs_to(term, term->curs.pos.x + xoff, term->curs.pos.y + yoff);
 }
 
 void terminal_handle_resize_event(struct nemi* st, struct terminal* term) {
@@ -330,18 +326,29 @@ void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
 
         case GLFW_KEY_DOWN:
             write(term->master_fd, "\x1b[B", 3);
+            term->flags |= NO_INPUT_ECHO;
             break;
 
         case GLFW_KEY_LEFT:
             write(term->master_fd, "\x1b[D", 3);
+            term->flags |= NO_INPUT_ECHO;
+            term->curs.pos.x -= 1;
             break;
 
         case GLFW_KEY_RIGHT:
             write(term->master_fd, "\x1b[C", 3);
+            term->flags |= NO_INPUT_ECHO;
+            term->curs.pos.x += 1;
             break;
 
         case GLFW_KEY_ENTER:
             write(term->master_fd, "\n", 1);
+
+            break;
+    
+        case GLFW_KEY_BACKSPACE:
+            write(term->master_fd, "\x08", 1);
+            term->curs.pos.x--;
             break;
     }
 
@@ -360,5 +367,104 @@ void terminal_handle_data_event(struct nemi* st, struct terminal* term) {
     if(term->num_lines > term->rows) {
         scroll_terminal_down(st, st->terminal);
     }
+
+    //move_cursor_to_prompt(st->terminal);
+}
+
+char* terminal_handle_csi
+(struct nemi* st, struct terminal* term, char* ptr, char* buffer, size_t size) {
+
+    if(*ptr == 0x1B) {
+        ptr++;
+    }
+    if(ptr > buffer + size) { return NULL; }
+    if(*ptr == '[') {
+        ptr++;
+    }
+    
+    if(ptr > buffer + size) { return NULL; }
+    if(*ptr == ' ') {
+        ptr++;
+    }
+
+    if(ptr > buffer + size) { return NULL; }
+
+
+    char arg[16] = { 0 };
+    size_t arg_len = 0;
+    char opt = 0;
+
+    while(ptr < buffer + size) {
+
+        if(*ptr < '0' || *ptr > '9') {
+            opt = *ptr;
+            break;
+        }
+
+        if(arg_len >= sizeof(arg)) {
+            return NULL;
+        }
+        arg[arg_len++] = *ptr;
+        ptr++;
+    }
+
+    long N = strtol(arg, NULL, 10);
+
+    switch(opt) {
+
+        case 'A': // Move cursor up N lines.
+            move_curs_off(term, 0, -N);
+            break;
+
+        case 'B': // Move cursor down N lines.
+            move_curs_off(term, 0, N);
+            break;
+
+        case 'C': // Move cursor right N columns.
+            break;
+        
+        case 'D': // Move cursor left N columns.
+            break;
+
+        case 'E': // Move cursor to beginning of next line, N lines down.
+            break;
+
+        case 'F': // Move cursor to beginning of previous line, N lines up.
+            break;
+
+        case 'G': // Move cursor to column N
+            break;
+
+        case 'M': // Move cursor up one line, scroll if needed.
+            break;
+
+        case '7': // Save cursor position (DEC)
+            break;
+
+        case '8': // Restore cursor position (DEC)
+            break;
+
+        case 's': // Save cursor position (SCO)
+            break;
+
+        case 'u': // Restore cursor position (SCO)
+            break;
+
+
+            
+        case 'J':
+            break;
+
+        case 'K':
+            break;
+
+
+        default:
+            //fprintf(stderr, "Unknown CSI: 0x%x\n", opt);
+            return NULL;
+    }
+
+    ptr++;
+    return ptr;
 }
 

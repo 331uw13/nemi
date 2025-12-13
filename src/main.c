@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
     }
 
     while(!glfwWindowShouldClose(st->lfctx->glfw_win)) {
-        glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
+        glClearColor(0.045f, 0.045f, 0.045f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         
         if(st->last_key_in == GLFW_KEY_ESCAPE) {
@@ -25,7 +25,6 @@ int main(int argc, char** argv) {
         }
 
         read_terminal(st, st->terminal);
-        move_cursor_to_prompt(st->terminal);
         render_terminal(st, st->terminal);
 
         end_frame(st);

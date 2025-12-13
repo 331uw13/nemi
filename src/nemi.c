@@ -77,7 +77,7 @@ struct nemi* start_session() {
     struct nemi* st = malloc(sizeof *st);
 
     st->flags = 0;
-    st->lfctx = leaf_open("Nemi - Terminal Emulator", 800, 600);
+    st->lfctx = leaf_open("Nemi - Terminal Emulator", 1000, 600);
     st->num_terminals = 0;
 
     zero_input_buffers(st);
@@ -240,8 +240,8 @@ void init_default_palette(struct nemi* st) {
 void init_default_config(struct nemi* st) {
     st->cfg.line_padding_y = 2;
     st->cfg.rows_end_padding = 10;
-    st->cfg.scroll_y_mult = 10.0f;
-    st->cfg.scroll_x_mult = 10.0f;
+    st->cfg.scroll_y_mult = 30.0f;
+    st->cfg.scroll_x_mult = 30.0f;
 }
 
 
