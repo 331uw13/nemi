@@ -6,6 +6,7 @@
 #include "tline.h"
 #include "common.h"
 #include "nemi.h"
+#include "terminal.h"
 
 #define LINE_DEF_MEMSIZE 64
 #define LINE_REALLOC_BYTES 64
@@ -42,8 +43,6 @@ struct tline create_tline() {
     line.chars = NULL;
     line.num_chars = 0;
     line.num_chars_alloc = 0;
-    line.num_newlines = 0;
-    line.height = 0;
     return line;
 }
 
@@ -112,17 +111,46 @@ static const struct escape_seq_map_elem ESCAPE_SEQ_MAP[] = {
 };
 
 
-void tline_add_ch(struct tline* line, struct tchar* ch) {
-    if(!line_prep_mem_add(line, 1)) {
+void tline_add_ch_to_currln
+(
+    struct terminal* term,
+    struct tchar* ch
+){
+    if(!term->currln) {
+        term->currln = &term->lines[0];
+    }
+    if(!line_prep_mem_add(term->currln, 1)) {
         return;
     }
+
     if(ch->ch == '\n') {
-        line->num_newlines++;
+        // Ignore empty lines.
+        if(term->currln->num_chars > 0) {
+            
+            term_prep_line_add(term, __func__);
+
+            term->num_lines++;
+            term->currln = &term->lines[term->num_lines];
+        }
+        return;
     }
-    line->chars[line->num_chars++] = *ch;
+
+    // Support only ASCII characters for now.
+    if(ch->ch >= 0x20 && ch->ch <= 0x7E) {
+        term->currln->chars[term->currln->num_chars] = *ch;
+        term->currln->num_chars++;
+    }
+
+    return;
 }
 
-void tline_add(struct nemi* st, struct tline* line, char* buffer, size_t size) {
+void tline_add_buf_to_currln
+(
+    struct nemi* st,
+    struct terminal* term,
+    char* buffer,
+    size_t size
+){
     char* ch = &buffer[0];
    
     struct tchar es_ch;
@@ -131,20 +159,31 @@ void tline_add(struct nemi* st, struct tline* line, char* buffer, size_t size) {
     es_ch.attr_bg = false;
     es_ch.color = get_palette_color(st, CHAR_COLOR_DEFAULT);
 
+    if(!term->currln) {
+        term->currln = &term->lines[0];
+    }
 
     while(ch && ch < buffer+size) {
 
         if(*ch != 0x1B) {
             es_ch.ch = *ch;
-            tline_add_ch(line, &es_ch);
+            tline_add_ch_to_currln(term, &es_ch);
+            ch++;
+            continue;
+        }
 
+        if(*ch == 0) {
             ch++;
             continue;
         }
 
 
+
+        // Parse escape sequences.
+        
         struct escape_seq es;
         ch = get_escape_seq_args(&es, buffer, ch, size);
+
 
         // Add character attributes if any is found.
         for(uint16_t i = 0; i < es.num_args; i++) {
@@ -184,28 +223,25 @@ void tline_add(struct nemi* st, struct tline* line, char* buffer, size_t size) {
     }
 }
 
-int tline_render(struct nemi* st, struct tline* line, struct vec2i pos) {
-    int num_newlines = 0;
+void tline_backspace_currln(struct terminal* term) {
+}
+
+void tline_render(struct nemi* st, struct terminal* term, struct tline* line, int line_row) {
     struct tchar* ch = &line->chars[0];
+    
+
+    int pos_y = line_row + term->scroll.y;
+    int pos_x = 10 + term->scroll.x;
+
     while(ch < line->chars + line->num_chars) {
-
-        if(ch->ch == '\n') {
-            pos.y += st->font.char_height + st->line_padding_y;
-            pos.x = 10;
-            num_newlines++;
-        }
-
         leaf_set_font_color(&st->font,
                 (float)ch->color.red / 255.0f,
                 (float)ch->color.grn / 255.0f,
                 (float)ch->color.blu / 255.0f);
     
-        pos.x += leaf_draw_char(&st->font, pos.x, pos.y, ch->ch);
-
+        pos_x += leaf_draw_char(&st->font, pos_x, pos_y, ch->ch);
         ch++;
     }
-
-    return num_newlines;
 }
 
 

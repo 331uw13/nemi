@@ -2,13 +2,13 @@
 #define COMMON_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #define ARRAY_LEN(arr) (sizeof(arr) / sizeof(*arr))
 
 
 void freeif(void* ptr);
-
-
+void print_literal(const char* text, size_t len);
 
 
 
@@ -29,5 +29,6 @@ struct escape_seq {
 // 'ptr' is supposed to be where to start.
 char* get_escape_seq_args(struct escape_seq* es, char* buf, char* ptr, size_t size);
 
+bool chararray_contains(char* buf, size_t size, char ch);
 
 #endif

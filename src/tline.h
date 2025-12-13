@@ -60,21 +60,21 @@ struct tline {
     struct tchar* chars;
     size_t        num_chars;
     size_t        num_chars_alloc;
-
-    int num_newlines;
-    int height;
 };
 
 struct nemi;
+struct terminal;
 
 struct tline create_tline();
 void         free_tline(struct tline* line);
 void         tline_clear(struct tline* line);
 
-void tline_add(struct nemi* st, struct tline* line, char* buffer, size_t size);
-void tline_add_ch(struct tline* line, struct tchar* ch);
+void tline_add_ch_to_currln  (struct terminal* term, struct tchar* ch);
+void tline_add_buf_to_currln (struct nemi* st, struct terminal* term, char* buffer, size_t size);
+void tline_backspace_currln  (struct terminal* term);
 
-// Returns number of newlines in 'line'
-int  tline_render(struct nemi* st, struct tline* line, struct vec2i pos);
+void tline_render (struct nemi* st, struct terminal* term, struct tline* line, int line_row);
+
+
 
 #endif

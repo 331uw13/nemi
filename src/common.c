@@ -11,6 +11,38 @@ void freeif(void* ptr) {
 }
 
 
+void print_literal(const char* text, size_t len) {
+   
+    for(size_t i = 0; i <= len; i++) {
+        char ch = text[i];
+
+        if(ch == 0x1B) { // ESC
+            printf("\033[34m^[\033[0m");
+            continue;
+        }
+        else
+        if(ch == 0x07) { // BEL
+            printf("\033[34m^G\033[0m");
+            continue;
+        }
+        else
+        if(ch == 0x0A) {
+            printf("\033[34m\\n\033[0m");
+        }
+        else
+        if(ch < 0x20 || ch > 0x7E) {
+            printf("\033[31m%x\033[0m", ch);
+            continue;
+        }
+
+        printf("%c", ch);
+    }
+    printf("\n");
+    printf("\033[90m––––––––––––––––––-----------------------------------\033[0m\n");
+}
+
+
+
 char* get_escape_seq_args(struct escape_seq* es, char* buf, char* ptr, size_t size) {
     if(!es || !ptr || !buf || !size) {
         return NULL;
@@ -92,4 +124,14 @@ char* get_escape_seq_args(struct escape_seq* es, char* buf, char* ptr, size_t si
     return ptr;
 }
 
+bool chararray_contains(char* buf, size_t size, char ch) {
+    char* ptr = &buf[0];
+    while(ptr < buf + size) {
+        if(*ptr == ch) {
+            return true;
+        }
+        ptr++;
+    }
+    return false;
+}
 

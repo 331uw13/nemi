@@ -10,7 +10,8 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
     (void)scancode;
     (void)mods;
 
-    if(action != GLFW_PRESS) {
+    if((action != GLFW_PRESS)
+    && (action != GLFW_REPEAT)) {
         return;
     }
 
@@ -31,6 +32,20 @@ void glfw_char_callback(GLFWwindow* window, uint32_t codepoint) {
     }
 }
 
+void glfw_scroll_callback(GLFWwindow* window, double x_offset, double y_offset) {
+    (void)x_offset;
+    struct nemi* st = (struct nemi*)glfwGetWindowUserPointer(window);
+
+    if(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) != GLFW_PRESS) {
+        // Scroll Y axis.
+        scroll_terminal(st, st->terminal, (struct vec2i){ 0, y_offset });
+    }
+    else {
+        // Scroll X axis.
+        scroll_terminal(st, st->terminal, (struct vec2i){ y_offset, 0 });
+    }
+}
+
 void glfw_window_resize_callback(GLFWwindow* window, int width, int height) {
     struct nemi* st = (struct nemi*)glfwGetWindowUserPointer(window);
 
@@ -38,6 +53,10 @@ void glfw_window_resize_callback(GLFWwindow* window, int width, int height) {
     st->lfctx->win_height = height;
 
     glViewport(0, 0, width, height);
+
+    for(size_t i = 0; i < st->num_terminals; i++) {
+        terminal_handle_resize_event(st, &st->terminals[i]);
+    }
 }
 
 void push_key_input(struct nemi* st, int key) {
@@ -63,6 +82,7 @@ struct nemi* start_session() {
 
     zero_input_buffers(st);
     init_default_palette(st);
+    init_default_config(st);
 
     if(!leaf_load_font(&st->font, "Topaz-8.ttf")) {
         quit_session(st);
@@ -81,12 +101,11 @@ struct nemi* start_session() {
     glfwSetWindowUserPointer(st->lfctx->glfw_win, st);
     glfwSetKeyCallback        (st->lfctx->glfw_win, glfw_key_callback);
     glfwSetCharCallback       (st->lfctx->glfw_win, glfw_char_callback);
+    glfwSetScrollCallback     (st->lfctx->glfw_win, glfw_scroll_callback);
     glfwSetWindowSizeCallback (st->lfctx->glfw_win, glfw_window_resize_callback);
-
+    
     const size_t renderer_memory_size = 1024 * sizeof(float);
     leaf_init_renderer(st->lfctx, renderer_memory_size);
-
-    st->line_padding_y = 2;
 
     return st;
 }
@@ -128,30 +147,9 @@ struct rgb_color get_palette_color(struct nemi* st, int color_id) {
     return st->palette[CHAR_COLOR__END - color_id];
 }
 
-void init_default_palette(struct nemi* st) {
-    set_palette_color(st, CHAR_COLOR_DEFAULT,        (struct rgb_color){ 180, 160, 150 });
-    set_palette_color(st, CHAR_COLOR_BLACK,          (struct rgb_color){ 30,  30,  30 });
-    set_palette_color(st, CHAR_COLOR_RED,            (struct rgb_color){ 180, 30,  30 });
-    set_palette_color(st, CHAR_COLOR_GREEN,          (struct rgb_color){ 30,  180, 30 });
-    set_palette_color(st, CHAR_COLOR_YELLOW,         (struct rgb_color){ 180, 180, 30 });
-    set_palette_color(st, CHAR_COLOR_BLUE,           (struct rgb_color){ 30,  30,  180 });
-    set_palette_color(st, CHAR_COLOR_MAGENTA,        (struct rgb_color){ 180, 30,  180 });
-    set_palette_color(st, CHAR_COLOR_CYAN,           (struct rgb_color){ 30,  180, 180 });
-    set_palette_color(st, CHAR_COLOR_WHITE,          (struct rgb_color){ 180, 180, 180 });
-    
-    set_palette_color(st, CHAR_COLOR_BRIGHT_BLACK,   (struct rgb_color){ 30,  30,  30 });
-    set_palette_color(st, CHAR_COLOR_BRIGHT_RED,     (struct rgb_color){ 255, 30,  30 });
-    set_palette_color(st, CHAR_COLOR_BRIGHT_GREEN,   (struct rgb_color){ 30,  255, 30 });
-    set_palette_color(st, CHAR_COLOR_BRIGHT_YELLOW,  (struct rgb_color){ 255, 255, 30 });
-    set_palette_color(st, CHAR_COLOR_BRIGHT_BLUE,    (struct rgb_color){ 30,  30,  255 });
-    set_palette_color(st, CHAR_COLOR_BRIGHT_MAGENTA, (struct rgb_color){ 255, 30,  255 });
-    set_palette_color(st, CHAR_COLOR_BRIGHT_CYAN,    (struct rgb_color){ 30,  255, 255 });
-    set_palette_color(st, CHAR_COLOR_BRIGHT_WHITE,   (struct rgb_color){ 255, 255, 255 });
-}
-
 void to_grid_pos(struct nemi* st, int* x, int* y) {
     *x *= st->font.char_width;
-    *y *= (st->font.char_height + st->line_padding_y);
+    *y *= (st->font.char_height + st->cfg.line_padding_y);
     *x += 10;
     *y += 10;
 }
@@ -212,3 +210,38 @@ char* handle_osc_escseq(struct nemi* st, char* ptr, char* buffer, size_t size) {
 
     return ptr;
 }
+
+bool key_down(struct nemi* st, int key) {
+    return (glfwGetKey(st->lfctx->glfw_win, key) == GLFW_PRESS);
+}
+
+
+void init_default_palette(struct nemi* st) {
+    set_palette_color(st, CHAR_COLOR_DEFAULT,        (struct rgb_color){ 180, 160, 150 });
+    set_palette_color(st, CHAR_COLOR_BLACK,          (struct rgb_color){ 30,  30,  30 });
+    set_palette_color(st, CHAR_COLOR_RED,            (struct rgb_color){ 180, 30,  30 });
+    set_palette_color(st, CHAR_COLOR_GREEN,          (struct rgb_color){ 30,  180, 30 });
+    set_palette_color(st, CHAR_COLOR_YELLOW,         (struct rgb_color){ 180, 180, 30 });
+    set_palette_color(st, CHAR_COLOR_BLUE,           (struct rgb_color){ 30,  30,  180 });
+    set_palette_color(st, CHAR_COLOR_MAGENTA,        (struct rgb_color){ 180, 30,  180 });
+    set_palette_color(st, CHAR_COLOR_CYAN,           (struct rgb_color){ 30,  180, 180 });
+    set_palette_color(st, CHAR_COLOR_WHITE,          (struct rgb_color){ 180, 180, 180 });
+    
+    set_palette_color(st, CHAR_COLOR_BRIGHT_BLACK,   (struct rgb_color){ 30,  30,  30 });
+    set_palette_color(st, CHAR_COLOR_BRIGHT_RED,     (struct rgb_color){ 255, 30,  30 });
+    set_palette_color(st, CHAR_COLOR_BRIGHT_GREEN,   (struct rgb_color){ 30,  255, 30 });
+    set_palette_color(st, CHAR_COLOR_BRIGHT_YELLOW,  (struct rgb_color){ 255, 255, 30 });
+    set_palette_color(st, CHAR_COLOR_BRIGHT_BLUE,    (struct rgb_color){ 30,  30,  255 });
+    set_palette_color(st, CHAR_COLOR_BRIGHT_MAGENTA, (struct rgb_color){ 255, 30,  255 });
+    set_palette_color(st, CHAR_COLOR_BRIGHT_CYAN,    (struct rgb_color){ 30,  255, 255 });
+    set_palette_color(st, CHAR_COLOR_BRIGHT_WHITE,   (struct rgb_color){ 255, 255, 255 });
+}
+
+void init_default_config(struct nemi* st) {
+    st->cfg.line_padding_y = 2;
+    st->cfg.rows_end_padding = 10;
+    st->cfg.scroll_y_mult = 10.0f;
+    st->cfg.scroll_x_mult = 10.0f;
+}
+
+

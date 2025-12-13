@@ -26,10 +26,12 @@ struct terminal* spawn_terminal(struct nemi* st) {
     term->lines = NULL;
     term->num_lines = 0;
     term->num_lines_alloc = 0;
-    term->cursor.pos.x = 0;
-    term->cursor.pos.y = 0;
     term->flags = 0;
-   
+    term->scroll = (struct vec2i){ 0, 0 };   
+    term->cursor.pos = (struct vec2i){ 0, 0 };
+    term->line_height = st->font.char_height + st->cfg.line_padding_y;
+
+    terminal_handle_resize_event(st, term);
 
     memset(term->title, 0, sizeof(term->title));
     return term;
@@ -56,56 +58,77 @@ void close_terminal(struct terminal* term) {
 }
 
 
-void read_terminal(struct terminal* term, size_t* read_bytes, char* out, size_t mem_size) {
-    if(!read_bytes) {
-        return;
-    }
+void read_terminal(struct nemi* st, struct terminal* term) {
     if(!term) {
         return;
     }
-    if(!out || !mem_size) { 
-        return;
-    }
 
-        
-    *read_bytes = 0;
-
+   
     struct pollfd pfd;
     pfd.fd = term->master_fd;
     pfd.events = POLLIN;
     nfds_t num_fds = 1;
 
-    char tmp_buffer[1024] = { 0 };
+    char tmp_buffer[1024*4] = { 0 };
     size_t out_index = 0;
 
     const int timeout_ms = 10;
+    bool last_flushed = false;
+
+    size_t old_num_lines = term->num_lines;
+
+    // Assume last line ends with LF ('\n')
+    //term->flags |= TERMFLG_LASTLN_HAS_LF;
 
     while(true) {
         int retv = poll(&pfd, num_fds, timeout_ms);
         if(retv > 0) {
            
+            memset(tmp_buffer, 0, sizeof(tmp_buffer)-1);
             ssize_t rd = read(term->master_fd, tmp_buffer, sizeof(tmp_buffer)-1);
             if(rd <= 0) {
                 break;
             }
 
-            if((term->flags & TERMFLG_DROP_NEXT_READ)) {
-                term->flags &= ~TERMFLG_DROP_NEXT_READ;
-                continue;
+            size_t offset = 0;
+
+            if((term->flags & NO_INPUT_ECHO)) {
+                term->flags &= ~NO_INPUT_ECHO;
+                char* ch = &tmp_buffer[0];
+                while(ch < tmp_buffer + rd) {
+                    ch++;
+                    offset++;
+                    if(*ch == '\n') {
+                        offset++;
+                        break;
+                    }
+                }
+                rd -= offset;
+                if(rd <= 0) {
+                    continue;
+                }
             }
 
-            memcpy(out + out_index, tmp_buffer, rd);
-            out_index += rd;
-
-            *read_bytes += (size_t)rd;
+            print_literal(tmp_buffer + offset, rd);
+            terminal_add_chars(st, term, tmp_buffer+offset, rd);
         }
         else {
             break;
         }
     }
+
+    /*
+    if(!(term->flags & TERMFLG_LASTLN_HAS_LF)) {
+        //term->num_lines++;
+    }
+    */
+
+    if(old_num_lines != term->num_lines) {
+        terminal_handle_data_event(st, term);
+    }
 }
 
-static bool term_prep_line_add(struct terminal* term, const char* caller_func) {
+bool term_prep_line_add(struct terminal* term, const char* caller_func) {
     if(!term) {
         return false;
     }
@@ -140,13 +163,12 @@ static bool term_prep_line_add(struct terminal* term, const char* caller_func) {
     return true;
 }
 
-void push_terminal_line(struct nemi* st, struct terminal* term, char* line_str, size_t line_len) {
+void terminal_add_chars(struct nemi* st, struct terminal* term, char* buffer, size_t size) {
     if(!term_prep_line_add(term, __func__)) {
         return;
     }
 
-    struct tline* line = &term->lines[term->num_lines++];
-    tline_add(st, line, line_str, line_len);
+    tline_add_buf_to_currln(st, term, buffer, size);
 }
 
 void execute_cmd(struct terminal* term, char* cmd_str, size_t cmd_len) {
@@ -158,7 +180,7 @@ void execute_cmd(struct terminal* term, char* cmd_str, size_t cmd_len) {
     }
 
     // Dont echo the command which was executed.
-    term->flags |= TERMFLG_DROP_NEXT_READ; 
+    term->flags |= NO_INPUT_ECHO; 
     
     write(term->master_fd, cmd_str, cmd_len);
     if(cmd_str[cmd_len-1] != '\n') {
@@ -166,28 +188,14 @@ void execute_cmd(struct terminal* term, char* cmd_str, size_t cmd_len) {
     }
 }
 
-void move_cursor_to_home(struct terminal* term) {
-    struct tline* last_line = &term->lines[term->num_lines > 0 ? term->num_lines-1 : 0];
-
-    int prompt_len = 0;
-    if(last_line->num_chars == 0) {
+void move_cursor_to_prompt(struct terminal* term) {
+    struct tline* last_line = get_terminal_lastln(term);
+    if(!last_line) {
         return;
     }
 
-    for(size_t i = last_line->num_chars-1; i > 0; i--) {
-        if(last_line->chars[i].ch == '\n') {
-            break;
-        }
-        prompt_len++;
-    }
-
-    int total_newlines = 0;
-    for(size_t i = 0; i < term->num_lines; i++) {
-        total_newlines += term->lines[i].num_newlines+1;
-    }
-
-    term->cursor.pos.x = prompt_len;
-    term->cursor.pos.y = total_newlines - 1;
+    term->cursor.pos.x = last_line->num_chars;
+    term->cursor.pos.y = term->num_lines;
 }
 
 static void render_terminal_cursor(struct nemi* st, struct terminal* term) {
@@ -199,7 +207,7 @@ static void render_terminal_cursor(struct nemi* st, struct terminal* term) {
 
     leaf_draw_rect(
             cursor_drw_x,
-            cursor_drw_y,
+            cursor_drw_y + term->scroll.y,
             st->font.char_width,
             st->font.char_height,
             (struct color_t){ 50, 80, 80 });
@@ -219,26 +227,37 @@ void render_terminal(struct nemi* st, struct terminal* term) {
 
     int yoffset = 10;
 
-    for(size_t i = 0; i < term->num_lines; i++) {
+    for(size_t i = 0; i < term->num_lines+1; i++) {
         struct tline* line = &term->lines[i];
-
-        struct vec2i line_pos = (struct vec2i) {
-            10,
-            yoffset
-        };
-       
         
-        int num_newlines = tline_render(st, line, line_pos);
-        num_newlines += 1; // Because the command which was echoed back is ignored.
-        
-        yoffset += num_newlines * (st->font.char_height + st->line_padding_y);
+        tline_render(st, term, line, yoffset);
+        yoffset += term->line_height;
     }
-    
+   
     render_terminal_cursor(st, term);
 }
 
-void set_terminal_title(struct terminal* term, char* buffer, size_t len) {
+void scroll_terminal_down(struct nemi* st, struct terminal* term) {
+    //int end = get_terminal_num_newlines(term) * term->line_height;
+    //term->scroll.y = -end + ((term->rows-1) * term->line_height - st->cfg.rows_end_padding);
 
+    int end = term->num_lines * term->line_height;
+    term->scroll.y = -end + ((term->rows - 1) * term->line_height - st->cfg.rows_end_padding);
+}
+
+void scroll_terminal(struct nemi* st, struct terminal* term, struct vec2i offset) {
+    term->scroll.x += offset.x * st->cfg.scroll_x_mult;
+    term->scroll.y += offset.y * st->cfg.scroll_y_mult;
+}
+
+bool terminal_onlastpage(struct terminal* term) {
+    //return (term->scroll.y + term->rows * term->line_height >= term->num_lines);
+
+    int scroll = term->scroll.y / term->line_height;
+    return (-scroll > term->num_lines - term->rows);
+}
+
+void set_terminal_title(struct terminal* term, char* buffer, size_t len) {
     memset(term->title, 0, sizeof(term->title));
     const size_t max_len = sizeof(term->title) - 4;
     const size_t safe_len = (len < max_len) ? len : max_len;
@@ -264,14 +283,82 @@ struct tline*  get_terminal_lastln(struct terminal* term) {
         goto out;
     }
 
-    line = &term->lines[(term->num_lines == 0) ? 0 : (term->num_lines-1)];
+    line = &term->lines[term->num_lines];
 
 out:
     return line;
 }
 
+void terminal_clear(struct terminal* term) {
+    for(size_t i = 0; i < term->num_lines+1; i++) {
+        memset(&term->lines[i], 0, sizeof(*term->lines));
+    }
+    term->num_lines = 0;
+    term->scroll.y = 0;
+    term->scroll.x = 0;
+    term->currln = &term->lines[0];
+    write(term->master_fd, "\n", 1);
+}
+
+void terminal_handle_resize_event(struct nemi* st, struct terminal* term) {
+    // Temporary.
+    term->rows
+        = st->lfctx->win_height / term->line_height;
+
+    term->cols 
+        = st->lfctx->win_width / st->font.char_width;
+}
+
 void terminal_handle_char_event(struct nemi* st, struct terminal* term) {
+    if(st->last_char_in == 0) {
+        return;
+    }
+
+    struct tline* curr_line = get_terminal_lastln(term);
+    tline_add_buf_to_currln(st, term, &st->last_char_in, 1);
+
+    term->flags |= NO_INPUT_ECHO;
+    write(term->master_fd, &st->last_char_in, 1);
 }
 
 void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
+    switch(st->last_key_in) {
+
+        case GLFW_KEY_UP:
+            write(term->master_fd, "\x1b[A", 3);
+            break;
+
+        case GLFW_KEY_DOWN:
+            write(term->master_fd, "\x1b[B", 3);
+            break;
+
+        case GLFW_KEY_LEFT:
+            write(term->master_fd, "\x1b[D", 3);
+            break;
+
+        case GLFW_KEY_RIGHT:
+            write(term->master_fd, "\x1b[C", 3);
+            break;
+
+        case GLFW_KEY_ENTER:
+            write(term->master_fd, "\n", 1);
+            break;
+    }
+
+    if(key_down(st, GLFW_KEY_LEFT_CONTROL)) {
+        if(key_down(st, GLFW_KEY_C)) {
+            write(term->master_fd, "\3", 1);
+        }
+        else
+        if(key_down(st, GLFW_KEY_L)) {
+            terminal_clear(term);
+        }
+    }
 }
+
+void terminal_handle_data_event(struct nemi* st, struct terminal* term) {    
+    if(term->num_lines > term->rows) {
+        scroll_terminal_down(st, st->terminal);
+    }
+}
+

@@ -14,18 +14,23 @@
 #define NEMI_CHARINBUF_MAX 8
 
 
+struct nemi_config {
+    int line_padding_y;
+    int rows_end_padding;
+    float scroll_y_mult;
+    float scroll_x_mult;
+};
+
 struct nemi {
     int flags;
     struct leaf_ctx_t* lfctx;
     struct font_t      font;
-    
 
-    int                line_padding_y;
+    struct nemi_config cfg;
 
     struct terminal    terminals [NEMI_TERMINALS_MAX];
-    uint16_t           num_terminals;
-    
     struct terminal*   terminal; // Current terminal.
+    uint16_t           num_terminals;    
 
     struct rgb_color   palette [NUM_CHAR_COLORS];
 
@@ -45,13 +50,15 @@ void         push_key_input(struct nemi* st, int key);
 void         push_char_input(struct nemi* st, char ch);
 void         end_frame(struct nemi* st);
 void         to_grid_pos(struct nemi* st, int* x, int* y);
-void         init_default_palette(struct nemi* st);
-
+bool         key_down(struct nemi* st, int key);
 void             set_palette_color(struct nemi* st, int color_id, struct rgb_color color);
 struct rgb_color get_palette_color(struct nemi* st, int color_id);
 
 
 // Returns pointer to 'buffer' where to continue reading.
 char* handle_osc_escseq(struct nemi* st, char* ptr, char* buffer, size_t size);
+
+void         init_default_palette(struct nemi* st);
+void         init_default_config(struct nemi* st);
 
 #endif
