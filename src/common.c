@@ -39,6 +39,15 @@ char* get_escape_seq_args(struct escape_seq* es, char* buf, char* ptr, size_t si
         return ptr;
     }
 
+    if(*ptr == ']') {
+        // OSC sequence begins.
+        
+        ptr++;
+        es->num_args++;
+        es->args[0] = OSC_ESCSEQ_BEGIN;
+        return ptr;
+    }
+
 
     char argbuf[16] = { 0 };
     size_t argbuf_idx = 0;

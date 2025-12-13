@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "nemi.h"
 
@@ -12,9 +13,12 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
     if(action != GLFW_PRESS) {
         return;
     }
+
     struct nemi* st = (struct nemi*)glfwGetWindowUserPointer(window);
     push_key_input(st, key);
     st->last_key_in = key;
+        
+    terminal_handle_key_event(st, st->terminal);
 }
 
 void glfw_char_callback(GLFWwindow* window, uint32_t codepoint) {
@@ -22,6 +26,8 @@ void glfw_char_callback(GLFWwindow* window, uint32_t codepoint) {
     if(codepoint >= 0x20 && codepoint <= 0x7E) {
         push_char_input(st, codepoint);
         st->last_char_in = codepoint;
+        
+        terminal_handle_char_event(st, st->terminal);
     }
 }
 
@@ -50,8 +56,6 @@ void push_char_input(struct nemi* st, char ch) {
 
 struct nemi* start_session() {
     struct nemi* st = malloc(sizeof *st);
-
-    const char* font_file = "Topaz-8.ttf";
 
     st->flags = 0;
     st->lfctx = leaf_open("Nemi - Terminal Emulator", 800, 600);
@@ -147,8 +151,64 @@ void init_default_palette(struct nemi* st) {
 
 void to_grid_pos(struct nemi* st, int* x, int* y) {
     *x *= st->font.char_width;
-    *y *= st->font.char_height;
+    *y *= (st->font.char_height + st->line_padding_y);
     *x += 10;
     *y += 10;
 }
 
+char* handle_osc_escseq(struct nemi* st, char* ptr, char* buffer, size_t size) {
+    // For example: '<ESC>]0;Terminal title^G'
+    // would set the terminal title.
+
+    // Get option until ';'
+    char opt[8] = { 0 };
+    size_t opt_len = 0;
+
+    char data[64] = { 0 };
+    size_t data_len = 0;
+
+    while(ptr < buffer + size) {
+        if(opt_len >= sizeof(opt)-1) {
+            fprintf(stderr, "ERROR %s: OSC 'option' is too long.\n", __func__);
+            return ptr;
+        }
+
+        if(*ptr == ';') {
+            ptr++;
+            break;
+        }
+
+        opt[opt_len++] = *ptr++;
+    }
+
+    // Get option data.
+    while(ptr < buffer + size) {
+        if(data_len >= sizeof(data)-1) {
+            fprintf(stderr, "ERROR %s: OSC 'option data' is too long.\n", __func__);
+            return ptr;
+        }
+
+        if(*ptr == 0x07) {
+            ptr++;
+            break;
+        }
+        else
+        if(*ptr == 0x1B) {
+            ptr++;
+            if((ptr < buffer + size) && (*ptr == '\\')) {
+                break;
+            }
+        }
+        else {
+            data[data_len++] = *ptr;
+        }
+        ptr++;
+    }
+
+
+    if(strcmp(opt, "0") == 0) { // Set title.
+        set_terminal_title(st->terminal, data, data_len);
+    }
+
+    return ptr;
+}

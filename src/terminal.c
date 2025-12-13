@@ -19,7 +19,8 @@ struct terminal* spawn_terminal(struct nemi* st) {
     term->pid = forkpty(&term->master_fd, NULL, NULL, NULL);
 
     if(term->pid == 0) {
-        execlp(getenv("SHELL"), NULL, NULL);
+        const char* shell = getenv("SHELL");
+        execlp(shell, shell, NULL);
     }
 
     term->lines = NULL;
@@ -28,7 +29,9 @@ struct terminal* spawn_terminal(struct nemi* st) {
     term->cursor.pos.x = 0;
     term->cursor.pos.y = 0;
     term->flags = 0;
+   
 
+    memset(term->title, 0, sizeof(term->title));
     return term;
 }
 
@@ -163,13 +166,28 @@ void execute_cmd(struct terminal* term, char* cmd_str, size_t cmd_len) {
     }
 }
 
-void move_cursor_to_end(struct terminal* term) {
-    
+void move_cursor_to_home(struct terminal* term) {
     struct tline* last_line = &term->lines[term->num_lines > 0 ? term->num_lines-1 : 0];
 
-    term->cursor.pos.y = term->num_lines - 1;
-    term->cursor.pos.x = last_line->num_chars;
+    int prompt_len = 0;
+    if(last_line->num_chars == 0) {
+        return;
+    }
 
+    for(size_t i = last_line->num_chars-1; i > 0; i--) {
+        if(last_line->chars[i].ch == '\n') {
+            break;
+        }
+        prompt_len++;
+    }
+
+    int total_newlines = 0;
+    for(size_t i = 0; i < term->num_lines; i++) {
+        total_newlines += term->lines[i].num_newlines+1;
+    }
+
+    term->cursor.pos.x = prompt_len;
+    term->cursor.pos.y = total_newlines - 1;
 }
 
 static void render_terminal_cursor(struct nemi* st, struct terminal* term) {
@@ -180,11 +198,11 @@ static void render_terminal_cursor(struct nemi* st, struct terminal* term) {
     to_grid_pos(st, &cursor_drw_x, &cursor_drw_y);
 
     leaf_draw_rect(
-            cursor_drw_x, cursor_drw_y,
+            cursor_drw_x,
+            cursor_drw_y,
             st->font.char_width,
             st->font.char_height,
-            (struct color_t){ 50, 80, 80 }
-            );
+            (struct color_t){ 50, 80, 80 });
 }
 
 void render_terminal(struct nemi* st, struct terminal* term) {
@@ -198,7 +216,6 @@ void render_terminal(struct nemi* st, struct terminal* term) {
         return;
     }
 
-    render_terminal_cursor(st, term);
 
     int yoffset = 10;
 
@@ -216,6 +233,45 @@ void render_terminal(struct nemi* st, struct terminal* term) {
         
         yoffset += num_newlines * (st->font.char_height + st->line_padding_y);
     }
+    
+    render_terminal_cursor(st, term);
 }
 
+void set_terminal_title(struct terminal* term, char* buffer, size_t len) {
 
+    memset(term->title, 0, sizeof(term->title));
+    const size_t max_len = sizeof(term->title) - 4;
+    const size_t safe_len = (len < max_len) ? len : max_len;
+
+    if(len > sizeof(term->title)) {
+        term->title[safe_len]   = '.';
+        term->title[safe_len+1] = '.';
+        term->title[safe_len+2] = '.';
+    }
+    memmove(term->title, buffer, safe_len);
+}
+
+struct tline*  get_terminal_lastln(struct terminal* term) {
+    struct tline* line = NULL;
+
+    if(!term) {
+        goto out;
+    }
+    if(term->master_fd < 0) {
+        goto out;
+    }
+    if(!term->lines) {
+        goto out;
+    }
+
+    line = &term->lines[(term->num_lines == 0) ? 0 : (term->num_lines-1)];
+
+out:
+    return line;
+}
+
+void terminal_handle_char_event(struct nemi* st, struct terminal* term) {
+}
+
+void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
+}

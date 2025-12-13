@@ -6,7 +6,7 @@
 #include "shaders.h"
 
 static const char RENDERER_VERTEX_SHADER_SRC[] = {
-    "#version 460 core\n"
+    "#version 330 core\n"
     "layout (location = 0) in vec2 vertex_pos;\n"
     "layout (location = 1) in vec3 vertex_color;\n"
     "out vec3 v_color;\n"
@@ -19,7 +19,7 @@ static const char RENDERER_VERTEX_SHADER_SRC[] = {
 };
 
 static const char RENDERER_FRAGMENT_SHADER_SRC[] = {
-    "#version 460 core\n"    
+    "#version 330 core\n"    
     "out vec4 out_color;\n"  
     "in vec3 v_color;\n"
     "\n"

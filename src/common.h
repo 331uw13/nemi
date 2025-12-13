@@ -13,6 +13,7 @@ void freeif(void* ptr);
 
 
 #define ESCAPE_SEQ_MAX_ARGS 16
+#define OSC_ESCSEQ_BEGIN 0xFFFF
 
 struct escape_seq {
     int      args [ESCAPE_SEQ_MAX_ARGS];
@@ -27,8 +28,6 @@ struct escape_seq {
 // it returns new pointer to 'buf' where to continue normal reading.
 // 'ptr' is supposed to be where to start.
 char* get_escape_seq_args(struct escape_seq* es, char* buf, char* ptr, size_t size);
-
-
 
 
 #endif

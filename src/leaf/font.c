@@ -9,7 +9,7 @@
 
 
 static const char FONT_VERTEX_SHADER_SRC[] = {
-    "#version 460 core\n"    
+    "#version 330 core\n"    
     "layout (location = 0) in vec2 pos;\n"
     "layout (location = 1) in vec2 texture_coords;\n"
     "uniform vec3 font_color;\n"
@@ -25,7 +25,7 @@ static const char FONT_VERTEX_SHADER_SRC[] = {
 };
 
 static const char FONT_FRAGMENT_SHADER_SRC[] = {
-    "#version 460 core\n"    
+    "#version 330 core\n"    
     "out vec4 out_color;\n"  
     "in vec2 tex_coords;\n"  
     "in vec3 color;\n"

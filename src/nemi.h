@@ -44,11 +44,14 @@ void         zero_input_buffers(struct nemi* st);
 void         push_key_input(struct nemi* st, int key);
 void         push_char_input(struct nemi* st, char ch);
 void         end_frame(struct nemi* st);
+void         to_grid_pos(struct nemi* st, int* x, int* y);
 void         init_default_palette(struct nemi* st);
 
 void             set_palette_color(struct nemi* st, int color_id, struct rgb_color color);
 struct rgb_color get_palette_color(struct nemi* st, int color_id);
 
-void             to_grid_pos(struct nemi* st, int* x, int* y);
+
+// Returns pointer to 'buffer' where to continue reading.
+char* handle_osc_escseq(struct nemi* st, char* ptr, char* buffer, size_t size);
 
 #endif

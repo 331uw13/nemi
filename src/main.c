@@ -12,8 +12,13 @@ void print_literal(const char* text, size_t len) {
     for(size_t i = 0; i < len; i++) {
         char ch = text[i];
 
-        if(ch == 0x1B) {
-            printf("\033[34m\\x1b\033[0m");
+        if(ch == 0x1B) { // ESC
+            printf("\033[34m^[\033[0m");
+            continue;
+        }
+        else
+        if(ch == 0x07) { // BEL
+            printf("\033[34m^G\033[0m");
             continue;
         }
 
@@ -34,7 +39,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-        
+
     char tmp_buffer[1024*4] = { 0 };
 
     while(!glfwWindowShouldClose(st->lfctx->glfw_win)) {
@@ -43,9 +48,8 @@ int main(int argc, char** argv) {
 
         if(st->last_char_in == 'r') {
             
-            const char* test = "ls -al";
+            char* test = "ls -lh";
             execute_cmd(st->terminal, test, strlen(test));
-            //write(st->terminal->master_fd, test, strlen(test));
         }
 
         size_t rd_bytes = 0;
@@ -54,7 +58,7 @@ int main(int argc, char** argv) {
             print_literal(tmp_buffer, rd_bytes);
             push_terminal_line(st, st->terminal, tmp_buffer, rd_bytes);
         
-            //move_cursor_to_end(st->terminal);
+            move_cursor_to_home(st->terminal);
         }
 
         render_terminal(st, st->terminal);

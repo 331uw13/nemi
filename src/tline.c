@@ -32,18 +32,18 @@ static bool line_prep_mem_add(struct tline* line, uint32_t size_add) {
 
     line->chars = new_ptr;
     line->num_chars_alloc = new_num_alloc;
-    line->num_newlines = 0;
-    line->height = 0;
 
-    //printf("%s -> %li\n", __func__, line->num_chars_alloc);
     return true;
 }
 
 
 struct tline create_tline() {
     struct tline line;
-    line.num_chars = 0;
     line.chars = NULL;
+    line.num_chars = 0;
+    line.num_chars_alloc = 0;
+    line.num_newlines = 0;
+    line.height = 0;
     return line;
 }
 
@@ -116,6 +116,9 @@ void tline_add_ch(struct tline* line, struct tchar* ch) {
     if(!line_prep_mem_add(line, 1)) {
         return;
     }
+    if(ch->ch == '\n') {
+        line->num_newlines++;
+    }
     line->chars[line->num_chars++] = *ch;
 }
 
@@ -128,6 +131,7 @@ void tline_add(struct nemi* st, struct tline* line, char* buffer, size_t size) {
     es_ch.attr_bg = false;
     es_ch.color = get_palette_color(st, CHAR_COLOR_DEFAULT);
 
+
     while(ch && ch < buffer+size) {
 
         if(*ch != 0x1B) {
@@ -138,15 +142,23 @@ void tline_add(struct nemi* st, struct tline* line, char* buffer, size_t size) {
             continue;
         }
 
+
         struct escape_seq es;
         ch = get_escape_seq_args(&es, buffer, ch, size);
 
         // Add character attributes if any is found.
         for(uint16_t i = 0; i < es.num_args; i++) {
+            int arg = es.args[i];
+
+            if(arg == OSC_ESCSEQ_BEGIN) {
+                ch = handle_osc_escseq(st, ch, buffer, size);
+                break;
+            }
+
             for(size_t j = 0; j < ARRAY_LEN(ESCAPE_SEQ_MAP); j++) {
                 const struct escape_seq_map_elem* elem = &ESCAPE_SEQ_MAP[j];
 
-                if(es.args[i] != elem->num) {
+                if(arg != elem->num) {
                     continue;
                 }
 
@@ -195,6 +207,5 @@ int tline_render(struct nemi* st, struct tline* line, struct vec2i pos) {
 
     return num_newlines;
 }
-
 
 
