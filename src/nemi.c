@@ -27,7 +27,7 @@ void glfw_char_callback(GLFWwindow* window, uint32_t codepoint) {
     if(codepoint >= 0x20 && codepoint <= 0x7E) {
         push_char_input(st, codepoint);
         st->last_char_in = codepoint;
-        
+    
         terminal_handle_char_event(st, st->terminal);
     }
 }
@@ -35,15 +35,6 @@ void glfw_char_callback(GLFWwindow* window, uint32_t codepoint) {
 void glfw_scroll_callback(GLFWwindow* window, double x_offset, double y_offset) {
     (void)x_offset;
     struct nemi* st = (struct nemi*)glfwGetWindowUserPointer(window);
-
-    if(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) != GLFW_PRESS) {
-        // Scroll Y axis.
-        scroll_terminal(st, st->terminal, (struct vec2i){ 0, y_offset });
-    }
-    else {
-        // Scroll X axis.
-        scroll_terminal(st, st->terminal, (struct vec2i){ y_offset, 0 });
-    }
 }
 
 void glfw_window_resize_callback(GLFWwindow* window, int width, int height) {
@@ -53,6 +44,12 @@ void glfw_window_resize_callback(GLFWwindow* window, int width, int height) {
     st->lfctx->win_height = height;
 
     glViewport(0, 0, width, height);
+
+    st->win_rows = st->lfctx->win_width / st->font.char_width;
+    st->win_cols = st->lfctx->win_height / (st->font.char_height + st->cfg.line_padding);
+
+    st->win_cols -= 1;
+    st->win_rows -= 1;
 
     for(size_t i = 0; i < st->num_terminals; i++) {
         terminal_handle_resize_event(st, &st->terminals[i]);
@@ -77,11 +74,11 @@ struct nemi* start_session() {
     struct nemi* st = malloc(sizeof *st);
 
     st->flags = 0;
-    st->lfctx = leaf_open("Nemi - Terminal Emulator", 1000, 600);
+    st->lfctx = leaf_open("Nemi - Terminal Emulator", 900, 700);
     st->num_terminals = 0;
 
     zero_input_buffers(st);
-    init_default_palette(st);
+    //init_default_palette(st);
     init_default_config(st);
 
     if(!leaf_load_font(&st->font, "Topaz-8.ttf")) {
@@ -96,7 +93,6 @@ struct nemi* start_session() {
  
     st->flags |= FLG_FONT_LOADED;
 
-    st->terminal = spawn_terminal(st);
 
     glfwSetWindowUserPointer(st->lfctx->glfw_win, st);
     glfwSetKeyCallback        (st->lfctx->glfw_win, glfw_key_callback);
@@ -106,6 +102,14 @@ struct nemi* start_session() {
     
     const size_t renderer_memory_size = 1024 * sizeof(float);
     leaf_init_renderer(st->lfctx, renderer_memory_size);
+    
+
+    st->win_cols = st->lfctx->win_width / st->font.char_width;
+    st->win_rows = st->lfctx->win_height / (st->font.char_height + st->cfg.line_padding);
+    st->win_cols -= 1;
+    st->win_rows -= 1;
+    // Spawn default terminal.
+    st->terminal = spawn_terminal(st, st->win_rows, st->win_cols);
 
     return st;
 }
@@ -132,90 +136,34 @@ void zero_input_buffers(struct nemi* st) {
     }
 }
 
+void begin_frame(struct nemi* st) {
+    glClearColor(
+            (float)st->cfg.colors[NEMI_COLOR_BG].r / 255.0f,
+            (float)st->cfg.colors[NEMI_COLOR_BG].g / 255.0f,
+            (float)st->cfg.colors[NEMI_COLOR_BG].b / 255.0f,
+            1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+}
+
 void end_frame(struct nemi* st) {
     st->last_char_in = 0;
     st->last_key_in = 0;
     glfwSwapBuffers(st->lfctx->glfw_win);
     glfwPollEvents();
 }
-
-void set_palette_color(struct nemi* st, int color_id, struct rgb_color color) {
-    st->palette[CHAR_COLOR__END - color_id] = color;
-}
-
-struct rgb_color get_palette_color(struct nemi* st, int color_id) {
-    return st->palette[CHAR_COLOR__END - color_id];
-}
-
+/*
 void to_grid_pos(struct nemi* st, int* x, int* y) {
     *x *= st->font.char_width;
     *y *= (st->font.char_height + st->cfg.line_padding_y);
     *x += 10;
     *y += 10;
 }
-
-char* handle_osc_escseq(struct nemi* st, char* ptr, char* buffer, size_t size) {
-    // For example: '<ESC>]0;Terminal title^G'
-    // would set the terminal title.
-
-    // Get option until ';'
-    char opt[8] = { 0 };
-    size_t opt_len = 0;
-
-    char data[64] = { 0 };
-    size_t data_len = 0;
-
-    while(ptr < buffer + size) {
-        if(opt_len >= sizeof(opt)-1) {
-            fprintf(stderr, "ERROR %s: OSC 'option' is too long.\n", __func__);
-            return ptr;
-        }
-
-        if(*ptr == ';') {
-            ptr++;
-            break;
-        }
-
-        opt[opt_len++] = *ptr++;
-    }
-
-    // Get option data.
-    while(ptr < buffer + size) {
-        if(data_len >= sizeof(data)-1) {
-            fprintf(stderr, "ERROR %s: OSC 'option data' is too long.\n", __func__);
-            return ptr;
-        }
-
-        if(*ptr == 0x07) {
-            ptr++;
-            break;
-        }
-        else
-        if(*ptr == 0x1B) {
-            ptr++;
-            if((ptr < buffer + size) && (*ptr == '\\')) {
-                break;
-            }
-        }
-        else {
-            data[data_len++] = *ptr;
-        }
-        ptr++;
-    }
-
-
-    if(strcmp(opt, "0") == 0) { // Set title.
-        set_terminal_title(st->terminal, data, data_len);
-    }
-
-    return ptr;
-}
-
+*/
 bool key_down(struct nemi* st, int key) {
     return (glfwGetKey(st->lfctx->glfw_win, key) == GLFW_PRESS);
 }
 
-
+/*
 void init_default_palette(struct nemi* st) {
     set_palette_color(st, CHAR_COLOR_DEFAULT,        (struct rgb_color){ 180, 160, 150 });
     set_palette_color(st, CHAR_COLOR_BLACK,          (struct rgb_color){ 30,  30,  30 });
@@ -236,12 +184,45 @@ void init_default_palette(struct nemi* st) {
     set_palette_color(st, CHAR_COLOR_BRIGHT_CYAN,    (struct rgb_color){ 30,  255, 255 });
     set_palette_color(st, CHAR_COLOR_BRIGHT_WHITE,   (struct rgb_color){ 255, 255, 255 });
 }
+*/
 
 void init_default_config(struct nemi* st) {
-    st->cfg.line_padding_y = 2;
-    st->cfg.rows_end_padding = 10;
-    st->cfg.scroll_y_mult = 30.0f;
-    st->cfg.scroll_x_mult = 30.0f;
+    st->cfg.padding_x = 10;
+    st->cfg.padding_y = 10;
+    st->cfg.line_padding = 3;
+    
+    int d_v = 180;
+    int b_v = 255;
+    int l_v = 30;
+
+    st->cfg.colors[NEMI_COLOR_FG] = (struct color_t){ 200, 180, 160 };
+    st->cfg.colors[NEMI_COLOR_BG] = (struct color_t){ 10, 10, 10 };
+    st->cfg.colors[NEMI_COLOR_BLACK]   = (struct color_t){ 0, 0, 0 };
+    st->cfg.colors[NEMI_COLOR_RED]     = (struct color_t){ d_v, l_v, l_v };
+    st->cfg.colors[NEMI_COLOR_GREEN]   = (struct color_t){ l_v, d_v, l_v };
+    st->cfg.colors[NEMI_COLOR_YELLOW]  = (struct color_t){ d_v, d_v, l_v };
+    st->cfg.colors[NEMI_COLOR_BLUE]    = (struct color_t){ l_v + 40, l_v + 40, d_v };
+    st->cfg.colors[NEMI_COLOR_MAGENTA] = (struct color_t){ d_v, l_v, d_v };
+    st->cfg.colors[NEMI_COLOR_CYAN]    = (struct color_t){ l_v, d_v, d_v };
+    st->cfg.colors[NEMI_COLOR_WHITE]   = (struct color_t){ d_v, d_v, d_v };
+
+    st->cfg.colors[NEMI_BRIGHT_COLOR_BLACK]   = (struct color_t){ 10, 10, 10 };
+    st->cfg.colors[NEMI_BRIGHT_COLOR_RED]     = (struct color_t){ b_v, l_v, l_v };
+    st->cfg.colors[NEMI_BRIGHT_COLOR_GREEN]   = (struct color_t){ l_v, b_v, l_v };
+    st->cfg.colors[NEMI_BRIGHT_COLOR_YELLOW]  = (struct color_t){ b_v, b_v, l_v };
+    st->cfg.colors[NEMI_BRIGHT_COLOR_BLUE]    = (struct color_t){ l_v, l_v, b_v };
+    st->cfg.colors[NEMI_BRIGHT_COLOR_MAGENTA] = (struct color_t){ b_v, l_v, b_v };
+    st->cfg.colors[NEMI_BRIGHT_COLOR_CYAN]    = (struct color_t){ l_v, b_v, b_v };
+    st->cfg.colors[NEMI_BRIGHT_COLOR_WHITE]   = (struct color_t){ b_v, b_v, b_v };
+
 }
+
+int coltox(struct nemi* st, int col) {
+    return col * st->font.char_width + st->cfg.padding_x;
+}
+int rowtoy(struct nemi* st, int row) {
+    return row * (st->font.char_height + st->cfg.line_padding) + st->cfg.padding_y;
+}
+
 
 

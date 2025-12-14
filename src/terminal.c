@@ -11,30 +11,50 @@
 #include "common.h"
 
 
-struct terminal* spawn_terminal(struct nemi* st) {
+struct terminal* spawn_terminal(struct nemi* st, int rows, int cols) {
     if(st->num_terminals+1 >= NEMI_TERMINALS_MAX) {
         return NULL;
     }
+    
+    struct winsize ws = (struct winsize) {
+        .ws_row = rows,
+        .ws_col = cols,
+        .ws_xpixel = 0,
+        .ws_ypixel = 0
+    };
 
     struct terminal* term = &st->terminals[st->num_terminals++];
-    term->pid = forkpty(&term->master_fd, NULL, NULL, NULL);
+    term->pid = forkpty(&term->master_fd, NULL, NULL, &ws);
 
     if(term->pid == 0) {
         const char* shell = getenv("SHELL");
         execlp(shell, shell, NULL);
     }
 
-    term->lines = NULL;
-    term->num_lines = 0;
-    term->num_lines_alloc = 0;
     term->flags = 0;
-    term->scroll = (struct vec2i){ 0, 0 };   
-    term->curs.pos = (struct vec2i){ 0, 0 };
-    term->line_height = st->font.char_height + st->cfg.line_padding_y;
-    term->num_added_tchars = 0;
-    terminal_handle_resize_event(st, term);
+    term->line_height = st->font.char_height + st->cfg.line_padding;
 
-    memset(term->title, 0, sizeof(term->title));
+
+    term->rows = rows;
+    term->cols = cols;
+    term->vt = vterm_new(rows, cols);
+    vterm_set_utf8(term->vt, true);
+
+    term->vtscrn = vterm_obtain_screen(term->vt);
+    term->vtstate = vterm_obtain_state(term->vt);
+    vterm_screen_enable_altscreen(term->vtscrn, true);
+
+    terminal_init_palette(st, term);
+    vterm_screen_reset(term->vtscrn, true);
+
+
+    term->vmode.enabled = false;
+    term->vmode.curs_row = 0;
+    term->vmode.curs_col = 0;
+    term->vmode.sel = false;
+    term->vmode.sel_start_row = 0;
+    term->vmode.sel_start_col = 0;
+
     return term;
 }
 
@@ -46,15 +66,11 @@ void close_terminal(struct terminal* term) {
         return;
     }
 
-    for(size_t i = 0; i < term->num_lines; i++) {
-        free_tline(&term->lines[i]);
-    }
-    freeif(term->lines);
-    term->lines = NULL;
-    term->num_lines = 0;
-    term->num_lines_alloc = 0;
 
     close(term->master_fd);
+    vterm_free(term->vt);
+
+    term->vt = NULL;
     term->master_fd = -1;
 }
 
@@ -71,12 +87,9 @@ void read_terminal(struct nemi* st, struct terminal* term) {
     nfds_t num_fds = 1;
 
     char tmp_buffer[1024*4] = { 0 };
-    size_t out_index = 0;
 
     const int timeout_ms = 10;
-    term->num_added_tchars = 0;
-    term->flags &= ~NO_AUTO_CURSOR_MOVE_X;
-    term->flags &= ~NO_AUTO_CURSOR_MOVE_Y;
+
 
     while(true) {
         int retv = poll(&pfd, num_fds, timeout_ms);
@@ -88,383 +101,208 @@ void read_terminal(struct nemi* st, struct terminal* term) {
                 break;
             }
 
-            size_t offset = 0;
-
-            if((term->flags & NO_INPUT_ECHO)) {
-                term->flags &= ~NO_INPUT_ECHO;
-                char* ch = &tmp_buffer[0];
-                while(ch < tmp_buffer + rd) {
-                    ch++;
-                    offset++;
-                    if(*ch == '\n') {
-                        offset++;
-                        break;
-                    }
-                }
-                rd -= offset;
-                if(rd <= 0) {
-                    continue;
-                }
-            }
-
-            print_literal(tmp_buffer + offset, rd);
-            terminal_add_chars(st, term, tmp_buffer+offset, rd);
+            vterm_input_write(term->vt, tmp_buffer, rd);
+    
         }
         else {
             break;
         }
     }
-
-    if(term->num_added_tchars > 0) {
-        terminal_handle_data_event(st, term);
-    }
+            
+    vterm_screen_flush_damage(term->vtscrn);
 }
 
-bool terminal_prep_lines_add(struct terminal* term, int num_add) {
-    if(!term) {
-        return false;
-    }
-    if(term->master_fd < 0) {
-        return false;
-    }
 
-    if(term->num_lines + num_add < term->num_lines_alloc) {
-        return true;
-    }
-
-    const size_t num_alloc_more = num_add + 100;
-    const size_t new_num_alloc = term->num_lines_alloc + num_alloc_more;
-
-    struct tline* new_ptr = realloc(term->lines, new_num_alloc * sizeof *term->lines);
-    if(!new_ptr) {
-        fprintf(stderr, "Terminal experienced memory error | %s\n", strerror(errno));
-        return false;
-    }
-
-    term->lines = new_ptr;
-
-    // Initialize new lines.
-    for(size_t i = term->num_lines_alloc; i < new_num_alloc; i++) {
-        term->lines[i] = create_tline();
-    }
-
-    term->currln = &term->lines[term->curs.pos.y];
-    term->num_lines_alloc = new_num_alloc;
-
-    return true;
-}
-
-void terminal_add_chars(struct nemi* st, struct terminal* term, char* buffer, size_t size) {
-    if(!terminal_prep_lines_add(term, 1)) {
-        return;
-    }
-
-    tline_add_buf_to_currln(st, term, buffer, size);
-}
-
-void execute_cmd(struct terminal* term, char* cmd_str, size_t cmd_len) {
-    if(term->master_fd < 0) {
-        return;
-    }
-    if(cmd_len == 0) {
-        return;
-    }
-    
-    term->flags |= NO_INPUT_ECHO; 
-    
-    write(term->master_fd, cmd_str, cmd_len);
-    if(cmd_str[cmd_len-1] != '\n') {
-        write(term->master_fd, "\n", 1);
-    }
-}
-
-static void render_terminal_cursor(struct nemi* st, struct terminal* term) {
-
-    int cursor_drw_x = term->curs.pos.x;
-    int cursor_drw_y = term->curs.pos.y;
-
-    to_grid_pos(st, &cursor_drw_x, &cursor_drw_y);
+static
+void render_terminal_cursor(struct nemi* st, struct terminal* term) {
+    VTermPos vtcurs_pos = (VTermPos){ 0, 0 };
+    vterm_state_get_cursorpos(term->vtstate, &vtcurs_pos);
 
     leaf_draw_rect(
-            cursor_drw_x + term->scroll.x,
-            cursor_drw_y + term->scroll.y,
+            coltox(st, vtcurs_pos.col),
+            rowtoy(st, vtcurs_pos.row),
             st->font.char_width,
             st->font.char_height,
-            (struct color_t){ 50, 80, 80 });
+            (struct color_t) { 60, 60, 60 }
+            );
 }
 
 void render_terminal(struct nemi* st, struct terminal* term) {
-    if(!term) {
-        return;
-    }
-    if(term->master_fd < 0) {
-        return;
-    }
-    if(!term->lines) {
-        return;
+
+    vterm_get_size(term->vt, &term->rows, &term->cols);
+
+    for(int row = 0; row < term->rows; row++) {
+        for(int col = 0; col < term->cols; col++) {
+
+            VTermScreenCell cell;
+            if(!vterm_screen_get_cell(term->vtscrn, (VTermPos){ row, col }, &cell)) {
+                continue;
+            }
+
+            if(cell.chars[0] == 0) {
+                continue;
+            }
+
+            if(VTERM_COLOR_IS_INDEXED(&cell.fg)) {
+                vterm_state_convert_color_to_rgb(term->vtstate, &cell.fg);
+            }
+
+            if(VTERM_COLOR_IS_RGB(&cell.fg)) {
+                leaf_set_font_color(&st->font,
+                        (float)cell.fg.rgb.red   / 255.0f,
+                        (float)cell.fg.rgb.green / 255.0f,
+                        (float)cell.fg.rgb.blue  / 255.0f);
+            }
+
+            leaf_draw_char(&st->font, 
+                    coltox(st, col),
+                    rowtoy(st, row), cell.chars[0]);
+        }
     }
 
-
-    int yoffset = 10;
-
-    for(size_t i = 0; i < term->num_lines+1; i++) {
-        struct tline* line = &term->lines[i];
-        
-        tline_render(st, term, line, yoffset);
-        yoffset += term->line_height;
-    }
-   
     render_terminal_cursor(st, term);
 }
 
-void scroll_terminal_down(struct nemi* st, struct terminal* term) {
-    int end = term->num_lines * term->line_height;
-    term->scroll.y = -end + ((term->rows - 1) * term->line_height - st->cfg.rows_end_padding);
-}
-
-void scroll_terminal(struct nemi* st, struct terminal* term, struct vec2i offset) {
-    term->scroll.x += offset.x * st->cfg.scroll_x_mult;
-    term->scroll.y += offset.y * st->cfg.scroll_y_mult;
-}
-
-bool terminal_onlastpage(struct terminal* term) {
-    int scroll = term->scroll.y / term->line_height;
-    return (-scroll > term->num_lines - term->rows);
-}
-
-void set_terminal_title(struct terminal* term, char* buffer, size_t len) {
-    memset(term->title, 0, sizeof(term->title));
-    const size_t max_len = sizeof(term->title) - 4;
-    const size_t safe_len = (len < max_len) ? len : max_len;
-
-    if(len > sizeof(term->title)) {
-        term->title[safe_len]   = '.';
-        term->title[safe_len+1] = '.';
-        term->title[safe_len+2] = '.';
-    }
-    memmove(term->title, buffer, safe_len);
-}
-
-struct tline*  get_terminal_lastln(struct terminal* term) {
-    struct tline* line = NULL;
-
-    if(!term) {
-        goto out;
-    }
+void write_terminal(struct terminal* term, char* buffer, size_t size) {
     if(term->master_fd < 0) {
-        goto out;
-    }
-    if(!term->lines) {
-        goto out;
-    }
-
-    line = &term->lines[term->num_lines];
-
-out:
-    return line;
-}
-
-void terminal_clear(struct terminal* term) {
-    for(size_t i = 0; i < term->num_lines+1; i++) {
-        memset(&term->lines[i], 0, sizeof(*term->lines));
-    }
-    term->num_lines = 0;
-    term->scroll.y = 0;
-    term->scroll.x = 0;
-    move_curs_to(term, 0, 0);
-    write(term->master_fd, "\n", 1);
-}
-
-void move_curs_to(struct terminal* term, int x, int y) {
-    if(y < 0) {
-        y = 0;
-    }
-
-    term->curs.pos.x = x;
-    term->curs.pos.y = y;
-
-    if(y > term->num_lines) {
-        terminal_prep_lines_add(term, y - term->num_lines);
-        term->num_lines += (y - term->num_lines);
-    }
-
-    term->currln = &term->lines[term->curs.pos.y];
-    term->curs.pos.x = clampi(term->curs.pos.x, 0, term->currln->num_chars);
-}
-
-void move_curs_off(struct terminal* term, int xoff, int yoff) {
-    move_curs_to(term, term->curs.pos.x + xoff, term->curs.pos.y + yoff);
-}
-
-void terminal_handle_resize_event(struct nemi* st, struct terminal* term) {
-    // Temporary.
-    term->rows
-        = st->lfctx->win_height / term->line_height;
-
-    term->cols 
-        = st->lfctx->win_width / st->font.char_width;
-}
-
-void terminal_handle_char_event(struct nemi* st, struct terminal* term) {
-    if(st->last_char_in == 0) {
         return;
     }
 
-    struct tline* curr_line = get_terminal_lastln(term);
-    tline_add_buf_to_currln(st, term, &st->last_char_in, 1);
-
-    term->flags |= NO_INPUT_ECHO;
-    write(term->master_fd, &st->last_char_in, 1);
+    write(term->master_fd, buffer, size);
 }
 
+void terminal_handle_char_event(struct nemi* st, struct terminal* term) {
+    
+    write_terminal(term, &st->last_char_in, 1);
+
+}
+
+
 void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
+    
+    if(key_down(st, GLFW_KEY_LEFT_CONTROL)
+    || key_down(st, GLFW_KEY_RIGHT_CONTROL)) {
+        
+        switch(st->last_key_in) {
+            
+            case GLFW_KEY_L:
+                write_terminal(term, "clear\n", 6);
+                break;
+
+            case GLFW_KEY_C:
+                write_terminal(term, "\03", 1);
+                break;
+
+            case GLFW_KEY_M:
+                term->vmode.enabled = !term->vmode.enabled;
+                break;
+        }
+
+        return;
+    }
+
+
     switch(st->last_key_in) {
 
+        case GLFW_KEY_ENTER:
+            write_terminal(term, "\n", 1);
+            break; 
+
+        case GLFW_KEY_ESCAPE:
+            write_terminal(term, "\x1b", 1);
+            break;
+
+
+        case GLFW_KEY_TAB:
+            write_terminal(term, "\x09", 1);
+            break;
+
+        case GLFW_KEY_BACKSPACE:
+            write_terminal(term, "\x08", 1);
+            break;
+
         case GLFW_KEY_UP:
-            write(term->master_fd, "\x1b[A", 3);
+            write_terminal(term, "\x1b[A", 3);
             break;
 
         case GLFW_KEY_DOWN:
-            write(term->master_fd, "\x1b[B", 3);
-            term->flags |= NO_INPUT_ECHO;
-            break;
-
-        case GLFW_KEY_LEFT:
-            write(term->master_fd, "\x1b[D", 3);
-            term->flags |= NO_INPUT_ECHO;
-            term->curs.pos.x -= 1;
+            write_terminal(term, "\x1b[B", 3);
             break;
 
         case GLFW_KEY_RIGHT:
-            write(term->master_fd, "\x1b[C", 3);
-            term->flags |= NO_INPUT_ECHO;
-            term->curs.pos.x += 1;
+            write_terminal(term, "\x1b[C", 3);
             break;
 
-        case GLFW_KEY_ENTER:
-            write(term->master_fd, "\n", 1);
-
+        case GLFW_KEY_LEFT:
+            write_terminal(term, "\x1b[D", 3);
             break;
+
+    }
+}
+
+void terminal_handle_resize_event(struct nemi* st, struct terminal* term) {
+
+    term->cols = st->win_cols;
+    term->rows = st->win_rows;
+
+    vterm_set_size(term->vt, term->rows, term->cols);
+
+    struct winsize ws = (struct winsize) {
+        .ws_row = term->rows,
+        .ws_col = term->cols,
+        .ws_xpixel = 0,
+        .ws_ypixel = 0
+    };
+
+    ioctl(term->master_fd, TIOCSWINSZ, &ws);
+}
+
+
+static
+VTermColor get_vtcolor(struct nemi* st, int cfgcol_idx) {
+    return (VTermColor) {
+        .type = VTERM_COLOR_RGB,
+        .rgb.type = VTERM_COLOR_RGB,
+        .rgb.red    = st->cfg.colors[cfgcol_idx].r,
+        .rgb.green  = st->cfg.colors[cfgcol_idx].g,
+        .rgb.blue   = st->cfg.colors[cfgcol_idx].b
+    };
+}
+
+static
+void set_term_color(struct nemi* st, struct terminal* term, int idx, int cfgcol_idx) {
+    VTermColor color = get_vtcolor(st, cfgcol_idx);
+    vterm_state_set_palette_color(term->vtstate, idx, &color);
+}
+
+void terminal_init_palette(struct nemi* st, struct terminal* term) {
+    VTermColor default_fg = get_vtcolor(st, NEMI_COLOR_FG);
+    VTermColor default_bg = get_vtcolor(st, NEMI_COLOR_BG);
+    vterm_state_set_default_colors(term->vtstate, &default_fg, &default_bg);
+
+    set_term_color(st, term, 0, NEMI_COLOR_BLACK);
+    set_term_color(st, term, 1, NEMI_COLOR_RED);
+    set_term_color(st, term, 2, NEMI_COLOR_GREEN);
+    set_term_color(st, term, 3, NEMI_COLOR_YELLOW);
+    set_term_color(st, term, 4, NEMI_COLOR_BLUE);
+    set_term_color(st, term, 5, NEMI_COLOR_MAGENTA);
+    set_term_color(st, term, 6, NEMI_COLOR_CYAN);
+    set_term_color(st, term, 7, NEMI_COLOR_WHITE);
     
-        case GLFW_KEY_BACKSPACE:
-            write(term->master_fd, "\x08", 1);
-            term->curs.pos.x--;
-            break;
-    }
-
-    if(key_down(st, GLFW_KEY_LEFT_CONTROL)) {
-        if(key_down(st, GLFW_KEY_C)) {
-            write(term->master_fd, "\3", 1);
-        }
-        else
-        if(key_down(st, GLFW_KEY_L)) {
-            terminal_clear(term);
-        }
-    }
-}
-
-void terminal_handle_data_event(struct nemi* st, struct terminal* term) {    
-    if(term->num_lines > term->rows) {
-        scroll_terminal_down(st, st->terminal);
-    }
-
-    //move_cursor_to_prompt(st->terminal);
-}
-
-char* terminal_handle_csi
-(struct nemi* st, struct terminal* term, char* ptr, char* buffer, size_t size) {
-
-    if(*ptr == 0x1B) {
-        ptr++;
-    }
-    if(ptr > buffer + size) { return NULL; }
-    if(*ptr == '[') {
-        ptr++;
-    }
+    set_term_color(st, term, 8,  NEMI_BRIGHT_COLOR_BLACK);
+    set_term_color(st, term, 9,  NEMI_BRIGHT_COLOR_RED);
+    set_term_color(st, term, 10, NEMI_BRIGHT_COLOR_GREEN);
+    set_term_color(st, term, 11, NEMI_BRIGHT_COLOR_YELLOW);
+    set_term_color(st, term, 12, NEMI_BRIGHT_COLOR_BLUE);
+    set_term_color(st, term, 13, NEMI_BRIGHT_COLOR_MAGENTA);
+    set_term_color(st, term, 14, NEMI_BRIGHT_COLOR_CYAN);
+    set_term_color(st, term, 15, NEMI_BRIGHT_COLOR_WHITE);
     
-    if(ptr > buffer + size) { return NULL; }
-    if(*ptr == ' ') {
-        ptr++;
-    }
-
-    if(ptr > buffer + size) { return NULL; }
-
-
-    char arg[16] = { 0 };
-    size_t arg_len = 0;
-    char opt = 0;
-
-    while(ptr < buffer + size) {
-
-        if(*ptr < '0' || *ptr > '9') {
-            opt = *ptr;
-            break;
-        }
-
-        if(arg_len >= sizeof(arg)) {
-            return NULL;
-        }
-        arg[arg_len++] = *ptr;
-        ptr++;
-    }
-
-    long N = strtol(arg, NULL, 10);
-
-    switch(opt) {
-
-        case 'A': // Move cursor up N lines.
-            move_curs_off(term, 0, -N);
-            break;
-
-        case 'B': // Move cursor down N lines.
-            move_curs_off(term, 0, N);
-            break;
-
-        case 'C': // Move cursor right N columns.
-            break;
-        
-        case 'D': // Move cursor left N columns.
-            break;
-
-        case 'E': // Move cursor to beginning of next line, N lines down.
-            break;
-
-        case 'F': // Move cursor to beginning of previous line, N lines up.
-            break;
-
-        case 'G': // Move cursor to column N
-            break;
-
-        case 'M': // Move cursor up one line, scroll if needed.
-            break;
-
-        case '7': // Save cursor position (DEC)
-            break;
-
-        case '8': // Restore cursor position (DEC)
-            break;
-
-        case 's': // Save cursor position (SCO)
-            break;
-
-        case 'u': // Restore cursor position (SCO)
-            break;
-
-
-            
-        case 'J':
-            break;
-
-        case 'K':
-            break;
-
-
-        default:
-            //fprintf(stderr, "Unknown CSI: 0x%x\n", opt);
-            return NULL;
-    }
-
-    ptr++;
-    return ptr;
 }
+
+
+
+
+
+
 

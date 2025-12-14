@@ -3,5 +3,5 @@
 
 set -xe
 
-echo -e "\033[6A\n"
+#echo -e "\033[6D\n"
 

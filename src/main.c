@@ -4,8 +4,6 @@
 
 #include "nemi.h"
 
-#include "tline.h"
-
 
 int main(int argc, char** argv) {
     (void)argc;
@@ -17,13 +15,8 @@ int main(int argc, char** argv) {
     }
 
     while(!glfwWindowShouldClose(st->lfctx->glfw_win)) {
-        glClearColor(0.045f, 0.045f, 0.045f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        begin_frame(st);
         
-        if(st->last_key_in == GLFW_KEY_ESCAPE) {
-            break;
-        }
-
         read_terminal(st, st->terminal);
         render_terminal(st, st->terminal);
 

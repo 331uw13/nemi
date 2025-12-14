@@ -185,23 +185,19 @@ void tline_add_buf_to_currln
             continue;
         }
         else {
-            char* tmpptr = NULL;
-            tmpptr = terminal_handle_csi(st, term, ch, buffer, size);
-            if(tmpptr) {
-                ch = tmpptr;
+            char* ptr = terminal_handle_csi(st, term, ch, buffer, size);
+            if(ptr) {
+                ch = ptr;
                 continue;
             }
         }
-
-        if(*ch == 0) {
-            ch++;
-            continue;
-        }
+    
+        ch++;
 
 
 
         // Parse color escape sequences.
-        
+        /*
         struct escape_seq es;
         ch = get_escape_seq_args(&es, buffer, ch, size);
 
@@ -239,6 +235,7 @@ void tline_add_buf_to_currln
                 es_ch.attr_bg = elem->attr_bg;
             }
         }
+        */
     }
 }
 
