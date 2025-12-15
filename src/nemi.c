@@ -151,40 +151,10 @@ void end_frame(struct nemi* st) {
     glfwSwapBuffers(st->lfctx->glfw_win);
     glfwPollEvents();
 }
-/*
-void to_grid_pos(struct nemi* st, int* x, int* y) {
-    *x *= st->font.char_width;
-    *y *= (st->font.char_height + st->cfg.line_padding_y);
-    *x += 10;
-    *y += 10;
-}
-*/
+
 bool key_down(struct nemi* st, int key) {
     return (glfwGetKey(st->lfctx->glfw_win, key) == GLFW_PRESS);
 }
-
-/*
-void init_default_palette(struct nemi* st) {
-    set_palette_color(st, CHAR_COLOR_DEFAULT,        (struct rgb_color){ 180, 160, 150 });
-    set_palette_color(st, CHAR_COLOR_BLACK,          (struct rgb_color){ 30,  30,  30 });
-    set_palette_color(st, CHAR_COLOR_RED,            (struct rgb_color){ 180, 30,  30 });
-    set_palette_color(st, CHAR_COLOR_GREEN,          (struct rgb_color){ 30,  180, 30 });
-    set_palette_color(st, CHAR_COLOR_YELLOW,         (struct rgb_color){ 180, 180, 30 });
-    set_palette_color(st, CHAR_COLOR_BLUE,           (struct rgb_color){ 30,  30,  180 });
-    set_palette_color(st, CHAR_COLOR_MAGENTA,        (struct rgb_color){ 180, 30,  180 });
-    set_palette_color(st, CHAR_COLOR_CYAN,           (struct rgb_color){ 30,  180, 180 });
-    set_palette_color(st, CHAR_COLOR_WHITE,          (struct rgb_color){ 180, 180, 180 });
-    
-    set_palette_color(st, CHAR_COLOR_BRIGHT_BLACK,   (struct rgb_color){ 30,  30,  30 });
-    set_palette_color(st, CHAR_COLOR_BRIGHT_RED,     (struct rgb_color){ 255, 30,  30 });
-    set_palette_color(st, CHAR_COLOR_BRIGHT_GREEN,   (struct rgb_color){ 30,  255, 30 });
-    set_palette_color(st, CHAR_COLOR_BRIGHT_YELLOW,  (struct rgb_color){ 255, 255, 30 });
-    set_palette_color(st, CHAR_COLOR_BRIGHT_BLUE,    (struct rgb_color){ 30,  30,  255 });
-    set_palette_color(st, CHAR_COLOR_BRIGHT_MAGENTA, (struct rgb_color){ 255, 30,  255 });
-    set_palette_color(st, CHAR_COLOR_BRIGHT_CYAN,    (struct rgb_color){ 30,  255, 255 });
-    set_palette_color(st, CHAR_COLOR_BRIGHT_WHITE,   (struct rgb_color){ 255, 255, 255 });
-}
-*/
 
 void init_default_config(struct nemi* st) {
     st->cfg.padding_x = 10;

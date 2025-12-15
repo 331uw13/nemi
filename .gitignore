@@ -1,3 +1,4 @@
 .gitrepo-update.ini
 *.o
+*.a
 nemi

@@ -79,7 +79,6 @@ void push_char_input(struct nemi* st, char ch);
 void begin_frame(struct nemi* st);
 void end_frame(struct nemi* st);
 
-void to_grid_pos(struct nemi* st, int* x, int* y);
 bool key_down(struct nemi* st, int key);
 
 // Convert column/row to window x/y position.
