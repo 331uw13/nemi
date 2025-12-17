@@ -334,86 +334,7 @@ void terminal_set_scroll(struct terminal* term, int scroll) {
     term->sb.offset = clampi(term->sb.offset, 0, term->sb.num_rows);
 }
 
-void terminal_handle_char_event(struct nemi* st, struct terminal* term) {
-    write_term(term, TERM_WRITE_PTY, &st->last_char_in);
-    terminal_set_scroll(term, 0);
 
-    if(st->last_char_in != 0) {
-        char* args[] = {
-            &st->last_char_in,
-            NULL
-        };
-
-        for(size_t i = 0; i < ARRAY_LEN(st->scripts); i++) {
-            struct perl_script* script = &st->scripts[i];
-            if(!script->is_loaded) {
-                continue;
-            }
-            plscript_call_args(script, "event_char_input", args);
-        }
-    }
-}
-
-
-
-static
-void terminal_handle_normal_input(struct nemi* st, struct terminal* term) {
-
-
-    switch(st->last_key_in) {
-
-        case GLFW_KEY_ENTER:
-            terminal_set_scroll(term, 0);
-            write_term(term, TERM_WRITE_PTY, "\n");
-            break; 
-
-        case GLFW_KEY_ESCAPE:
-            write_term(term, TERM_WRITE_PTY, "\x1b");
-            break;
-
-        case GLFW_KEY_TAB:
-            write_term(term, TERM_WRITE_PTY, "\x09");
-            break;
-
-        case GLFW_KEY_BACKSPACE:
-            write_term(term, TERM_WRITE_PTY, "\x08");
-            break;
-
-        case GLFW_KEY_UP:
-            write_term(term, TERM_WRITE_PTY, "\x1b[A");
-            break;
-
-        case GLFW_KEY_DOWN:
-            write_term(term, TERM_WRITE_PTY, "\x1b[B");
-            break;
-
-        case GLFW_KEY_RIGHT:
-            write_term(term, TERM_WRITE_PTY, "\x1b[C");
-            break;
-
-        case GLFW_KEY_LEFT:
-            write_term(term, TERM_WRITE_PTY, "\x1b[D");
-            break;
-
-    }
-
-    if(st->last_key_in != 0) {
-        char key_str[8] = { 0 };
-        snprintf(key_str, sizeof(key_str), "%d", st->last_key_in);
-        char* args[] = {
-            key_str,
-            NULL
-        };
-
-        for(size_t i = 0; i < ARRAY_LEN(st->scripts); i++) {
-            struct perl_script* script = &st->scripts[i];
-            if(!script->is_loaded) {
-                continue;
-            }
-            plscript_call_args(script, "event_key_input", args);
-        }
-    }
-}
 /*
 // TODO: 
 // This function takes in count the scrollback buffer
@@ -608,8 +529,55 @@ void terminal_handle_vmode_input(struct nemi* st, struct terminal* term) {
 }
 */
 
-void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
+void terminal_handle_char_event(struct nemi* st, struct terminal* term) {
+
+    if(st->last_char_in != 0) {
+        char* args[] = {
+            &st->last_char_in,
+            NULL
+        };
+
+        for(size_t i = 0; i < ARRAY_LEN(st->scripts); i++) {
+            struct perl_script* script = &st->scripts[i];
+            if(!script->is_loaded) {
+                continue;
+            }
+            plscript_call_args(script, "event_char_input", args);
+        }
+    }
+
+    if(st->flags & FLG_IGNORE_CHR_INPUT) {
+        return;
+    }
     
+    write_term(term, TERM_WRITE_PTY, &st->last_char_in);
+    terminal_set_scroll(term, 0);
+}
+
+
+void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
+ 
+    if(st->last_key_in != 0) {
+        char key_str[8] = { 0 };
+        snprintf(key_str, sizeof(key_str), "%d", st->last_key_in);
+        char* args[] = {
+            key_str,
+            NULL
+        };
+
+        for(size_t i = 0; i < ARRAY_LEN(st->scripts); i++) {
+            struct perl_script* script = &st->scripts[i];
+            if(!script->is_loaded) {
+                continue;
+            }
+            plscript_call_args(script, "event_key_input", args);
+        }
+    }   
+
+    if(st->flags & FLG_IGNORE_KEY_INPUT) {
+        return;
+    }
+
     if(key_down(st, GLFW_KEY_LEFT_CONTROL)
     || key_down(st, GLFW_KEY_RIGHT_CONTROL)) {
         
@@ -636,17 +604,44 @@ void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
 
         return;
     }
-        
-    terminal_handle_normal_input(st, term);
+     
+    switch(st->last_key_in) {
 
-    /*
-    if(!term->vmode.enabled) {
-        terminal_handle_normal_input(st, term);
+        case GLFW_KEY_ENTER:
+            terminal_set_scroll(term, 0);
+            write_term(term, TERM_WRITE_PTY, "\n");
+            break; 
+
+        case GLFW_KEY_ESCAPE:
+            write_term(term, TERM_WRITE_PTY, "\x1b");
+            break;
+
+        case GLFW_KEY_TAB:
+            write_term(term, TERM_WRITE_PTY, "\x09");
+            break;
+
+        case GLFW_KEY_BACKSPACE:
+            write_term(term, TERM_WRITE_PTY, "\x08");
+            break;
+
+        case GLFW_KEY_UP:
+            write_term(term, TERM_WRITE_PTY, "\x1b[A");
+            break;
+
+        case GLFW_KEY_DOWN:
+            write_term(term, TERM_WRITE_PTY, "\x1b[B");
+            break;
+
+        case GLFW_KEY_RIGHT:
+            write_term(term, TERM_WRITE_PTY, "\x1b[C");
+            break;
+
+        case GLFW_KEY_LEFT:
+            write_term(term, TERM_WRITE_PTY, "\x1b[D");
+            break;
+
     }
-    else {
-        terminal_handle_vmode_input(st, term);
-    }
-    */
+
 }
 
 void terminal_handle_resize_event(struct nemi* st, struct terminal* term) {

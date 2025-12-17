@@ -7,27 +7,43 @@
 
 MODULE = Nemi       PACKAGE = Nemi
 
+void
+term_ignore_keys()
+    CODE:
+        nemipl__term_ignore_keys();
+    PROTOTYPE: DISABLE
 
 void
-test_func(a, b)
-    int a
-    int b
+term_ignore_chars()
+    CODE:
+        nemipl__term_ignore_chars();
     PROTOTYPE: DISABLE
 
+void
+term_unignore_keys()
+    CODE:
+        nemipl__term_unignore_keys();
+    PROTOTYPE: DISABLE
+
+void
+term_unignore_chars()
+    CODE:
+        nemipl__term_unignore_chars();
+    PROTOTYPE: DISABLE
 
 int
-get_terminal_rows()
+term_get_rows()
     PROTOTYPE: DISABLE
     CODE:
-        RETVAL = nemipl__get_terminal_rows();
+        RETVAL = nemipl__term_get_rows();
     OUTPUT:
         RETVAL
 
 int
-get_terminal_cols()
+term_get_cols()
     PROTOTYPE: DISABLE
     CODE:
-        RETVAL = nemipl__get_terminal_cols();
+        RETVAL = nemipl__term_get_cols();
     OUTPUT:
         RETVAL
 

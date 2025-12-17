@@ -33,9 +33,14 @@ void register_functions(struct perl_script* script) {
     PerlInterpreter* my_perl = script->perl_interp;
     PERL_SET_CONTEXT(my_perl);
 
-    newXS("Nemi::get_terminal_rows", xsw_get_terminal_rows, __FILE__);
-    newXS("Nemi::get_terminal_cols", xsw_get_terminal_cols, __FILE__);
+    newXS("Nemi::term_get_rows", xsw_term_get_rows, __FILE__);
+    newXS("Nemi::term_get_cols", xsw_term_get_cols, __FILE__);
     newXS("Nemi::keydown", xsw_keydown, __FILE__);
+    newXS("Nemi::term_ignore_chars",   xsw_term_ignore_chars, __FILE__);
+    newXS("Nemi::term_ignore_keys",    xsw_term_ignore_keys, __FILE__);
+    newXS("Nemi::term_unignore_chars", xsw_term_unignore_chars, __FILE__);
+    newXS("Nemi::term_unignore_keys",  xsw_term_unignore_keys, __FILE__);
+
 }
 
 

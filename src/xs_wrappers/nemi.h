@@ -13,6 +13,7 @@
    XSRETURN_PV    - Return string.
    XSRETURN_SV    - Return SV
    XSRETURN_UNDEF - Return 'undef'
+   XSRETURN_EMPTY - Return void
 
 */
 /*
@@ -28,22 +29,52 @@ XS(xsw_test_func) {
 }
 */
 
-XS(xsw_get_terminal_rows) {
+XS(xsw_term_get_rows) {
     dXSARGS;
-    XSRETURN_IV(nemipl__get_terminal_rows());
+    (void)items;
+    XSRETURN_IV(nemipl__term_get_rows());
 }
 
-XS(xsw_get_terminal_cols) {
+XS(xsw_term_get_cols) {
     dXSARGS;
-    XSRETURN_IV(nemipl__get_terminal_cols());
+    (void)items;
+    XSRETURN_IV(nemipl__term_get_cols());
 }
 
 XS(xsw_keydown) {
     dXSARGS;
+    (void)items;
     int key = SvIV(ST(0));
     XSRETURN_IV(nemipl__keydown(key));
 }
 
+XS(xsw_term_ignore_keys) {
+    dXSARGS;
+    (void)items;
+    nemipl__term_ignore_keys();
+    XSRETURN_EMPTY;
+}
+
+XS(xsw_term_ignore_chars) {
+    dXSARGS;
+    (void)items;
+    nemipl__term_ignore_chars();
+    XSRETURN_EMPTY;
+}
+
+XS(xsw_term_unignore_keys) {
+    dXSARGS; 
+    (void)items;
+    nemipl__term_unignore_keys();
+    XSRETURN_EMPTY;
+}
+
+XS(xsw_term_unignore_chars) {
+    dXSARGS;
+    (void)items;
+    nemipl__term_unignore_chars();
+    XSRETURN_EMPTY;
+}
 
 
 #endif

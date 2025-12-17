@@ -12,6 +12,11 @@
 
 #define FLG_FONT_LOADED (1 << 0)
 
+#define FLG_IGNORE_KEY_INPUT (1 << 1)
+#define FLG_IGNORE_CHR_INPUT (1 << 2)
+
+
+
 #define NEMI_TERMINALS_MAX 16
 #define NEMI_KEYINBUF_MAX 8
 #define NEMI_CHARINBUF_MAX 8
@@ -38,6 +43,9 @@ struct nemi {
     char char_inputs [NEMI_CHARINBUF_MAX];
 
     struct perl_script scripts [NEMI_SCRIPTS_MAX];
+
+
+
 };
 
 
