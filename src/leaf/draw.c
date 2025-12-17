@@ -1,6 +1,7 @@
 #include <GL/glew.h>
 #include <string.h>
 #include <math.h>
+#include <stdarg.h>
 
 #include <stdio.h> // temporary.
 
@@ -130,6 +131,28 @@ float leaf_draw_text
 
     return total_width;
 }
+
+float leaf_draw_text_fmt
+(
+    struct font_t* font,
+    int pos_x,
+    int pos_y,
+    const char* fmt,
+    ...
+){
+    float retv = 0.0f;
+    va_list args;
+    va_start(args, fmt);
+
+    char buffer[256] = { 0 };
+    ssize_t len = vsnprintf(buffer, sizeof(buffer)-1, fmt, args);
+    if(len > 0) {
+        retv = leaf_draw_text(font, pos_x, pos_y, buffer, len);
+    }
+    va_end(args);
+    return retv;
+}
+
 
 void leaf_draw_rect
 (

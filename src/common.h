@@ -5,6 +5,8 @@
 #include <stdbool.h>
 
 #define ARRAY_LEN(arr) (sizeof(arr) / sizeof(*arr))
+#define STR_MATCH(A, B) (strcmp(A, B) == 0)
+
 
 
 void freeif(void* ptr);

@@ -2,12 +2,14 @@
 #define TERMINAL_H
 
 #include <pty.h>
-#include <vterm.h>
+#include "vterm.h"
 
 #include "vec2.h"
 #include "string.h"
 
 
+#define VMODE_WORD_MAX 64  // TODO Add to config.
+#define VMODE_WORD_SEPARATORS_MAX 16  // TODO: Add to config.
 
 struct scrollback_row {
     VTermScreenCell* cells;
@@ -21,6 +23,24 @@ struct scrollback {
     int    offset;
 };
 
+/*
+enum vmode_move_opt {
+    VMODE_MOVE_WORD, // Skip words, separated by space. TODO: Add to config, what are separators.
+    VMODE_MOVE_CELL  // Normal movement.
+};
+*/
+
+enum term_write_target {
+    TERM_WRITE_PTY,
+    TERM_WRITE_VTERM
+};
+
+/*
+#define VMODE_MODE_FILES     'F'   // Interact with files.
+#define VMODE_MODE_SEL       'S'   // Select mode.
+#define VMODE_MODE_BLOCK_SEL 'B'   // Block select mode.
+*/
+
 struct terminal {
     int          flags;
     int          master_fd;
@@ -28,6 +48,7 @@ struct terminal {
     VTerm*       vt;
     VTermScreen* vtscrn;
     VTermState*  vtstate;
+    bool         is_altscreen;
 
     struct scrollback sb;
     
@@ -35,27 +56,31 @@ struct terminal {
     int cols;
     int line_height;
 
-
+    /*
     // Visual mode.
     struct {
+        int  mode;
         bool enabled;
+        bool was_enabled_before_altscreen;
 
-        int  curs_row;
-        int  curs_col;
+        VTermPos curs;
 
-        // Select region.
-        bool sel; 
         int  sel_start_row;
         int  sel_start_col;
+
+        // Which characters define separators for word.
+        char     word_separators [VMODE_WORD_SEPARATORS_MAX];
+        uint32_t num_word_separators;
+
+        // Word where vmode cursor is on.
+        // Not valid if select region is enabled.
+        char     word [VMODE_WORD_MAX];
+        uint32_t word_len;
     }
     vmode;
+    */
 };
 
-
-enum term_write_target {
-    TERM_WRITE_PTY,
-    TERM_WRITE_VTERM
-};
 
 struct nemi;
 
@@ -67,9 +92,17 @@ void render_terminal       (struct nemi* st, struct terminal* term);
 void write_term            (struct terminal* term, enum term_write_target target, char* fmt, ...);
 void terminal_scroll       (struct terminal* term, int offset);
 void terminal_set_scroll   (struct terminal* term, int scroll);
+//void terminal_move_vmode  
+//    (struct terminal* term, int col_off, int row_off, enum vmode_move_opt mov_opt);
+
+    // Add word separator for vmode.
+//void terminal_vmode_add_word_sep(struct terminal* term, char ch);
+
 void terminal_handle_char_event   (struct nemi* st, struct terminal* term);
 void terminal_handle_key_event    (struct nemi* st, struct terminal* term);
 void terminal_handle_resize_event (struct nemi* st, struct terminal* term);
+void terminal_handle_altscreen_change_event(struct nemi* st, struct terminal* term);
+
 
 void terminal_init_palette        (struct nemi* st, struct terminal* term);
 

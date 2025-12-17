@@ -6,11 +6,16 @@
 #include <poll.h>
 #include <stdio.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
 
 #include "terminal.h"
 #include "nemi.h"
 #include "common.h"
 #include "memory.h"
+
+
 
 
 void vterm_scroll_callback(VTermRect rect, int downward, int rightward, void *userptr) {
@@ -104,22 +109,28 @@ struct terminal* spawn_terminal(struct nemi* st, int rows, int cols) {
 
     //vterm_screen_set_putglyph_callback(term->vtscrn, vterm_putglyph_callback, term);
     vterm_state_set_scroll_callback(term->vtstate, vterm_scroll_callback, term);
-            
+    
     vterm_screen_enable_altscreen(term->vtscrn, true);
     vterm_screen_reset(term->vtscrn, true);
 
+    term->is_altscreen = false;
 
-
+    /*
+    term->vmode.mode = VMODE_MODE_FILES;
     term->vmode.enabled = false;
-    term->vmode.curs_row = 0;
-    term->vmode.curs_col = 0;
-    term->vmode.sel = false;
+    term->vmode.curs.row = 0;
+    term->vmode.curs.col = 0;
     term->vmode.sel_start_row = 0;
     term->vmode.sel_start_col = 0;
-
+    */
     terminal_init_palette(st, term);
 
-    printf("%s() %p (%ix%i)\n", __func__, term, term->rows, term->cols);
+    // Add vmode word separators.
+    //terminal_vmode_add_word_sep(term, ' ');
+    //terminal_vmode_add_word_sep(term, '\0');
+
+    logprintf(LOG_INFO, "Created terminal (%ix%i)", term->rows, term->cols);
+    //printf("%s() %p (%ix%i)\n", __func__, term, term->rows, term->cols);
 
     return term;
 }
@@ -157,30 +168,36 @@ void read_terminal(struct nemi* st, struct terminal* term) {
     pfd.events = POLLIN;
     nfds_t num_fds = 1;
 
-    char tmp_buffer[32] = { 0 };
+    char tmp_buffer[1024*2] = { 0 };
 
     const int timeout_ms = 10;
 
 
     while(true) {
         int retv = poll(&pfd, num_fds, timeout_ms);
-        if(retv > 0) {
-           
-            memset(tmp_buffer, 0, sizeof(tmp_buffer));
-            ssize_t rd = read(term->master_fd, tmp_buffer, sizeof(tmp_buffer)-1);
-            if(rd <= 0) {
-                break;
-            }
-
-            for(size_t i = 0; i < rd; i++) {
-                vterm_input_write(term->vt, &tmp_buffer[i], 1);
-                vterm_screen_flush_damage(term->vtscrn);
-            }
+        if(retv <= 0) {
+            break;
+          
         }
-        else {
+        
+        memset(tmp_buffer, 0, sizeof(tmp_buffer));
+        ssize_t rd = read(term->master_fd, tmp_buffer, sizeof(tmp_buffer)-1);
+        if(rd <= 0) {
             break;
         }
-    }            
+
+        for(ssize_t i = 0; i < rd; i++) {
+            vterm_input_write(term->vt, &tmp_buffer[i], 1);
+            vterm_screen_flush_damage(term->vtscrn);
+        }
+    }
+
+
+    bool now_altscreen = vterm_screen_is_altscreen(term->vtscrn);
+    if(now_altscreen != term->is_altscreen) {
+        term->is_altscreen = now_altscreen;
+        terminal_handle_altscreen_change_event(st, term);
+    }
 }
 
 
@@ -220,22 +237,33 @@ void render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, 
             coltox(st, pos.col),
             rowtoy(st, pos.row), cell->chars[0]);
 }
+/*
+static
+void render_vmode(struct nemi* st, struct terminal* term) {
+        
+    leaf_set_font_color(&st->font, 0.7, 0.3, 0.5);
+
+    int label_width = coltox(st, 10);
+
+    leaf_draw_text_fmt(&st->font, st->lfctx->win_width - label_width, 10, 
+            "[vmode]:%c", (char)term->vmode.mode);
+}
+*/
 
 void render_terminal(struct nemi* st, struct terminal* term) {
 
-    vterm_get_size(term->vt, &term->rows, &term->cols);
 
+    vterm_get_size(term->vt, &term->rows, &term->cols);
     if(vterm_screen_is_altscreen(term->vtscrn)) {
         term->sb.offset = 0;
     }
 
     if(term->sb.offset > 0 && term->sb.num_rows > 0) {
         int row = 0;
-        int offset = 1;
 
         ssize_t start_offset = term->sb.num_rows - term->sb.offset;
         if(start_offset < 0) {
-            fprintf(stderr, "Invalid scrollback offset.\n");
+            logprintf(LOG_ERROR, "Invalid scrollback offset %li", start_offset);
             goto scrollback_err;
         }
             
@@ -243,7 +271,8 @@ void render_terminal(struct nemi* st, struct terminal* term) {
 
         while(row < term->sb.offset) {
             for(int col = 0; col < term->cols; col++) {
-                render_cell(st, term, &sbrow->cells[col], (VTermPos){ row, col });
+                render_cell(st, term, &sbrow->cells[col], 
+                        (VTermPos){ row, col });
             }
             row++;
             sbrow++;
@@ -254,7 +283,8 @@ scrollback_err:
     for(int row = 0; row < term->rows; row++) {
         for(int col = 0; col < term->cols; col++) {
             VTermScreenCell cell;
-            if(!vterm_screen_get_cell(term->vtscrn, (VTermPos){ row, col }, &cell)) {
+            if(!vterm_screen_get_cell(term->vtscrn, 
+                        (VTermPos){ row, col }, &cell)) {
                 return;
             }
             render_cell(st, term, &cell,
@@ -263,6 +293,12 @@ scrollback_err:
     }
 
     render_terminal_cursor(st, term);
+
+    /*
+    if(term->vmode.enabled) { 
+        render_vmode(st, term);
+    }
+    */
 }
 
 void write_term(struct terminal* term, enum term_write_target target, char* fmt, ...) {
@@ -299,43 +335,29 @@ void terminal_set_scroll(struct terminal* term, int scroll) {
 }
 
 void terminal_handle_char_event(struct nemi* st, struct terminal* term) {
-
     write_term(term, TERM_WRITE_PTY, &st->last_char_in);
+    terminal_set_scroll(term, 0);
 
+    if(st->last_char_in != 0) {
+        char* args[] = {
+            &st->last_char_in,
+            NULL
+        };
+
+        for(size_t i = 0; i < ARRAY_LEN(st->scripts); i++) {
+            struct perl_script* script = &st->scripts[i];
+            if(!script->is_loaded) {
+                continue;
+            }
+            plscript_call_args(script, "event_char_input", args);
+        }
+    }
 }
 
 
 
-void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
-    
-    if(key_down(st, GLFW_KEY_LEFT_CONTROL)
-    || key_down(st, GLFW_KEY_RIGHT_CONTROL)) {
-        
-        switch(st->last_key_in) { 
-
-            case GLFW_KEY_C:
-                write_term(term, TERM_WRITE_PTY, "\03");
-                break;
-
-            case GLFW_KEY_E:
-                write_term(term, TERM_WRITE_PTY, "clear\n");
-                break;
-                
-            case GLFW_KEY_O:
-                terminal_scroll(term, +1);
-                break;
-
-            case GLFW_KEY_L:
-                terminal_scroll(term, -1);
-                break;
-
-            case GLFW_KEY_M:
-                term->vmode.enabled = !term->vmode.enabled;
-                break;
-        }
-
-        return;
-    }
+static
+void terminal_handle_normal_input(struct nemi* st, struct terminal* term) {
 
 
     switch(st->last_key_in) {
@@ -374,6 +396,257 @@ void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
             break;
 
     }
+
+    if(st->last_key_in != 0) {
+        char key_str[8] = { 0 };
+        snprintf(key_str, sizeof(key_str), "%d", st->last_key_in);
+        char* args[] = {
+            key_str,
+            NULL
+        };
+
+        for(size_t i = 0; i < ARRAY_LEN(st->scripts); i++) {
+            struct perl_script* script = &st->scripts[i];
+            if(!script->is_loaded) {
+                continue;
+            }
+            plscript_call_args(script, "event_key_input", args);
+        }
+    }
+}
+/*
+// TODO: 
+// This function takes in count the scrollback buffer
+static
+bool terminal_get_char(struct terminal* term, char* ch, VTermPos pos) {
+    VTermScreenCell cell;
+    if(!vterm_screen_get_cell(term->vtscrn, (VTermPos){ pos.row, pos.col }, &cell)) {
+        return false;
+    }
+
+    *ch = cell.chars[0];
+
+    return true;
+}
+
+
+static
+bool vmode_is_separator(struct terminal* term, char ch) {
+    for(uint32_t i = 0; i < term->vmode.num_word_separators; i++) {
+        if(ch == term->vmode.word_separators[i]) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static
+void terminal_vmode_read_word(struct terminal* term) {
+
+    memset(term->vmode.word, 0, sizeof(term->vmode.word));
+    term->vmode.word_len = 0;
+   
+
+
+    // Read the whole row first.
+    char row_chars [term->cols];
+    uint32_t row_len = 0;
+    memset(row_chars, 0, sizeof(row_chars));
+
+    for(int i = 0; i < term->cols; i++) {
+        if(terminal_get_char(term, &row_chars[row_len], 
+                    (VTermPos){ term->vmode.curs.row, i })) {
+            if(row_chars[row_len] == 0) {
+                row_len++;
+                break;
+            }
+            row_len++;
+        };
+    }
+
+
+    int word_start_col = -1;
+    int word_end_col   = -1;
+
+    bool curs_on_word = !vmode_is_separator(term, row_chars[ term->vmode.curs.col ]);
+
+    if(curs_on_word) {
+        // Get start column by going left and searching for word separator.
+        for(int c = term->vmode.curs.col; c > 0; c--) {
+            if(vmode_is_separator(term, row_chars[c])) {
+                word_start_col = c + 1;
+                break;
+            }
+        }
+        if(word_start_col < 0) {
+            word_start_col = 0;
+        }
+
+        // Get end column by going right and searching for word separator.
+        for(int c = term->vmode.curs.col; c < term->cols; c++) {
+            if(vmode_is_separator(term, row_chars[c])) {
+                word_end_col = c;
+                break;
+            }
+        }
+
+        if(word_start_col >= 0 && word_end_col >= 0) {
+
+            for(int c = word_start_col; c < word_end_col; c++) {
+                term->vmode.word[term->vmode.word_len++] = row_chars[c];
+            }
+
+        }
+    }
+}
+*/
+/*
+void terminal_move_vmode(struct terminal* term, int col_off, int row_off, enum vmode_move_opt mov_opt) {
+
+    if(mov_opt == VMODE_MOVE_CELL) {
+
+        term->vmode.curs.row += row_off;
+        term->vmode.curs.col += col_off;
+
+    }
+    else
+    if(mov_opt == VMODE_MOVE_WORD) {
+        printf("VMODE_MOVE_WORD - Not implemented yet.\n");
+    }
+
+    terminal_vmode_read_word(term);
+}
+
+void terminal_vmode_add_word_sep(struct terminal* term, char ch) {
+    if(term->vmode.num_word_separators+1 >= ARRAY_LEN(term->vmode.word_separators)) {
+        return;
+    }
+
+    term->vmode.word_separators[ 
+        term->vmode.num_word_separators++
+    ] = ch;
+}
+
+void terminal_vmode_file_interact(struct terminal* term) {
+   
+    if(term->vmode.word_len == 0) {
+        return;
+    }
+
+    printf("Interact file '%s'\n", term->vmode.word);
+
+    if(access(term->vmode.word, F_OK) != 0) {
+        printf("%s: access: %s\n", __func__, strerror(errno));
+        return;
+    }
+
+    struct stat sb;
+    if(stat(term->vmode.word, &sb) != 0) {
+        printf("%s: stat: %s\n", __func__, strerror(errno));
+        return;
+    }
+    
+
+    switch(sb.st_mode & S_IFMT) {
+    
+        case S_IFDIR:
+            break;
+
+        case S_IFREG:
+            break;
+
+
+        default:
+            printf("\033[33m%s: Unhandled file type.\033[0m\n", __func__);
+            break;
+
+
+    }
+
+}
+
+static
+void terminal_handle_vmode_input(struct nemi* st, struct terminal* term) {
+
+    switch(st->last_key_in) {
+
+        case GLFW_KEY_I: // Up
+            terminal_move_vmode(term, 0, -1, VMODE_MOVE_CELL);
+            break;
+
+        case GLFW_KEY_K: // Down
+            terminal_move_vmode(term, 0, 1, VMODE_MOVE_CELL);
+            break;
+
+        case GLFW_KEY_L: // Right
+            terminal_move_vmode(term, 1, 0, VMODE_MOVE_CELL);
+            break;
+
+        case GLFW_KEY_J: // Left
+            terminal_move_vmode(term, -1, 0, VMODE_MOVE_CELL);
+            break;
+
+        case GLFW_KEY_F:
+            term->vmode.mode = VMODE_MODE_FILES;
+            break;
+
+        case GLFW_KEY_S:
+            term->vmode.mode = VMODE_MODE_SEL;
+            break;
+
+        case GLFW_KEY_V:
+            term->vmode.mode = VMODE_MODE_BLOCK_SEL;
+            break;
+ 
+        case GLFW_KEY_R:
+        case GLFW_KEY_ENTER:
+            if(term->vmode.mode == VMODE_MODE_FILES) {
+                terminal_vmode_file_interact(term);
+            }
+            break;
+    }
+}
+*/
+
+void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
+    
+    if(key_down(st, GLFW_KEY_LEFT_CONTROL)
+    || key_down(st, GLFW_KEY_RIGHT_CONTROL)) {
+        
+        switch(st->last_key_in) { 
+
+            case GLFW_KEY_C:
+                write_term(term, TERM_WRITE_PTY, "\03");
+                break;
+
+            case GLFW_KEY_E:
+                write_term(term, TERM_WRITE_PTY, "clear\n");
+                break;
+                
+            case GLFW_KEY_I:
+                terminal_scroll(term, +1);
+                break;
+
+            case GLFW_KEY_K:
+                terminal_scroll(term, -1);
+                break;
+
+      
+        }
+
+        return;
+    }
+        
+    terminal_handle_normal_input(st, term);
+
+    /*
+    if(!term->vmode.enabled) {
+        terminal_handle_normal_input(st, term);
+    }
+    else {
+        terminal_handle_vmode_input(st, term);
+    }
+    */
 }
 
 void terminal_handle_resize_event(struct nemi* st, struct terminal* term) {
@@ -393,6 +666,19 @@ void terminal_handle_resize_event(struct nemi* st, struct terminal* term) {
     ioctl(term->master_fd, TIOCSWINSZ, &ws);
 }
 
+
+void terminal_handle_altscreen_change_event(struct nemi* st, struct terminal* term) {
+    
+    /*if(term->is_altscreen) {
+        term->vmode.was_enabled_before_altscreen = term->vmode.enabled;
+        term->vmode.enabled = false;
+    }
+    else {
+        term->vmode.enabled = term->vmode.was_enabled_before_altscreen;
+    }*/
+
+    terminal_set_scroll(term, 0);
+}
 
 static
 VTermColor get_vtcolor(struct nemi* st, int cfgcol_idx) {
@@ -433,7 +719,6 @@ void terminal_init_palette(struct nemi* st, struct terminal* term) {
     set_term_color(st, term, 13, NEMI_BRIGHT_COLOR_MAGENTA);
     set_term_color(st, term, 14, NEMI_BRIGHT_COLOR_CYAN);
     set_term_color(st, term, 15, NEMI_BRIGHT_COLOR_WHITE);
-    
 }
 
 

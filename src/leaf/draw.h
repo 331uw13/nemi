@@ -32,6 +32,15 @@ float leaf_draw_text
     ssize_t str_size
 );
 
+float leaf_draw_text_fmt
+(
+    struct font_t* font,
+    int pos_x,
+    int pos_y,
+    const char* fmt,
+    ...
+);
+
 void leaf_draw_rect
 (
     float pos_x,
