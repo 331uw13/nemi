@@ -40,7 +40,10 @@ void register_functions(struct perl_script* script) {
     newXS("Nemi::term_ignore_keys",    xsw_term_ignore_keys, __FILE__);
     newXS("Nemi::term_unignore_chars", xsw_term_unignore_chars, __FILE__);
     newXS("Nemi::term_unignore_keys",  xsw_term_unignore_keys, __FILE__);
-
+    newXS("Nemi::new_renderbuf",       xsw_new_renderbuf, __FILE__);
+    newXS("Nemi::rb_add_rect",         xsw_rb_add_rect, __FILE__);
+    newXS("Nemi::rb_update_rect",      xsw_rb_update_rect, __FILE__);
+    newXS("Nemi::rb_add_text",         xsw_rb_add_text, __FILE__);
 }
 
 

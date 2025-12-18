@@ -65,7 +65,15 @@ struct nemi* start_session() {
             .is_loaded   = false
         };
     }
-    
+   
+    for(size_t i = 0; i < ARRAY_LEN(st->renderbufs); i++) {
+        st->renderbufs[i] = (struct render_buffer) {
+            .nodes = NULL,
+            .num_nodes_max = 0,
+            .num_nodes = 0
+        };
+    }
+
     plscript_funcs_set_context(st);
 
 
@@ -97,9 +105,13 @@ void quit_session(struct nemi* st) {
         nemi_unload_perl_script(&st->scripts[i]);
     }
 
+    for(size_t i = 0; i < ARRAY_LEN(st->renderbufs); i++) {
+        freeif(st->renderbufs[i].nodes);
+    }
+
 
     log_close();
-    free(st);
+    freeif(st);
 }
 
 void zero_input_buffers(struct nemi* st) {
@@ -121,6 +133,28 @@ void begin_frame(struct nemi* st) {
 }
 
 void end_frame(struct nemi* st) {
+
+
+    // TODO: Optimize this later.
+    // --------------------------
+    /*
+    for(size_t i = 0; i < ARRAY_LEN(st->renderbufs); i++) {
+        struct render_buffer* rb = &st->renderbufs[i];
+        if(!rb->meshes) {
+            continue;
+        }
+
+        for(size_t j = 0; j < rb->num_meshes_max; j++) {
+            struct vertex_mesh* mesh = &rb->meshes[j];
+            if(!mesh->vertices) {
+                continue;
+            }
+
+            leaf_render_vertices(st->lfctx, mesh->vertices, mesh->vertices_memsize);
+        }
+    }
+    */
+
     st->last_char_in = 0;
     st->last_key_in = 0;
     glfwSwapBuffers(st->lfctx->glfw_win);
@@ -174,7 +208,13 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
     struct nemi* st = (struct nemi*)glfwGetWindowUserPointer(window);
     push_key_input(st, key);
     st->last_key_in = key;
-        
+    
+    /*
+    if(key == GLFW_KEY_SPACE) {
+        renderbuf_test(st);
+    }
+    */
+
     terminal_handle_key_event(st, st->terminal);
 }
 
@@ -234,5 +274,25 @@ int rowtoy(struct nemi* st, int row) {
     return row * (st->font.char_height + st->cfg.line_padding) + st->cfg.padding_y;
 }
 
+int new_renderbuf(struct nemi* st, int num_nodes_max) {
+    int ret_index = -1;
 
+    // Find unused one and return the index.
+    for(size_t i = 0; i < ARRAY_LEN(st->renderbufs); i++) {
+        struct render_buffer* rb = &st->renderbufs[i];
+        if(rb->nodes) {
+            continue;
+        }
+
+        rb->nodes = calloc(sizeof *rb->nodes, num_nodes_max);
+        rb->num_nodes_max = num_nodes_max;
+        rb->num_nodes     = 0;
+        logprintf(LOG_INFO, "Created new render buffer with %i nodes.", num_nodes_max);
+
+        ret_index = i;
+        break;
+    }
+
+    return ret_index;
+}
 

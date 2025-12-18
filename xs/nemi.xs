@@ -7,6 +7,62 @@
 
 MODULE = Nemi       PACKAGE = Nemi
 
+
+int 
+new_renderbuf()
+    int size;
+    PROTOTYPE: DISABLE
+    CODE:
+        RETVAL = nemipl__new_renderbuf(size);
+    OUTPUT:
+        RETVAL
+
+int
+rb_add_rect()
+    int rb_index;
+    int x;
+    int y;
+    int w;
+    int h;
+    int color;
+    PROTOTYPE: DISABLE
+    CODE:
+        RETVAL = nemipl__rb_add_rect(rb_index, x, y, w, h, color);
+    OUTPUT:
+        RETVAL
+
+    
+void
+rb_update_rect()
+    int rb_index;
+    int rb_mesh_index;
+    int x;
+    int y;
+    int w;
+    int h;
+    int color;
+    CODE:
+        nemipl__rb_update_rect(rb_index, rb_mesh_index, x, y, w, h, color);
+    PROTOTYPE: DISABLE
+
+int
+rb_add_text()
+    int rb_index;
+    int x;
+    int y;
+    SV* str;
+    int color;
+    PROTOTYPE: DISABLE
+    PREINIT:
+        char* text;
+        STRLEN text_len;
+    CODE:
+        text = SvPV(str, text_len);
+        RETVAL = nemipl__rb_add_text(rb_index, x, y, text, text_len, color);
+    OUTPUT:
+        RETVAL
+
+
 void
 term_ignore_keys()
     CODE:

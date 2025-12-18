@@ -17,6 +17,25 @@ void test_func(int a, int b) {
 }
 
 
+int nemipl__new_renderbuf(int size) {
+    return new_renderbuf(g_st, size);
+}
+
+int nemipl__rb_add_rect(int rb_index, int x, int y, int w, int h, int color) {
+    return renderbuf_add_rect(g_st, &g_st->renderbufs[rb_index], x, y, w, h, color);
+}
+void nemipl__rb_update_rect(int rb_index, int rb_mesh_index, int x, int y, int w, int h, int color) {
+    renderbuf_update_rect(g_st, &g_st->renderbufs[rb_index], rb_mesh_index, x, y, w, h, color);
+}
+
+int nemipl__rb_add_text(int rb_index, int x, int y, char* text, size_t len, int color) {
+    printf("%s : %s\n",__func__, text);
+
+    printf("%i\n", len);
+
+    return 1234;
+}
+
 int nemipl__term_get_rows() {
     return g_st->terminal->rows;
 }

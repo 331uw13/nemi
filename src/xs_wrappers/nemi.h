@@ -29,6 +29,51 @@ XS(xsw_test_func) {
 }
 */
 
+XS(xsw_new_renderbuf) {
+    dXSARGS;
+    (void)items;
+    int size = SvIV(ST(0));
+    XSRETURN_IV(nemipl__new_renderbuf(size));
+}
+
+XS(xsw_rb_add_rect) {
+    dXSARGS;
+    (void)items;
+    int rb_index= SvIV(ST(0));
+    int x = SvIV(ST(1));
+    int y = SvIV(ST(2));
+    int w = SvIV(ST(3));
+    int h = SvIV(ST(4));
+    int color = SvIV(ST(5));
+    XSRETURN_IV(nemipl__rb_add_rect(rb_index, x, y, w, h, color));
+}
+
+XS(xsw_rb_update_rect) {
+    dXSARGS;
+    (void)items;
+    int rb_index= SvIV(ST(0));
+    int rb_mesh_index= SvIV(ST(1));
+    int x = SvIV(ST(2));
+    int y = SvIV(ST(3));
+    int w = SvIV(ST(4));
+    int h = SvIV(ST(5));
+    int color = SvIV(ST(6));
+    nemipl__rb_update_rect(rb_index, rb_mesh_index, x, y, w, h, color);
+    XSRETURN_EMPTY;
+}
+
+XS(xsw_rb_add_text) {
+    dXSARGS;
+    (void)items;
+    int rb_index = SvIV(ST(0));
+    int x = SvIV(ST(1));
+    int y = SvIV(ST(2));
+    STRLEN len;
+    char*  str = SvPV(ST(3), len);
+    int color = SvIV(ST(4));
+    XSRETURN_IV(nemipl__rb_add_text(rb_index, x, y, str, len, color));
+}
+
 XS(xsw_term_get_rows) {
     dXSARGS;
     (void)items;

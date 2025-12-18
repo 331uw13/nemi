@@ -167,6 +167,102 @@ S_croak_xs_usage(const CV *const cv, const char *const params)
 
 #line 169 "xs/nemi.c"
 
+XS_EUPXS(XS_Nemi_new_renderbuf); /* prototype to pass -Wmissing-prototypes */
+XS_EUPXS(XS_Nemi_new_renderbuf)
+{
+    dVAR; dXSARGS;
+    if (items != 0)
+       croak_xs_usage(cv,  "");
+    {
+	int	size;
+	int	RETVAL;
+	dXSTARG;
+#line 16 "xs/nemi.xs"
+        RETVAL = nemipl__new_renderbuf(size);
+#line 183 "xs/nemi.c"
+	TARGi((IV)RETVAL, 1);
+	ST(0) = TARG;
+    }
+    XSRETURN(1);
+}
+
+
+XS_EUPXS(XS_Nemi_rb_add_rect); /* prototype to pass -Wmissing-prototypes */
+XS_EUPXS(XS_Nemi_rb_add_rect)
+{
+    dVAR; dXSARGS;
+    if (items != 0)
+       croak_xs_usage(cv,  "");
+    {
+	int	rb_index;
+	int	x;
+	int	y;
+	int	w;
+	int	h;
+	int	color;
+	int	RETVAL;
+	dXSTARG;
+#line 30 "xs/nemi.xs"
+        RETVAL = nemipl__rb_add_rect(rb_index, x, y, w, h, color);
+#line 208 "xs/nemi.c"
+	TARGi((IV)RETVAL, 1);
+	ST(0) = TARG;
+    }
+    XSRETURN(1);
+}
+
+
+XS_EUPXS(XS_Nemi_rb_update_rect); /* prototype to pass -Wmissing-prototypes */
+XS_EUPXS(XS_Nemi_rb_update_rect)
+{
+    dVAR; dXSARGS;
+    if (items != 0)
+       croak_xs_usage(cv,  "");
+    {
+	int	rb_index;
+	int	rb_mesh_index;
+	int	x;
+	int	y;
+	int	w;
+	int	h;
+	int	color;
+#line 45 "xs/nemi.xs"
+        nemipl__rb_update_rect(rb_index, rb_mesh_index, x, y, w, h, color);
+#line 232 "xs/nemi.c"
+    }
+    XSRETURN_EMPTY;
+}
+
+
+XS_EUPXS(XS_Nemi_rb_add_text); /* prototype to pass -Wmissing-prototypes */
+XS_EUPXS(XS_Nemi_rb_add_text)
+{
+    dVAR; dXSARGS;
+    if (items != 0)
+       croak_xs_usage(cv,  "");
+    {
+	int	rb_index;
+	int	x;
+	int	y;
+	SV*	str;
+	int	color;
+#line 57 "xs/nemi.xs"
+        char* text;
+        STRLEN text_len;
+#line 253 "xs/nemi.c"
+	int	RETVAL;
+	dXSTARG;
+#line 60 "xs/nemi.xs"
+        text = SvPV(str, text_len);
+        RETVAL = nemipl__rb_add_text(rb_index, x, y, text, text_len, color);
+#line 259 "xs/nemi.c"
+	TARGi((IV)RETVAL, 1);
+	ST(0) = TARG;
+    }
+    XSRETURN(1);
+}
+
+
 XS_EUPXS(XS_Nemi_term_ignore_keys); /* prototype to pass -Wmissing-prototypes */
 XS_EUPXS(XS_Nemi_term_ignore_keys)
 {
@@ -174,9 +270,9 @@ XS_EUPXS(XS_Nemi_term_ignore_keys)
     if (items != 0)
        croak_xs_usage(cv,  "");
     {
-#line 13 "xs/nemi.xs"
+#line 69 "xs/nemi.xs"
         nemipl__term_ignore_keys();
-#line 180 "xs/nemi.c"
+#line 276 "xs/nemi.c"
     }
     XSRETURN_EMPTY;
 }
@@ -189,9 +285,9 @@ XS_EUPXS(XS_Nemi_term_ignore_chars)
     if (items != 0)
        croak_xs_usage(cv,  "");
     {
-#line 19 "xs/nemi.xs"
+#line 75 "xs/nemi.xs"
         nemipl__term_ignore_chars();
-#line 195 "xs/nemi.c"
+#line 291 "xs/nemi.c"
     }
     XSRETURN_EMPTY;
 }
@@ -204,9 +300,9 @@ XS_EUPXS(XS_Nemi_term_unignore_keys)
     if (items != 0)
        croak_xs_usage(cv,  "");
     {
-#line 25 "xs/nemi.xs"
+#line 81 "xs/nemi.xs"
         nemipl__term_unignore_keys();
-#line 210 "xs/nemi.c"
+#line 306 "xs/nemi.c"
     }
     XSRETURN_EMPTY;
 }
@@ -219,9 +315,9 @@ XS_EUPXS(XS_Nemi_term_unignore_chars)
     if (items != 0)
        croak_xs_usage(cv,  "");
     {
-#line 31 "xs/nemi.xs"
+#line 87 "xs/nemi.xs"
         nemipl__term_unignore_chars();
-#line 225 "xs/nemi.c"
+#line 321 "xs/nemi.c"
     }
     XSRETURN_EMPTY;
 }
@@ -236,9 +332,9 @@ XS_EUPXS(XS_Nemi_term_get_rows)
     {
 	int	RETVAL;
 	dXSTARG;
-#line 38 "xs/nemi.xs"
+#line 94 "xs/nemi.xs"
         RETVAL = nemipl__term_get_rows();
-#line 242 "xs/nemi.c"
+#line 338 "xs/nemi.c"
 	TARGi((IV)RETVAL, 1);
 	ST(0) = TARG;
     }
@@ -255,9 +351,9 @@ XS_EUPXS(XS_Nemi_term_get_cols)
     {
 	int	RETVAL;
 	dXSTARG;
-#line 46 "xs/nemi.xs"
+#line 102 "xs/nemi.xs"
         RETVAL = nemipl__term_get_cols();
-#line 261 "xs/nemi.c"
+#line 357 "xs/nemi.c"
 	TARGi((IV)RETVAL, 1);
 	ST(0) = TARG;
     }
@@ -292,6 +388,10 @@ XS_EXTERNAL(boot_Nemi)
 #  endif
 #endif
 
+        newXS_deffile("Nemi::new_renderbuf", XS_Nemi_new_renderbuf);
+        newXS_deffile("Nemi::rb_add_rect", XS_Nemi_rb_add_rect);
+        newXS_deffile("Nemi::rb_update_rect", XS_Nemi_rb_update_rect);
+        newXS_deffile("Nemi::rb_add_text", XS_Nemi_rb_add_text);
         newXS_deffile("Nemi::term_ignore_keys", XS_Nemi_term_ignore_keys);
         newXS_deffile("Nemi::term_ignore_chars", XS_Nemi_term_ignore_chars);
         newXS_deffile("Nemi::term_unignore_keys", XS_Nemi_term_unignore_keys);

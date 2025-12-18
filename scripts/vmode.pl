@@ -40,6 +40,11 @@ use strict;
 
 our $vmode;
 
+our $renderbuf;
+our $test_rect;
+our $test_text;
+
+
 sub event_char_input {}
 sub event_key_input {
     
@@ -48,6 +53,13 @@ sub event_key_input {
         vmode::toggle_enable();
         print("vmode enabled : $vmode::enabled\n");
     }
+
+    #if($vmode::enabled) {
+    #    Nemi::rb_update_rect($renderbuf, $test_rect, 300, 200, 50, 50, 0xFF30FF);
+    #}
+    #else {
+    #    Nemi::rb_update_rect($renderbuf, $test_rect, 50, 200, 100, 100, 0x25FA32);
+    #}
 }
 
 
@@ -59,22 +71,19 @@ sub init_script {
     # Script's render buffer will get freed automatically
     # if it was created when the script is unloaded.
     my $renderbuf_max_meshes = 80;
-    my $renderbuf = Nemi::new_renderbuf($renderbuf_max_meshes);
+    $renderbuf = Nemi::new_renderbuf($renderbuf_max_meshes);
 
-    # When creating a shape, it just creates mesh
-    # and the render buffer contains array of meshes.
-    # Any add_{shape} function will return id/index
-    # to the added mesh.
-    my $rect_id = Nemi::add_rect($renderbuf, 50, 50, 100, 100, 0x00FF00);
+    #Nemi::rb_use_arbcoords(); # Arbitrary coordinates. (X, Y)
+    #Nemi::rb_use_cellcoords(); # Cell coordinates. (Row, Column)
 
-    # ^ The same rect can be updated with its id/index.
-    Nemi::update_rect($renderbuf, $rect_id, 150, 150, 50, 50, 0xFF00FF);
 
-    # When removing mesh from the render buffer,
-    # The id/index gets flagged as "not used".
-    # Then other mesh when added can use it again.
-    # The index which was removed is saved for future add_{shape} calls.
-    Nemi::remove_mesh($renderbuf, $rect_id);
+    my $test_rect_0 = Nemi::rb_add_rect($renderbuf, 100, 100, 50, 50, 0x30FF30);
+    #my $test_rect_1 = Nemi::rb_add_rect($renderbuf, 100, 100, 30, 30, 0xFFFFFF);
+    #my $test_rect_2 = Nemi::rb_add_rect($renderbuf, 100, 100, 30, 30, 0xFFFFFF);
+    #my $test_rect_3 = Nemi::rb_add_rect($renderbuf, 100, 100, 30, 30, 0xFFFFFF);
+    #$test_text = Nemi::rb_add_text($renderbuf, 80, 300, "Hello text from perl", 0xFFFFFF);
+    
+
 
 
     $vmode = vmode->new();

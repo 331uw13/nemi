@@ -36,7 +36,7 @@ void leaf_free_renderer(struct leaf_ctx_t* ctx);
 //void leaf_clear_vertices(struct leaf_ctx_t* ctx);
 
 // One vertex: [x, y, r, g, b]
-void leaf_render_vertices(struct leaf_ctx_t* ctx, float* vertices, size_t num_vertices);
+void leaf_render_vertices(struct leaf_ctx_t* ctx, float* vertices, size_t vertices_memsize);
 
 
 #endif

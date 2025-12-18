@@ -144,25 +144,24 @@ void leaf_free_renderer(struct leaf_ctx_t* ctx) {
     }
 }
 
-void leaf_render_vertices(struct leaf_ctx_t* ctx, float* vertices, size_t vertices_sizeb) {
-   
-    bool divisible = !(vertices_sizeb % 5); // 2(x, y) + 3(r, g, b) = 5
+void leaf_render_vertices(struct leaf_ctx_t* ctx, float* vertices, size_t vertices_memsize) {   
+    bool divisible = !(vertices_memsize % 5); // 2(x, y) + 3(r, g, b) = 5
     if(!divisible) {
         fprintf(stderr, "(%s) %s(): Vertex data format is incorrect.\n",
                 __FILE__, __func__);
         return;
     }
 
-    if(vertices_sizeb >= ctx->renderer_vbo_memsize) {
+    if(vertices_memsize >= ctx->renderer_vbo_memsize) {
         fprintf(stderr, "(%s) %s(): Renderer VBO doesnt have enough memory allocated.\n",
                 __FILE__, __func__);
         return;
     }
 
     glBindBuffer(GL_ARRAY_BUFFER, ctx->renderer_vbo);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, vertices_sizeb, vertices);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, vertices_memsize, vertices);
     
-    const int num_vertex_positions = ((vertices_sizeb / sizeof(float)) / 5) * 2;
+    const int num_vertex_positions = ((vertices_memsize / sizeof(float)) / 5) * 2;
    
     glBindVertexArray(ctx->renderer_vao);
    

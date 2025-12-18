@@ -8,6 +8,7 @@
 #include "nemi_config.h"
 #include "terminal.h"
 #include "script.h"
+#include "render_buffer.h"
 #include "log.h"
 
 #define FLG_FONT_LOADED (1 << 0)
@@ -21,6 +22,8 @@
 #define NEMI_KEYINBUF_MAX 8
 #define NEMI_CHARINBUF_MAX 8
 #define NEMI_SCRIPTS_MAX 32
+#define NEMI_RENDERBUFS_MAX 32
+
 
 struct nemi {
     int flags;
@@ -44,8 +47,8 @@ struct nemi {
 
     struct perl_script scripts [NEMI_SCRIPTS_MAX];
 
-
-
+    struct render_buffer renderbufs [NEMI_RENDERBUFS_MAX];
+    uint32_t             num_renderbufs;
 };
 
 
@@ -65,8 +68,8 @@ bool key_down(struct nemi* st, int key);
 int coltox(struct nemi* st, int col);
 int rowtoy(struct nemi* st, int row);
 
+int new_renderbuf(struct nemi* st, int num_meshes_max);
 
-//void         init_default_palette(struct nemi* st);
-void         init_default_config(struct nemi* st);
+void init_default_config(struct nemi* st);
 
 #endif
