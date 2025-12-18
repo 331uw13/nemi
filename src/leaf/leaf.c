@@ -74,6 +74,7 @@ struct leaf_ctx_t* leaf_open(const char* title, int width, int height) {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+
     ctx->renderer_vao = 0;
     ctx->renderer_vbo = 0;
     ctx->renderer_shader = 0;

@@ -17,26 +17,30 @@ void glfw_char_callback(GLFWwindow* window, uint32_t codepoint);
 
 
 
-struct nemi* start_session() {
+struct nemi* start_session(const char* config_file) {
     struct nemi* st = malloc(sizeof *st);
 
+    st->frame_time = 0.001;
+    st->frame_time_begin = 0.0;
     st->flags = 0;
     st->lfctx = leaf_open("Nemi - Terminal Emulator", 900, 700);
     st->num_terminals = 0;
 
 
     zero_input_buffers(st);
-    //init_default_palette(st);
     init_default_config(st);
 
-    if(!leaf_load_font(&st->font, "Topaz-8.ttf")) {
+    struct nemi_font_config font_cfg;
+    nemi_read_font_config(st, config_file, &font_cfg);
+
+    if(!leaf_load_font(&st->font, font_cfg.font_filepath)) {
         quit_session(st);
         return NULL;
     }
     
     st->flags |= FLG_FONT_LOADED;
 
-    st->font.center_char_to_cell = true;
+    st->font.center_char_to_cell = font_cfg.font_center_char_to_cell;
     st->font.spacing = 0.2f;
     leaf_set_font_scale(&st->font, 0.9);
     leaf_set_font_color(&st->font, 1.0, 0.8, 0.6);
@@ -77,13 +81,13 @@ struct nemi* start_session() {
     plscript_funcs_set_context(st);
 
 
-    if(!nemi_read_config(st, "nemi.ini")) {
+    if(!nemi_read_config(st, config_file)) {
         fprintf(stderr, "Error occurred while reading config file.\n");
         free(st);
         return NULL;
     }
 
-
+    glfwSwapInterval(st->cfg.vsync ? 0 : 1);
 
     return st;
 }
@@ -124,6 +128,7 @@ void zero_input_buffers(struct nemi* st) {
 }
 
 void begin_frame(struct nemi* st) {
+    st->frame_time_begin = glfwGetTime();
     glClearColor(
             (float)st->cfg.colors[NEMI_COLOR_BG].r / 255.0f,
             (float)st->cfg.colors[NEMI_COLOR_BG].g / 255.0f,
@@ -133,32 +138,55 @@ void begin_frame(struct nemi* st) {
 }
 
 void end_frame(struct nemi* st) {
-
-
-    // TODO: Optimize this later.
-    // --------------------------
-    /*
     for(size_t i = 0; i < ARRAY_LEN(st->renderbufs); i++) {
         struct render_buffer* rb = &st->renderbufs[i];
-        if(!rb->meshes) {
+        if(rb->num_nodes == 0) {
             continue;
         }
 
-        for(size_t j = 0; j < rb->num_meshes_max; j++) {
-            struct vertex_mesh* mesh = &rb->meshes[j];
-            if(!mesh->vertices) {
-                continue;
+        struct rb_node* rnode = &st->renderbufs[0].nodes[0];
+        while(rnode) {
+
+            switch(rnode->type) {
+                   
+                case RBNODE_MESH:
+                    leaf_render_vertices(st->lfctx, 
+                            rnode->mesh.vertices, rnode->mesh.vertices_memsize);
+                    break;
+
+                case RBNODE_TEXT:
+                    leaf_set_font_color(&st->font,
+                           (float)rnode->text.red / 255.0f,
+                           (float)rnode->text.grn / 255.0f,
+                           (float)rnode->text.blu / 255.0f);
+                    leaf_draw_text(&st->font, 
+                            rnode->text.pos_x, rnode->text.pos_y,
+                            rnode->text.data,
+                            rnode->text.len);
+                    break;
+
+
+                // More will be added later.
             }
 
-            leaf_render_vertices(st->lfctx, mesh->vertices, mesh->vertices_memsize);
+            rnode = rnode->next;
         }
     }
-    */
 
+    if(st->cfg.show_frametime) {
+        float old_font_scale = st->font.scale;
+        leaf_set_font_scale(&st->font, 0.7f);
+        leaf_draw_text_fmt(&st->font, 
+                st->lfctx->win_width-250, 10,
+                "frame_time=%0.3fms", st->frame_time * 1000.0);
+        leaf_set_font_scale(&st->font, old_font_scale);
+    }
     st->last_char_in = 0;
     st->last_key_in = 0;
     glfwSwapBuffers(st->lfctx->glfw_win);
     glfwPollEvents();
+
+    st->frame_time = glfwGetTime() - st->frame_time_begin;
 }
 
 bool key_down(struct nemi* st, int key) {

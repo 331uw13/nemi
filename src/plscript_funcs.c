@@ -24,16 +24,24 @@ int nemipl__new_renderbuf(int size) {
 int nemipl__rb_add_rect(int rb_index, int x, int y, int w, int h, int color) {
     return renderbuf_add_rect(g_st, &g_st->renderbufs[rb_index], x, y, w, h, color);
 }
-void nemipl__rb_update_rect(int rb_index, int rb_mesh_index, int x, int y, int w, int h, int color) {
-    renderbuf_update_rect(g_st, &g_st->renderbufs[rb_index], rb_mesh_index, x, y, w, h, color);
-}
 
 int nemipl__rb_add_text(int rb_index, int x, int y, char* text, size_t len, int color) {
-    printf("%s : %s\n",__func__, text);
+    return renderbuf_add_text(g_st, &g_st->renderbufs[rb_index], x, y, text, len, color);
+}
 
-    printf("%i\n", len);
+void nemipl__rb_update_rect(int rb_index, int rb_node_index, int x, int y, int w, int h, int color) {
+    renderbuf_update_rect(g_st, &g_st->renderbufs[rb_index], rb_node_index, x, y, w, h, color);
+}
+void nemipl__rb_update_text(int rb_index, int rb_node_index, int x, int y, char* text, size_t len, int color) {
+    renderbuf_update_text(g_st, &g_st->renderbufs[rb_index], rb_node_index, x, y, text, len, color);
+}
 
-    return 1234;
+void nemipl__rb_use_cellcoords(int rb_index) {
+    g_st->renderbufs[rb_index].coordinate_mode = RBCOORDMODE_CELL;
+}
+
+void nemipl__rb_use_arbcoords(int rb_index) {
+    g_st->renderbufs[rb_index].coordinate_mode = RBCOORDMODE_ARBITRARY;
 }
 
 int nemipl__term_get_rows() {

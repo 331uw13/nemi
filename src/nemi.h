@@ -49,10 +49,14 @@ struct nemi {
 
     struct render_buffer renderbufs [NEMI_RENDERBUFS_MAX];
     uint32_t             num_renderbufs;
+
+
+    double frame_time;
+    double frame_time_begin;
 };
 
 
-struct nemi* start_session();
+struct nemi* start_session(const char* config_file);
 void         quit_session(struct nemi* st);
 
 void zero_input_buffers(struct nemi* st);
@@ -68,7 +72,7 @@ bool key_down(struct nemi* st, int key);
 int coltox(struct nemi* st, int col);
 int rowtoy(struct nemi* st, int row);
 
-int new_renderbuf(struct nemi* st, int num_meshes_max);
+int new_renderbuf(struct nemi* st, int num_nodes_max);
 
 void init_default_config(struct nemi* st);
 

@@ -39,12 +39,21 @@ struct nemi_config {
     int padding_x;
     int padding_y;
     int line_padding;
-
+    bool vsync;
+    bool show_frametime;
+    float italic_tilt;
+    int   underline_height;
+    float underline_offset;
     struct color_t colors [NEMI_COLOR_COUNT];
 };
 
-bool nemi_read_config(struct nemi* st, const char* file);
+struct nemi_font_config {
+    char   font_filepath [256];
+    bool   font_center_char_to_cell;
+};
 
+bool nemi_read_config(struct nemi* st, const char* file);
+bool nemi_read_font_config(struct nemi* st, const char* file, struct nemi_font_config* font_cfg);
 
 
 

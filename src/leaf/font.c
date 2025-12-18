@@ -13,14 +13,19 @@ static const char FONT_VERTEX_SHADER_SRC[] = {
     "layout (location = 0) in vec2 pos;\n"
     "layout (location = 1) in vec2 texture_coords;\n"
     "uniform vec3 font_color;\n"
+    "uniform float u_italic;\n"
+    "uniform float u_char_y;\n"
     "out vec2 tex_coords;\n" 
     "out vec3 color;\n"
     "\n"
     "void main() {\n"
-    "    color = font_color;\n"
-    "    tex_coords = texture_coords;\n"
-    "    gl_Position = vec4(pos.x, pos.y, 0.0, 1.0);\n"
-    "    \n"
+    "   color = font_color;\n"
+    "   vec2 p = pos;\n"
+    "   float yn = (p.y - u_char_y) * (u_italic * 0.5);"
+    "   p.x += yn;\n"
+    "   tex_coords = texture_coords;\n"
+    "   gl_Position = vec4(p.x, p.y, 0.0, 1.0);\n"
+    "   \n"
     "}\n",
 };
 
@@ -73,6 +78,7 @@ bool leaf_load_font(struct font_t* font, const char* filepath) {
     font->vao = 0;
     font->shader_color_uniloc = -1;
     font->center_char_to_cell = false;
+    font->italic = 0.0f;
 
     font->shader = create_shader_program(FONT_VERTEX_SHADER_SRC, FONT_FRAGMENT_SHADER_SRC);
     if(!font->shader) {

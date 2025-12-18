@@ -34,6 +34,8 @@ struct font_t {
     int char_width;
     int char_height;
 
+    float italic;
+
     // Small space between characters.
     // In scale if leaf_set_font_spacing() is used.
     float spacing; 

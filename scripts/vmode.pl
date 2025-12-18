@@ -41,8 +41,6 @@ use strict;
 our $vmode;
 
 our $renderbuf;
-our $test_rect;
-our $test_text;
 
 
 sub event_char_input {}
@@ -53,45 +51,33 @@ sub event_key_input {
         vmode::toggle_enable();
         print("vmode enabled : $vmode::enabled\n");
     }
-
-    #if($vmode::enabled) {
-    #    Nemi::rb_update_rect($renderbuf, $test_rect, 300, 200, 50, 50, 0xFF30FF);
-    #}
-    #else {
-    #    Nemi::rb_update_rect($renderbuf, $test_rect, 50, 200, 100, 100, 0x25FA32);
-    #}
 }
 
 
 sub init_script {
 
-    # No "fast phase rendering" is happening from perl script.
-    # it just updates the render buffer when needed.
-
-    # Script's render buffer will get freed automatically
-    # if it was created when the script is unloaded.
-    my $renderbuf_max_meshes = 80;
-    $renderbuf = Nemi::new_renderbuf($renderbuf_max_meshes);
+    my $rbuf_max_nodes = 80;
+    $renderbuf = Nemi::new_renderbuf($rbuf_max_nodes);
+    
+    Nemi::rb_use_cellcoords($renderbuf);
+    
+    my $term_rows = Nemi::term_get_rows();
+    my $term_cols = Nemi::term_get_cols();
+    print("(vmode) Terminal rows = $term_rows\n");
+    print("(vmode) Terminal cols = $term_cols\n");
 
     #Nemi::rb_use_arbcoords(); # Arbitrary coordinates. (X, Y)
     #Nemi::rb_use_cellcoords(); # Cell coordinates. (Row, Column)
 
 
-    my $test_rect_0 = Nemi::rb_add_rect($renderbuf, 100, 100, 50, 50, 0x30FF30);
-    #my $test_rect_1 = Nemi::rb_add_rect($renderbuf, 100, 100, 30, 30, 0xFFFFFF);
-    #my $test_rect_2 = Nemi::rb_add_rect($renderbuf, 100, 100, 30, 30, 0xFFFFFF);
-    #my $test_rect_3 = Nemi::rb_add_rect($renderbuf, 100, 100, 30, 30, 0xFFFFFF);
-    #$test_text = Nemi::rb_add_text($renderbuf, 80, 300, "Hello text from perl", 0xFFFFFF);
+    #$test_rect = Nemi::rb_add_rect($renderbuf, 7, 10, 1, 10, 0x30FFA0);
+    #$test_text = Nemi::rb_add_text($renderbuf, 80, 100, "Hello from perl!", 0xFF30FF);
     
 
 
 
     $vmode = vmode->new();
 
-    my $term_rows = Nemi::term_get_rows();
-    my $term_cols = Nemi::term_get_cols();
-    print("(vmode) Terminal rows = $term_rows\n");
-    print("(vmode) Terminal cols = $term_cols\n");
 }
 
 

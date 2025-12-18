@@ -14,8 +14,11 @@ void plscript_funcs_set_context(struct nemi* st);
 
 int nemipl__new_renderbuf(int size);
 int nemipl__rb_add_rect(int rb_index, int x, int y, int w, int h, int color);
-void nemipl__rb_update_rect(int rb_index, int rb_mesh_index, int x, int y, int w, int h, int color);
 int nemipl__rb_add_text(int rb_index, int x, int y, char* text, size_t len, int color);
+void nemipl__rb_update_rect(int rb_index, int rb_node_index, int x, int y, int w, int h, int color);
+void nemipl__rb_update_text(int rb_index, int rb_node_inde, int x, int y, char* text, size_t len, int color);
+void nemipl__rb_use_cellcoords(int rb_index);
+void nemipl__rb_use_arbcoords(int rb_index);
 int nemipl__term_get_rows();
 int nemipl__term_get_cols();
 int nemipl__keydown(int key);

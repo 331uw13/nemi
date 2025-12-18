@@ -119,4 +119,7 @@ void delete_shader_program(unsigned int shader) {
     }
 }
 
+void shader_uniform1f(uint32_t shader, const char* name, float v) {
+    glUniform1f(glGetUniformLocation(shader, name), v);
+}
 

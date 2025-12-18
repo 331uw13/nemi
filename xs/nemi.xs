@@ -62,6 +62,35 @@ rb_add_text()
     OUTPUT:
         RETVAL
 
+void
+rb_update_text()
+    int rb_index;
+    int rb_node_index;
+    int x;
+    int y;
+    SV* str;
+    int color;
+    PROTOTYPE: DISABLE
+    PREINIT:
+        char* text;
+        STRLEN text_len;
+    CODE:
+        text = SvPV(str, text_len);
+        nemipl__rb_update_text(rb_index, rb_node_index, x, y, text, text_len, color);
+
+void
+rb_use_cellcoords()
+    int rb_index;
+    PROTOTYPE: DISABLE
+    CODE:
+        nemipl__rb_use_cellcoords(rb_index);
+
+void
+rb_use_arbcoords()
+    int rb_index;
+    PROTOTYPE: DISABLE
+    CODE:
+        nemipl__rb_use_arbcoords(rb_index);
 
 void
 term_ignore_keys()

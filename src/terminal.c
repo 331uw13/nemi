@@ -232,10 +232,26 @@ void render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, 
                 (float)cell->fg.rgb.green / 255.0f,
                 (float)cell->fg.rgb.blue  / 255.0f);
     }
+    
+    int char_x = coltox(st, pos.col);
+    int char_y = rowtoy(st, pos.row);
 
-    leaf_draw_char(&st->font, 
-            coltox(st, pos.col),
-            rowtoy(st, pos.row), cell->chars[0]);
+    st->font.italic = (cell->attrs.italic) ? st->cfg.italic_tilt : 0.0f;
+
+    leaf_draw_char(&st->font, char_x, char_y, cell->chars[0]);
+
+    if(cell->attrs.underline) {
+        leaf_draw_rect(
+                char_x,
+                char_y + st->font.char_height + st->cfg.underline_offset,
+                st->font.char_width,
+                st->cfg.underline_height,
+                (struct color_t){ 
+                    cell->fg.rgb.red, 
+                    cell->fg.rgb.green, 
+                    cell->fg.rgb.blue, 
+                });
+    }
 }
 /*
 static
@@ -251,7 +267,6 @@ void render_vmode(struct nemi* st, struct terminal* term) {
 */
 
 void render_terminal(struct nemi* st, struct terminal* term) {
-
 
     vterm_get_size(term->vt, &term->rows, &term->cols);
     if(vterm_screen_is_altscreen(term->vtscrn)) {
@@ -293,19 +308,13 @@ scrollback_err:
     }
 
     render_terminal_cursor(st, term);
-
-    /*
-    if(term->vmode.enabled) { 
-        render_vmode(st, term);
-    }
-    */
 }
 
 void write_term(struct terminal* term, enum term_write_target target, char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
 
-    char buffer[512] = { 0 };
+    char buffer[320] = { 0 };
     ssize_t len = vsnprintf(buffer, sizeof(buffer)-1, fmt, args);
     if(len > 0) {
         if(target == TERM_WRITE_PTY) {

@@ -44,6 +44,9 @@ void register_functions(struct perl_script* script) {
     newXS("Nemi::rb_add_rect",         xsw_rb_add_rect, __FILE__);
     newXS("Nemi::rb_update_rect",      xsw_rb_update_rect, __FILE__);
     newXS("Nemi::rb_add_text",         xsw_rb_add_text, __FILE__);
+    newXS("Nemi::rb_update_text",      xsw_rb_update_text, __FILE__);
+    newXS("Nemi::rb_use_cellcoords",   xsw_rb_use_cellcoords, __FILE__);
+    newXS("Nemi::rb_use_arbcoords",    xsw_rb_use_arbcoords, __FILE__);
 }
 
 

@@ -7,7 +7,7 @@
 
 #include "draw.h"
 #include "leaf.h"
-
+#include "shaders.h"
 
 static struct leaf_ctx_t* g_leaf_ctx = NULL;
 
@@ -72,10 +72,18 @@ float leaf_draw_char
     };
 
     glBindVertexArray(font->vao);
+    glUseProgram(font->shader); 
 
-    glUseProgram(font->shader);
+    shader_uniform1f(font->shader, "u_italic", font->italic);
+    if(font->italic > -0.001f) { // Avoid floating point precision errors.
+        // Character position (top left corner)
+        // is needed to pass into vertex shader
+        // to get distance between current pixel and where it started.
+        // By adding that to current pixel x position we get italic text.
+        shader_uniform1f(font->shader, "u_char_y", y);
+    }
+    
     glActiveTexture(GL_TEXTURE0);
-
     glBindTexture(GL_TEXTURE_2D, glyph->texture);
     glBindBuffer(GL_ARRAY_BUFFER, font->vbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
@@ -146,6 +154,7 @@ float leaf_draw_text_fmt
 
     char buffer[256] = { 0 };
     ssize_t len = vsnprintf(buffer, sizeof(buffer)-1, fmt, args);
+        
     if(len > 0) {
         retv = leaf_draw_text(font, pos_x, pos_y, buffer, len);
     }

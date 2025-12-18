@@ -263,6 +263,64 @@ XS_EUPXS(XS_Nemi_rb_add_text)
 }
 
 
+XS_EUPXS(XS_Nemi_rb_update_text); /* prototype to pass -Wmissing-prototypes */
+XS_EUPXS(XS_Nemi_rb_update_text)
+{
+    dVAR; dXSARGS;
+    if (items != 0)
+       croak_xs_usage(cv,  "");
+    {
+	int	rb_index;
+	int	rb_node_index;
+	int	x;
+	int	y;
+	SV*	str;
+	int	color;
+#line 75 "xs/nemi.xs"
+        char* text;
+        STRLEN text_len;
+#line 283 "xs/nemi.c"
+#line 78 "xs/nemi.xs"
+        text = SvPV(str, text_len);
+        nemipl__rb_update_text(rb_index, rb_node_index, x, y, text, text_len, color);
+#line 287 "xs/nemi.c"
+    }
+    XSRETURN_EMPTY;
+}
+
+
+XS_EUPXS(XS_Nemi_rb_use_cellcoords); /* prototype to pass -Wmissing-prototypes */
+XS_EUPXS(XS_Nemi_rb_use_cellcoords)
+{
+    dVAR; dXSARGS;
+    if (items != 0)
+       croak_xs_usage(cv,  "");
+    {
+	int	rb_index;
+#line 86 "xs/nemi.xs"
+        nemipl__rb_use_cellcoords(rb_index);
+#line 303 "xs/nemi.c"
+    }
+    XSRETURN_EMPTY;
+}
+
+
+XS_EUPXS(XS_Nemi_rb_use_arbcoords); /* prototype to pass -Wmissing-prototypes */
+XS_EUPXS(XS_Nemi_rb_use_arbcoords)
+{
+    dVAR; dXSARGS;
+    if (items != 0)
+       croak_xs_usage(cv,  "");
+    {
+	int	rb_index;
+#line 93 "xs/nemi.xs"
+        nemipl__rb_use_arbcoords(rb_index);
+#line 319 "xs/nemi.c"
+    }
+    XSRETURN_EMPTY;
+}
+
+
 XS_EUPXS(XS_Nemi_term_ignore_keys); /* prototype to pass -Wmissing-prototypes */
 XS_EUPXS(XS_Nemi_term_ignore_keys)
 {
@@ -270,9 +328,9 @@ XS_EUPXS(XS_Nemi_term_ignore_keys)
     if (items != 0)
        croak_xs_usage(cv,  "");
     {
-#line 69 "xs/nemi.xs"
+#line 98 "xs/nemi.xs"
         nemipl__term_ignore_keys();
-#line 276 "xs/nemi.c"
+#line 334 "xs/nemi.c"
     }
     XSRETURN_EMPTY;
 }
@@ -285,9 +343,9 @@ XS_EUPXS(XS_Nemi_term_ignore_chars)
     if (items != 0)
        croak_xs_usage(cv,  "");
     {
-#line 75 "xs/nemi.xs"
+#line 104 "xs/nemi.xs"
         nemipl__term_ignore_chars();
-#line 291 "xs/nemi.c"
+#line 349 "xs/nemi.c"
     }
     XSRETURN_EMPTY;
 }
@@ -300,9 +358,9 @@ XS_EUPXS(XS_Nemi_term_unignore_keys)
     if (items != 0)
        croak_xs_usage(cv,  "");
     {
-#line 81 "xs/nemi.xs"
+#line 110 "xs/nemi.xs"
         nemipl__term_unignore_keys();
-#line 306 "xs/nemi.c"
+#line 364 "xs/nemi.c"
     }
     XSRETURN_EMPTY;
 }
@@ -315,9 +373,9 @@ XS_EUPXS(XS_Nemi_term_unignore_chars)
     if (items != 0)
        croak_xs_usage(cv,  "");
     {
-#line 87 "xs/nemi.xs"
+#line 116 "xs/nemi.xs"
         nemipl__term_unignore_chars();
-#line 321 "xs/nemi.c"
+#line 379 "xs/nemi.c"
     }
     XSRETURN_EMPTY;
 }
@@ -332,9 +390,9 @@ XS_EUPXS(XS_Nemi_term_get_rows)
     {
 	int	RETVAL;
 	dXSTARG;
-#line 94 "xs/nemi.xs"
+#line 123 "xs/nemi.xs"
         RETVAL = nemipl__term_get_rows();
-#line 338 "xs/nemi.c"
+#line 396 "xs/nemi.c"
 	TARGi((IV)RETVAL, 1);
 	ST(0) = TARG;
     }
@@ -351,9 +409,9 @@ XS_EUPXS(XS_Nemi_term_get_cols)
     {
 	int	RETVAL;
 	dXSTARG;
-#line 102 "xs/nemi.xs"
+#line 131 "xs/nemi.xs"
         RETVAL = nemipl__term_get_cols();
-#line 357 "xs/nemi.c"
+#line 415 "xs/nemi.c"
 	TARGi((IV)RETVAL, 1);
 	ST(0) = TARG;
     }
@@ -392,6 +450,9 @@ XS_EXTERNAL(boot_Nemi)
         newXS_deffile("Nemi::rb_add_rect", XS_Nemi_rb_add_rect);
         newXS_deffile("Nemi::rb_update_rect", XS_Nemi_rb_update_rect);
         newXS_deffile("Nemi::rb_add_text", XS_Nemi_rb_add_text);
+        newXS_deffile("Nemi::rb_update_text", XS_Nemi_rb_update_text);
+        newXS_deffile("Nemi::rb_use_cellcoords", XS_Nemi_rb_use_cellcoords);
+        newXS_deffile("Nemi::rb_use_arbcoords", XS_Nemi_rb_use_arbcoords);
         newXS_deffile("Nemi::term_ignore_keys", XS_Nemi_term_ignore_keys);
         newXS_deffile("Nemi::term_ignore_chars", XS_Nemi_term_ignore_chars);
         newXS_deffile("Nemi::term_unignore_keys", XS_Nemi_term_unignore_keys);

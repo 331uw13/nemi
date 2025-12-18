@@ -84,9 +84,23 @@ float m_normalize_Y(struct nemi* st, float y) {
     return (y / (float)st->lfctx->win_height) * 2.0 - 1.0f; 
 }
 
-void renderbuf_rect_node(struct nemi* st, struct rb_node* node,
+#define HEX2RED_CHANNEL(num) ((num & 0xFF0000) >> 16)
+#define HEX2GRN_CHANNEL(num) ((num & 0x00FF00) >> 8)
+#define HEX2BLU_CHANNEL(num)  (num & 0x0000FF)
+
+static
+void renderbuf_rect_node(struct nemi* st, 
+        struct render_buffer* rb,
+        struct rb_node* node,
         int x, int y, int w, int h, int color) {
     node->type = RBNODE_MESH;
+
+    if(rb->coordinate_mode == RBCOORDMODE_CELL) {
+        x = coltox(st, x);
+        y = rowtoy(st, y);
+        w *= st->font.char_width * 2;
+        h *= st->font.char_height;
+    }
 
     uint32_t stride_size = 2 /* x, y */ + 3; /* r, g, b */
     stride_size *= sizeof *node->mesh.vertices;
@@ -97,17 +111,21 @@ void renderbuf_rect_node(struct nemi* st, struct rb_node* node,
 
     if(node->mesh.vertices && node->mesh.vertices_memsize != req_memsize) {
         node->mesh.vertices = realloc(node->mesh.vertices, req_memsize);
-        node->mesh.vertices_memsize = req_memsize;
     }
-   
+    else {
+        node->mesh.vertices = malloc(req_memsize);    
+    }
+
+        
+    node->mesh.vertices_memsize = req_memsize;
     float xf = m_normalize_X(st, (float)x);
     float yf = m_normalize_Y(st, (float)y);
     float wf = (float)w / (float)st->lfctx->win_width;
     float hf = (float)h / (float)st->lfctx->win_height;
 
-    float red = ((color & (0xFF0000)) >> 16) / 255.0f;
-    float grn = ((color & (0x00FF00)) >> 8)  / 255.0f;
-    float blu =  (color & (0x0000FF))        / 255.0f;
+    float red = (float)HEX2RED_CHANNEL(color) / 255.0f;
+    float grn = (float)HEX2GRN_CHANNEL(color) / 255.0f;
+    float blu = (float)HEX2BLU_CHANNEL(color) / 255.0f;
     
     float vertices[] = {
         xf,    yf-hf, red,grn,blu,
@@ -120,6 +138,34 @@ void renderbuf_rect_node(struct nemi* st, struct rb_node* node,
     };
    
     memcpy(node->mesh.vertices, vertices, sizeof vertices);
+}
+
+static
+void renderbuf_text_node(struct nemi* st,
+        struct render_buffer* rb,
+        struct rb_node* node,
+        int x, int y, char* text, size_t len, int color) {
+    node->type = RBNODE_TEXT;
+
+    if(rb->coordinate_mode == RBCOORDMODE_CELL) {
+        x = coltox(st, x);
+        y = rowtoy(st, y);
+    }
+
+    if(len >= sizeof(node->text.data)-2) {
+        len = sizeof(node->text.data)-2;
+    }
+
+    memcpy(node->text.data, text, len);
+    node->text.data[ sizeof(node->text.data)-1 ] = '\0';
+
+    node->text.red = HEX2RED_CHANNEL(color);
+    node->text.grn = HEX2GRN_CHANNEL(color);
+    node->text.blu = HEX2BLU_CHANNEL(color);
+
+    node->text.pos_x = x;
+    node->text.pos_y = y;
+    node->text.len = len;
 }
 
 /*
@@ -162,6 +208,11 @@ void renderbuf_remove_node(struct nemi* st, struct render_buffer* rb, int node_i
 }
 
 static
+bool is_node_active(struct rb_node* node) {
+    return !(node->next && node->prev);
+}
+
+static
 struct rb_node* renderbuf_add_node(struct render_buffer* rb, int* index_out) {
     int this_index = 0;
 
@@ -174,8 +225,7 @@ struct rb_node* renderbuf_add_node(struct render_buffer* rb, int* index_out) {
         // in case of fragmentation happened.
 
         for(size_t i = 0; i < rb->num_nodes_max; i++) {
-            struct rb_node* n = &rb->nodes[i];
-            if(!n->prev && !n->next) {
+            if(!is_node_active(&rb->nodes[i])) {
                 this_index = i;
                 goto found_free_node;
             }
@@ -202,44 +252,56 @@ found_free_node:
     return node;
 }
 
+
 int renderbuf_add_rect(struct nemi* st, 
         struct render_buffer* rb, int x, int y, int w, int h, int color) {
-    
     int ret_index = -1;
 
     struct rb_node* node = renderbuf_add_node(rb, &ret_index);
     if(!node) {
-        logprintf(LOG_ERROR, "Render buffer is full");
+        logprintf(LOG_ERROR, "Render buffer is full.");
     }
    
+    renderbuf_rect_node(st, rb, node, x, y, w, h, color);
+    return ret_index;
+}
 
 
+int renderbuf_add_text(struct nemi* st, 
+        struct render_buffer* rb, int x, int y, char* text, size_t len, int color) {
+    int ret_index = -1;
+    
+    struct rb_node* node = renderbuf_add_node(rb, &ret_index);
+    if(!node) {
+        logprintf(LOG_ERROR, "Render buffer is full.");
+    }
 
+    renderbuf_text_node(st, rb, node, x, y, text, len, color);
     return ret_index;
 }
 
 
 void renderbuf_update_rect(struct nemi* st, 
-        struct render_buffer* rb, int mesh_index, int x, int y, int w, int h, int color) {
-}
-
-/*
-int renderbuf_add_rect(struct nemi* st, 
-        struct render_buffer* rb, int x, int y, int w, int h, int color) {
-    
-    int mesh_index = renderbuf_find_free_mesh(rb);
-    if(mesh_index < 0) {
-        logprintf(LOG_ERROR, "Render buffer is full.");
-        return -1; // No free meshes available.
+        struct render_buffer* rb, int node_index, int x, int y, int w, int h, int color) {
+    if(node_index >= rb->num_nodes_max) {
+        return;
     }
 
-    renderbuf_add_rect_to_mesh(st, &rb->meshes[mesh_index], x, y, w, h, color);
-    return mesh_index;
+    struct rb_node* node = rb->nodes + node_index;
+    if(is_node_active(node) && node->type == RBNODE_MESH) {
+        renderbuf_rect_node(st, rb, node, x, y, w, h, color);
+    }
 }
 
-void renderbuf_update_rect(struct nemi* st, 
-        struct render_buffer* rb, int mesh_index, int x, int y, int w, int h, int color) {
-    renderbuf_add_rect_to_mesh(st, &rb->meshes[mesh_index], x, y, w, h, color);
+void renderbuf_update_text(struct nemi* st, 
+        struct render_buffer* rb, int node_index, int x, int y, char* text, size_t len, int color) {
+    if(node_index >= rb->num_nodes_max) {
+        return;
+    }
+
+    struct rb_node* node = rb->nodes + node_index;
+    if(is_node_active(node) && node->type == RBNODE_TEXT) {
+        renderbuf_text_node(st, rb, node, x, y, text, len, color);
+    }
 }
-*/
 

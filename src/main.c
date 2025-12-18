@@ -13,7 +13,7 @@ int main(int argc, char** argv) {
     (void)argc;
     (void)argv;
 
-    struct nemi* st = start_session();
+    struct nemi* st = start_session("nemi.ini");
     if(!st) {
         return 1;
     }
@@ -25,7 +25,10 @@ int main(int argc, char** argv) {
         render_terminal(st, st->terminal);
 
         end_frame(st);
+   
+        //printf("FrameTime = %f\n", st->frame_time * 1000.0);
     }
+
 
     quit_session(st);
     return 0;
