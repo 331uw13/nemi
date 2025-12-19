@@ -42,6 +42,8 @@ struct nemi {
     // User input buffers.
     int  last_key_in;
     char last_char_in;
+    int  last_keymod_in;
+    
     int  key_inputs  [NEMI_KEYINBUF_MAX];
     char char_inputs [NEMI_CHARINBUF_MAX];
 

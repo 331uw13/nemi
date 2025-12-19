@@ -226,7 +226,6 @@ void init_default_config(struct nemi* st) {
 
 void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     (void)scancode;
-    (void)mods;
 
     if((action != GLFW_PRESS)
     && (action != GLFW_REPEAT)) {
@@ -235,8 +234,9 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
 
     struct nemi* st = (struct nemi*)glfwGetWindowUserPointer(window);
     push_key_input(st, key);
+
     st->last_key_in = key;
-    
+    st->last_keymod_in = mods;
     /*
     if(key == GLFW_KEY_SPACE) {
         renderbuf_test(st);

@@ -358,184 +358,6 @@ bool terminal_get_char(struct terminal* term, char* ch, VTermPos pos) {
 
     return true;
 }
-
-
-static
-bool vmode_is_separator(struct terminal* term, char ch) {
-    for(uint32_t i = 0; i < term->vmode.num_word_separators; i++) {
-        if(ch == term->vmode.word_separators[i]) {
-            return true;
-        }
-    }
-    return false;
-}
-
-static
-void terminal_vmode_read_word(struct terminal* term) {
-
-    memset(term->vmode.word, 0, sizeof(term->vmode.word));
-    term->vmode.word_len = 0;
-   
-
-
-    // Read the whole row first.
-    char row_chars [term->cols];
-    uint32_t row_len = 0;
-    memset(row_chars, 0, sizeof(row_chars));
-
-    for(int i = 0; i < term->cols; i++) {
-        if(terminal_get_char(term, &row_chars[row_len], 
-                    (VTermPos){ term->vmode.curs.row, i })) {
-            if(row_chars[row_len] == 0) {
-                row_len++;
-                break;
-            }
-            row_len++;
-        };
-    }
-
-
-    int word_start_col = -1;
-    int word_end_col   = -1;
-
-    bool curs_on_word = !vmode_is_separator(term, row_chars[ term->vmode.curs.col ]);
-
-    if(curs_on_word) {
-        // Get start column by going left and searching for word separator.
-        for(int c = term->vmode.curs.col; c > 0; c--) {
-            if(vmode_is_separator(term, row_chars[c])) {
-                word_start_col = c + 1;
-                break;
-            }
-        }
-        if(word_start_col < 0) {
-            word_start_col = 0;
-        }
-
-        // Get end column by going right and searching for word separator.
-        for(int c = term->vmode.curs.col; c < term->cols; c++) {
-            if(vmode_is_separator(term, row_chars[c])) {
-                word_end_col = c;
-                break;
-            }
-        }
-
-        if(word_start_col >= 0 && word_end_col >= 0) {
-
-            for(int c = word_start_col; c < word_end_col; c++) {
-                term->vmode.word[term->vmode.word_len++] = row_chars[c];
-            }
-
-        }
-    }
-}
-*/
-/*
-void terminal_move_vmode(struct terminal* term, int col_off, int row_off, enum vmode_move_opt mov_opt) {
-
-    if(mov_opt == VMODE_MOVE_CELL) {
-
-        term->vmode.curs.row += row_off;
-        term->vmode.curs.col += col_off;
-
-    }
-    else
-    if(mov_opt == VMODE_MOVE_WORD) {
-        printf("VMODE_MOVE_WORD - Not implemented yet.\n");
-    }
-
-    terminal_vmode_read_word(term);
-}
-
-void terminal_vmode_add_word_sep(struct terminal* term, char ch) {
-    if(term->vmode.num_word_separators+1 >= ARRAY_LEN(term->vmode.word_separators)) {
-        return;
-    }
-
-    term->vmode.word_separators[ 
-        term->vmode.num_word_separators++
-    ] = ch;
-}
-
-void terminal_vmode_file_interact(struct terminal* term) {
-   
-    if(term->vmode.word_len == 0) {
-        return;
-    }
-
-    printf("Interact file '%s'\n", term->vmode.word);
-
-    if(access(term->vmode.word, F_OK) != 0) {
-        printf("%s: access: %s\n", __func__, strerror(errno));
-        return;
-    }
-
-    struct stat sb;
-    if(stat(term->vmode.word, &sb) != 0) {
-        printf("%s: stat: %s\n", __func__, strerror(errno));
-        return;
-    }
-    
-
-    switch(sb.st_mode & S_IFMT) {
-    
-        case S_IFDIR:
-            break;
-
-        case S_IFREG:
-            break;
-
-
-        default:
-            printf("\033[33m%s: Unhandled file type.\033[0m\n", __func__);
-            break;
-
-
-    }
-
-}
-
-static
-void terminal_handle_vmode_input(struct nemi* st, struct terminal* term) {
-
-    switch(st->last_key_in) {
-
-        case GLFW_KEY_I: // Up
-            terminal_move_vmode(term, 0, -1, VMODE_MOVE_CELL);
-            break;
-
-        case GLFW_KEY_K: // Down
-            terminal_move_vmode(term, 0, 1, VMODE_MOVE_CELL);
-            break;
-
-        case GLFW_KEY_L: // Right
-            terminal_move_vmode(term, 1, 0, VMODE_MOVE_CELL);
-            break;
-
-        case GLFW_KEY_J: // Left
-            terminal_move_vmode(term, -1, 0, VMODE_MOVE_CELL);
-            break;
-
-        case GLFW_KEY_F:
-            term->vmode.mode = VMODE_MODE_FILES;
-            break;
-
-        case GLFW_KEY_S:
-            term->vmode.mode = VMODE_MODE_SEL;
-            break;
-
-        case GLFW_KEY_V:
-            term->vmode.mode = VMODE_MODE_BLOCK_SEL;
-            break;
- 
-        case GLFW_KEY_R:
-        case GLFW_KEY_ENTER:
-            if(term->vmode.mode == VMODE_MODE_FILES) {
-                terminal_vmode_file_interact(term);
-            }
-            break;
-    }
-}
 */
 
 void terminal_handle_char_event(struct nemi* st, struct terminal* term) {
@@ -558,7 +380,7 @@ void terminal_handle_char_event(struct nemi* st, struct terminal* term) {
     if(st->flags & FLG_IGNORE_CHR_INPUT) {
         return;
     }
-    
+
     write_term(term, TERM_WRITE_PTY, &st->last_char_in);
     terminal_set_scroll(term, 0);
 }
@@ -587,9 +409,28 @@ void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
         return;
     }
 
-    if(key_down(st, GLFW_KEY_LEFT_CONTROL)
-    || key_down(st, GLFW_KEY_RIGHT_CONTROL)) {
-        
+    
+    // Im not sure if this is 100% correct
+    // but tried to match behaviour with other terminal emulators
+    // when looking at 'showkey -a' output.
+    if(st->last_key_in >= 'A' && st->last_key_in <= 'Z') {
+        int key = -1;
+
+        if(st->last_keymod_in & GLFW_MOD_ALT) {
+            key = st->last_key_in + 32;
+            write(term->master_fd, "\x1b", 1);
+        }
+
+        if(st->last_keymod_in & GLFW_MOD_CONTROL) {
+            key = st->last_key_in & 0x1F;
+        }
+
+        if(key != -1) { 
+            write(term->master_fd, &key, 1);
+        }
+    }
+
+        /*
         switch(st->last_key_in) { 
 
             case GLFW_KEY_C:
@@ -599,26 +440,31 @@ void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
             case GLFW_KEY_E:
                 write_term(term, TERM_WRITE_PTY, "clear\n");
                 break;
-                
+
             case GLFW_KEY_I:
-                terminal_scroll(term, +1);
+                if(!vterm_screen_is_altscreen(term->vtscrn)) {
+                    terminal_scroll(term, +1);
+                }
                 break;
 
             case GLFW_KEY_K:
-                terminal_scroll(term, -1);
+                if(!vterm_screen_is_altscreen(term->vtscrn)) {
+                    terminal_scroll(term, -1);
+                }
                 break;
 
-      
+            default:
+                break;
         }
 
         return;
-    }
+        */
      
     switch(st->last_key_in) {
 
         case GLFW_KEY_ENTER:
             terminal_set_scroll(term, 0);
-            write_term(term, TERM_WRITE_PTY, "\n");
+            write_term(term, TERM_WRITE_PTY, "\r");
             break; 
 
         case GLFW_KEY_ESCAPE:
