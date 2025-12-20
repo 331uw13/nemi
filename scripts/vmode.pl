@@ -43,14 +43,9 @@ our $vmode;
 our $renderbuf;
 
 
-sub event_char_input {}
-sub event_key_input {
+sub event_char_input {} # Arguments: 0 = character
+sub event_key_input { # Arguments: 0 = key, 1 = modifier.
     
-    # LEFT_CTRL + M
-    if(Nemi::keydown(341) && Nemi::keydown(77)) {
-        vmode::toggle_enable();
-        print("vmode enabled : $vmode::enabled\n");
-    }
 }
 
 

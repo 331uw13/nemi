@@ -19,6 +19,7 @@ void nemipl__rb_update_rect(int rb_index, int rb_node_index, int x, int y, int w
 void nemipl__rb_update_text(int rb_index, int rb_node_inde, int x, int y, char* text, size_t len, int color);
 void nemipl__rb_use_cellcoords(int rb_index);
 void nemipl__rb_use_arbcoords(int rb_index);
+void nemipl__term_scroll_y(int offset);
 int nemipl__term_get_rows();
 int nemipl__term_get_cols();
 int nemipl__keydown(int key);

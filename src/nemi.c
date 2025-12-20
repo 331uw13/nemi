@@ -312,7 +312,7 @@ int new_renderbuf(struct nemi* st, int num_nodes_max) {
             continue;
         }
 
-        rb->nodes = calloc(sizeof *rb->nodes, num_nodes_max);
+        rb->nodes = calloc(num_nodes_max, sizeof *rb->nodes);
         rb->num_nodes_max = num_nodes_max;
         rb->num_nodes     = 0;
         logprintf(LOG_INFO, "Created new render buffer with %i nodes.", num_nodes_max);

@@ -78,6 +78,14 @@ rb_update_text()
         text = SvPV(str, text_len);
         nemipl__rb_update_text(rb_index, rb_node_index, x, y, text, text_len, color);
 
+
+void
+term_scroll_y()
+    int offset;
+    PROTOTYPE: DISABLE
+    CODE:
+        nemipl__term_scroll_y(offset);
+        
 void
 rb_use_cellcoords()
     int rb_index;

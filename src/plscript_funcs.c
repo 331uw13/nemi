@@ -44,6 +44,10 @@ void nemipl__rb_use_arbcoords(int rb_index) {
     g_st->renderbufs[rb_index].coordinate_mode = RBCOORDMODE_ARBITRARY;
 }
 
+void nemipl__term_scroll_y(int offset) {
+    terminal_scroll(g_st->terminal, offset);
+}
+
 int nemipl__term_get_rows() {
     return g_st->terminal->rows;
 }

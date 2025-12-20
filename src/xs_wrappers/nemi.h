@@ -103,6 +103,14 @@ XS(xsw_rb_use_arbcoords) {
     XSRETURN_EMPTY;
 }
 
+XS(xsw_term_scroll_y) {
+    dXSARGS;
+    (void)items;
+    int offset = SvIV(ST(0));
+    nemipl__term_scroll_y(offset);
+    XSRETURN_EMPTY;
+}
+
 XS(xsw_term_get_rows) {
     dXSARGS;
     (void)items;

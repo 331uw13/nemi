@@ -1,4 +1,4 @@
-FLAGS = -ggdb -Wall -Wextra 
+FLAGS = -O2 -Wall -Wextra
 CC = gcc
 
 
