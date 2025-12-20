@@ -120,7 +120,16 @@ sub main {
     push(@ccflags, "-I$perl_dir"); 
     push(@ccflags, "-I/usr/include/freetype2");
     push(@ccflags, "-I/usr/include/libpng16");
+    push(@ccflags, "-I$libvterm_dir/include");
     push(@ccflags, "`perl -MExtUtils::Embed -e ccopts -e ldopts`");
+
+    push(@ldflags, "-lglfw");
+    push(@ldflags, "-lGL");
+    push(@ldflags, "-lGLEW");
+    push(@ldflags, "-lm");
+    push(@ldflags, "-lfreetype");
+    push(@ldflags, "-lperl");
+    push(@ldflags, "-lvterm_l");
 
     push(@ldflags, "-Wl,-rpath=$perl_dir -L$perl_dir");
     push(@ldflags, "-Wl,-rpath=$libvterm_dir -L$libvterm_dir");
@@ -138,28 +147,10 @@ sub main {
     #}
 
 
-    open($FH, '>>', "new_Makefile") or die $!;
+    open($FH, '>>', "Makefile") or die $!;
     truncate $FH, 0;
 
     my $compiler = "gcc";
-
-    #for(;;) {
-    #    print("\n");
-    #    print_stage("Choose compiler.");
-    #    print(
-    #        "`gcc' or `clang'\n".
-    #        "> "
-    #    );
-
-    #    $compiler = <STDIN>;
-    #    chomp($compiler);
-    #    if($compiler eq "gcc" or $compiler eq "clang") {
-    #        last;
-    #    }
-    #    else {
-    #        print("$err_prefix Invalid compiler option \"$compiler\"\n");
-    #    }
-    #}
 
     my $target = "nemi";
     f_append("TARGET = $target\n");
@@ -168,13 +159,14 @@ sub main {
     f_append("CCFLAGS = \\\n");
     for(my $i = 0; $i < scalar(@ccflags); $i++) {
         my $flag = $ccflags[$i];
-        f_append("        $flag ". ($i+1 >= scalar(@ccflags) ? "\n" : "\\ \n"));
+        f_append("        $flag ". ($i+1 >= scalar(@ccflags) ? "\n" : "\\\n"));
     }
+
     f_append("\n");
     f_append("LDFLAGS = \\\n");
     for(my $i = 0; $i < scalar(@ldflags); $i++) {
         my $flag = $ldflags[$i];
-        f_append("        $flag ". ($i+1 >= scalar(@ldflags) ? "\n" : "\\ \n"));
+        f_append("        $flag ". ($i+1 >= scalar(@ldflags) ? "\n" : "\\\n"));
     }
     f_append("\n\n");
    
@@ -188,23 +180,30 @@ sub main {
     my $xsubpp_prefix = argument_exists("-using_perlbrew") ? "perlbrew exec " : "";
     f_append(
         "pre-build:\n" .
-        "   \@perl -MExtUtils::Embed -e xsinit -- -o xs/xsinit.c\n" .
-        "   \@".$xsubpp_prefix."xsubpp xs/nemi.xs > xs/nemi.c\n" .
+        "\t\@perl -MExtUtils::Embed -e xsinit -- -o xs/xsinit.c\n" .
+        "\t\@".$xsubpp_prefix."xsubpp xs/nemi.xs > xs/nemi.c\n" .
         "\n"
     );
 
     f_append(
-        "%.o %.c\n" .
-        "   \$(CC) \$(CCFLAGS) -c \$< -o \$@\n" .
+        "%.o: %.c\n" .
+        "\t\$(CC) \$(CCFLAGS) -c \$< -o \$@\n" .
         "\n"
     );
 
     f_append(
         "\$(TARGET): \$(OBJS)\n" .
-        "   \$(CC) \$(OBJS) \$(LDFLAGS) -o \$@\n".
+        "\t\$(CC) \$(OBJS) \$(LDFLAGS) -o \$@\n".
         "\n"
     );
 
+    f_append(
+        "clean:\n" .
+        "\trm -v xs/nemi.c\n" .
+        "\trm -v xs/xsinit.c\n" .
+        "\trm -v \$(OBJS) \$(TARGET)\n" .
+        "\n"
+    );
 
     close($FH);
 
