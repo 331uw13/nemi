@@ -38,4 +38,14 @@ TODO: Create script to add variable names
       to fix this issue.
 ```
 
+## Compiling the project
+```
+$ perl configure.pl && make
+```
+* If you are using perlbrew:
+```
+$ perl configure.pl -using_perlbrew && make
+```
+
+
 
