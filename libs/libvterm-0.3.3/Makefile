@@ -10,7 +10,7 @@ OBJS = $(SRC:.c=.o)
 all: $(TARGET_NAME)
 
 %.o: %.c
-	@$(CC) $(FLAGS) \
+	@$(CC) $(FLAGS) -I./include \
 		-c $< -o $@
 
 $(TARGET_NAME): $(OBJS)
