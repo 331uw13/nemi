@@ -17,6 +17,10 @@ struct leaf_ctx_t {
     uint32_t renderer_vbo;
     uint32_t renderer_shader;
 
+    uint32_t renderer_tex_vao;
+    uint32_t renderer_tex_vbo;
+    uint32_t renderer_tex_shader;
+
     size_t   renderer_num_vertex_positions;
     size_t   renderer_vbo_memsize;
     size_t   renderer_vbo_size;
@@ -38,5 +42,6 @@ void leaf_free_renderer(struct leaf_ctx_t* ctx);
 // One vertex: [x, y, r, g, b]
 void leaf_render_vertices(struct leaf_ctx_t* ctx, float* vertices, size_t vertices_memsize);
 
+uint32_t leaf_load_texture(const char* path, int* width, int* height);
 
 #endif

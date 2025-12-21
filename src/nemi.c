@@ -16,6 +16,9 @@ void glfw_char_callback(GLFWwindow* window, uint32_t codepoint);
 
 
 
+static int test_texture = 0;
+static int test_w = 0;
+static int test_h = 0;
 
 struct nemi* start_session(const char* config_file) {
     struct nemi* st = malloc(sizeof *st);
@@ -33,7 +36,7 @@ struct nemi* start_session(const char* config_file) {
     struct nemi_font_config font_cfg;
     nemi_read_font_config(st, config_file, &font_cfg);
 
-    if(!leaf_load_font(&st->font, font_cfg.font_filepath)) {
+    if(!leaf_load_font(st->lfctx, &st->font, font_cfg.font_filepath)) {
         quit_session(st);
         return NULL;
     }
@@ -88,6 +91,9 @@ struct nemi* start_session(const char* config_file) {
     }
 
     glfwSwapInterval(st->cfg.vsync ? 0 : 1);
+
+
+    test_texture = leaf_load_texture("font.png", &test_w, &test_h);
 
     return st;
 }
@@ -181,10 +187,25 @@ void end_frame(struct nemi* st) {
                 "frame_time=%0.3fms", st->frame_time * 1000.0);
         leaf_set_font_scale(&st->font, old_font_scale);
     }
+    
+    /*
+    leaf_draw_texture_rect(
+            0.0f, 0.0f,
+            st->font.texture_width,
+            st->font.texture_height,
+            st->font.texture,
+            (struct color_t){ 255, 255, 255 });
+    */
+
+    leaf_font_render(st->lfctx, &st->font);
+
     st->last_char_in = 0;
     st->last_key_in = 0;
     glfwSwapBuffers(st->lfctx->glfw_win);
     glfwPollEvents();
+   
+    usleep(10 * 3000);
+
 
     st->frame_time = glfwGetTime() - st->frame_time_begin;
 }
@@ -243,6 +264,15 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
     }
     */
 
+    if(mods & GLFW_MOD_CONTROL) {
+        if(key == GLFW_KEY_1) {
+            leaf_set_font_scale(&st->font, st->font.scale - 0.1f);
+        }
+        else
+        if(key == GLFW_KEY_2) {
+            leaf_set_font_scale(&st->font, st->font.scale + 0.1f);
+        }
+    }
     terminal_handle_key_event(st, st->terminal);
 }
 

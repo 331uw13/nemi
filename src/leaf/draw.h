@@ -50,6 +50,16 @@ void leaf_draw_rect
     struct color_t color
 );
 
+void leaf_draw_texture_rect
+(
+    float pos_x,
+    float pos_y,
+    float width,
+    float height,
+    uint32_t texture,
+    struct color_t color
+);
+
 void leaf_draw_circle
 (
     float pos_x,

@@ -7,12 +7,14 @@
 
 
 struct glyph_t {
-    uint32_t texture; // Texture ID OpenGL can use.
     int width;
     int height;
 
     int bearing_x;
     int bearing_y;
+
+    int atlas_x;
+    float vertices [ 5 * 6 ]; // (x, y, tex_x, tex_y, atlas_x) * 6
 };
 
 struct font_t {
@@ -43,14 +45,19 @@ struct font_t {
     // By default set to 'false'
     bool center_char_to_cell;
 
+    uint32_t texture;
+    uint32_t texture_width;
+    uint32_t texture_height;
     uint32_t shader;
     uint32_t vbo;
     uint32_t vao;
-    int shader_color_uniloc; // Uniform locatio for 'font_color'
+    size_t   vbo_data_offset;
+    size_t   vbo_num_vertices;
+    //int shader_color_uniloc; // Uniform locatio for 'font_color'
 };
 
-
-bool leaf_load_font(struct font_t* font, const char* filepath);
+struct leaf_ctx_t;
+bool leaf_load_font(struct leaf_ctx_t* lfctx, struct font_t* font, const char* filepath);
 void leaf_unload_font(struct font_t* font);
 
 void leaf_set_font_scale(struct font_t* font, float scale);
@@ -68,5 +75,6 @@ void leaf_measure_text
     ssize_t text_length
 );
 
+void leaf_font_render(struct leaf_ctx_t* lfctx, struct font_t* font);
 
 #endif
