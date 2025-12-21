@@ -187,16 +187,15 @@ void end_frame(struct nemi* st) {
                 "frame_time=%0.3fms", st->frame_time * 1000.0);
         leaf_set_font_scale(&st->font, old_font_scale);
     }
-    
+   
     /*
     leaf_draw_texture_rect(
-            0.0f, 0.0f,
+            sin(glfwGetTime()*0.2)*1000-1000, 200.0f,
             st->font.texture_width,
             st->font.texture_height,
             st->font.texture,
             (struct color_t){ 255, 255, 255 });
     */
-
     leaf_font_render(st->lfctx, &st->font);
 
     st->last_char_in = 0;

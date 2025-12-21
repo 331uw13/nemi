@@ -14,7 +14,7 @@ struct glyph_t {
     int bearing_y;
 
     int atlas_x;
-    float vertices [ 5 * 6 ]; // (x, y, tex_x, tex_y, atlas_x) * 6
+    //float vertices [ 5 * 6 ]; // (x, y, tex_x, tex_y, atlas_x) * 6
 };
 
 struct font_t {
@@ -53,6 +53,10 @@ struct font_t {
     uint32_t vao;
     size_t   vbo_data_offset;
     size_t   vbo_num_vertices;
+    
+    float    char_color_r;
+    float    char_color_g;
+    float    char_color_b;
     //int shader_color_uniloc; // Uniform locatio for 'font_color'
 };
 

@@ -19,32 +19,33 @@ static const char FONT_VERTEX_SHADER_SRC[] = {
     "layout (location = 0) in vec2 in_pos;\n"
     "layout (location = 1) in vec2 in_tex_coords;\n"
     "layout (location = 2) in float in_atlas_offset;\n"
+    "layout (location = 3) in vec3  in_char_color;\n"
     //"uniform vec3 font_color;\n"
     //"uniform float u_italic;\n"
     //"uniform float u_char_y;\n"
     //"uniform float u_char_x;\n"
-    //"uniform float u_scale;\n"
+    "uniform float u_scale;\n"
     
     "out vec2 tex_coords;\n" 
     "out vec3 color;\n"
     "out float atlas_offset;\n"
+    "out float glyph_width;\n"
     "\n"
     "void main() {\n"
-        "tex_coords = in_tex_coords;\n"
-        "color = vec3(1, 1, 1);\n"
+        "tex_coords   = in_tex_coords;\n"
         "atlas_offset = in_atlas_offset;\n"
+        "color        = in_char_color;\n"
         
         "vec2 p = in_pos;\n"
         "gl_Position = vec4(p.x, p.y, 0.0, 1.0);\n"
     //"   color = vec3(1, 1, 1);\n"
-    //"   vec2 p = pos * u_scale;\n"
     //"   p.x += (p.y - u_char_y) * (u_italic * 0.5);\n"
     //"   p.x += u_char_x;\n"
     //"   p.y += u_char_y;\n"
     //"   tex_coords = texture_coords;\n"
     //"   gl_Position = vec4(p.x, p.y, 0.0, 1.0);\n"
     //"   \n"
-    "}\n",
+    "}\n"
 };
 
 static const char FONT_FRAGMENT_SHADER_SRC[] = {
@@ -53,29 +54,30 @@ static const char FONT_FRAGMENT_SHADER_SRC[] = {
     "in vec2 tex_coords;\n"  
     "in vec3 color;\n"
     "in float atlas_offset;\n"
+    "in float glyph_width;\n"
     
     "uniform float u_tex_w;\n"
+    "uniform float u_tex_h;\n"
     "uniform float u_chr_w;\n"
     "uniform float u_chr_h;\n"
     "uniform sampler2D tex;\n"
   
     "void main() {\n"
-
-        "const int num_chars = 95;"
-        "const int atlas_rows = 1;"
-        "float char_w = 1.0 / float(num_chars);"
-        "int col = int(atlas_offset) % num_chars;"
-        "float tex_x = (float(col) + tex_coords.x) * char_w;"
-
-        "vec2 texc = vec2(tex_x, tex_coords.y);"
-        "float T = texture(tex, texc).r;"
-        "out_color = vec4(T, 0, 0, 1);"
+        "float char_w = u_chr_w / u_tex_w;"
+        "float char_h = u_chr_h / u_tex_h;"
+        "float tex_x = (atlas_offset + tex_coords.x) * char_w;"
+        "float tex_y =                 tex_coords.y  * char_h;"
+        "vec2 texc = vec2(tex_x, tex_y * 1.2);"
+        "float c = texture(tex, texc).r;"
+        
+        "float a = smoothstep(0.1f, 1.0f, c);"
+        "out_color = vec4(color, a);"
 
     //"    vec4 t = texture(tex, tex_coords);\n"
     //"    vec3 c = color * t.r;\n"
     //"    float a = smoothstep(0.1f, 1.0f, t.r);"
     //"    out_color = vec4(c, a);\n"
-    "}\n",
+    "}\n"
 };
 
 void leaf_font_render(struct leaf_ctx_t* lfctx, struct font_t* font) {
@@ -84,9 +86,10 @@ void leaf_font_render(struct leaf_ctx_t* lfctx, struct font_t* font) {
     glUseProgram(font->shader);
 
     shader_uniform1f(font->shader, "u_tex_w", font->texture_width);
+    shader_uniform1f(font->shader, "u_tex_h", font->texture_height);
     shader_uniform1f(font->shader, "u_chr_w", font->max_bitmap_width);
     shader_uniform1f(font->shader, "u_chr_h", font->max_bitmap_height);
-   
+    shader_uniform1f(font->shader, "u_scale", font->scale);
     /*
     shader_uniform1f(font->shader, "u_chr_w", 
             (float)font->max_bitmap_width / (float)lfctx->win_width);
@@ -124,7 +127,7 @@ bool leaf_load_font(struct leaf_ctx_t* lfctx, struct font_t* font, const char* f
         goto error;
     }
 
-    FT_Set_Pixel_Sizes(face, 0, 64);
+    FT_Set_Pixel_Sizes(face, 0, 32);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
     font->max_bitmap_width = 0;
@@ -172,7 +175,7 @@ bool leaf_load_font(struct leaf_ctx_t* lfctx, struct font_t* font, const char* f
             font->max_bitmap_height = bitmap_height;
         }
 
-        struct glyph_t* glyph = &font->glyphs[ c - 0x20 ];
+        struct glyph_t* glyph = &font->glyphs[c - 0x20];
         *glyph = (struct glyph_t) {
             .width = bitmap_width,
             .height = bitmap_height,
@@ -186,15 +189,16 @@ bool leaf_load_font(struct leaf_ctx_t* lfctx, struct font_t* font, const char* f
 
     // We are going to create very wide texture
     // where all characters are in the same row
-    //
 
-    // At this point texture width is rough assumption.
     font->texture_width  = FONT_NUM_CHARS * font->max_bitmap_width;
     font->texture_height  = font->max_bitmap_height;
 
+    // Add safe amount of extra space for characters
+    // in y axis because they have to be offset later
+    font->texture_height += 60;
+
     size_t num_pixels = font->texture_width * font->texture_height;
     uint8_t* pixels = calloc(num_pixels*4 /*rgba*/, sizeof *pixels);
-
 
     printf("Font texture: %ix%i\n",
             font->texture_width,
@@ -204,6 +208,7 @@ bool leaf_load_font(struct leaf_ctx_t* lfctx, struct font_t* font, const char* f
 
 
     int tex_actual_width = 0;
+
 
     for(uint32_t c = first_ascii_char; c < last_ascii_char; c++) { 
         //FT_Bitmap* bitmap = &bitmaps[c_index];
@@ -225,12 +230,12 @@ bool leaf_load_font(struct leaf_ctx_t* lfctx, struct font_t* font, const char* f
 
                 // Offset the character to correct Y position.
                 // For example: ", - * +". are at different y levels
-                //y += (font->max_bitmap_height - bitmap->rows);
-                //y += (bitmap->rows - face->glyph->bitmap_top);
+                y += (font->max_bitmap_height - bitmap->rows);
+                y += (bitmap->rows - face->glyph->bitmap_top);
+                
+                x += (font->max_bitmap_width - bitmap->width) / 3;
 
-                //x += font->max_bitmap_width - bitmap->width;
-
-                int byte = bitmap->buffer[ row * bitmap->pitch + col ];
+                int byte = bitmap->buffer[row * bitmap->width + col];
                 size_t idx = y * font->texture_width + x;
                 pixels[idx * 4 + 0] = byte;
                 pixels[idx * 4 + 1] = byte;
@@ -241,27 +246,12 @@ bool leaf_load_font(struct leaf_ctx_t* lfctx, struct font_t* font, const char* f
         
         struct glyph_t* glyph = &font->glyphs[c_index++];
         glyph->atlas_x = c_index-1;
-       
-        printf("TODO: Add option for font_center_char_to_cell\n");
-        /*
-        float cw = (float)bitmap->width / (float)lfctx->win_width;
-        float ch = (float)bitmap->rows / (float)lfctx->win_height;
         
-        float glyph_vertices[] = {
-            0,    0-ch, 0.0f, 1.0f, glyph->atlas_x, 
-            0,    0,    0.0f, 0.0f, glyph->atlas_x,
-            0+cw, 0,    1.0f, 0.0f, glyph->atlas_x,
-
-            0,    0-ch, 0.0f, 1.0f, glyph->atlas_x,
-            0+cw, 0,    1.0f, 0.0f, glyph->atlas_x,
-            0+cw, 0-ch, 1.0f, 1.0f, glyph->atlas_x  
-        };
-
-        memcpy(glyph->vertices, glyph_vertices, sizeof(glyph_vertices));
-        */
         tex_actual_width += font->max_bitmap_width;
     }
 
+        
+    printf("TODO: Add option for font_center_char_to_cell\n");
 
     // Writing to disk temporarily to just make
     // sure everything else is working first.
@@ -273,7 +263,7 @@ bool leaf_load_font(struct leaf_ctx_t* lfctx, struct font_t* font, const char* f
             pixels,
             font->texture_width * 4);
 
-   // font->texture_width = tex_actual_width;
+    // font->texture_width = tex_actual_width;
 
     font->texture = leaf_load_texture("font.png", 
             &font->texture_width,
@@ -343,14 +333,17 @@ bool leaf_load_font(struct leaf_ctx_t* lfctx, struct font_t* font, const char* f
     glGenVertexArrays(1, &font->vao);
     glBindVertexArray(font->vao);
 
+
+    const int stride_num_floats = 2 + 2 + 1 + 3;
+
     glGenBuffers(1, &font->vbo);
     glBindBuffer(GL_ARRAY_BUFFER, font->vbo);
     glBufferData(GL_ARRAY_BUFFER, 
-            sizeof(font->glyphs[0].vertices) * FONT_NUM_CHARS,
+            (sizeof(float) * (stride_num_floats * 6)) * (600 * 600),
             NULL, GL_DYNAMIC_DRAW);
     
-    // x, y, tex_x, tex_y, atlas_x
-    const size_t stride_size = 5 * sizeof(float);
+    // x, y, tex_x, tex_y, atlas_x,
+    const size_t stride_size = stride_num_floats * sizeof(float);
 
     // Positions
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, stride_size, 0);
@@ -359,13 +352,18 @@ bool leaf_load_font(struct leaf_ctx_t* lfctx, struct font_t* font, const char* f
     // Texture coordinates
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,
             stride_size, (void*)(2*sizeof(float)));
+    glEnableVertexAttribArray(1);
  
     // Texture atlas coordinate X offset
     glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE,
-            stride_size, (void*)(4*sizeof(float)));   
-
-    glEnableVertexAttribArray(1);
+            stride_size, (void*)(4*sizeof(float)));
     glEnableVertexAttribArray(2);
+
+    // Character color
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE,
+            stride_size, (void*)(5*sizeof(float)));
+    glEnableVertexAttribArray(3);
+
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);  
@@ -413,8 +411,9 @@ void leaf_unload_font(struct font_t* font) {
     }
 
     glDeleteProgram(font->shader);
-    //glDeleteBuffers(1, &font->vbo);
-    //glDeleteVertexArrays(1, &font->vao);
+    glDeleteBuffers(1, &font->vbo);
+    glDeleteVertexArrays(1, &font->vao);
+    glDeleteTextures(1, &font->texture);
 }
 
 void leaf_set_font_scale(struct font_t* font, float scale) {
@@ -427,7 +426,10 @@ void leaf_set_font_scale(struct font_t* font, float scale) {
 }
 
 void leaf_set_font_color(struct font_t* font, float r, float g, float b) {
-    glUseProgram(font->shader);
+    font->char_color_r = r;
+    font->char_color_g = g;
+    font->char_color_b = b;
+    //glUseProgram(font->shader);
     //glUniform3f(font->shader_color_uniloc, r, g, b);
 }
 
