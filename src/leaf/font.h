@@ -51,6 +51,7 @@ struct font_t {
     uint32_t shader;
     uint32_t vbo;
     uint32_t vao;
+    size_t   vbo_memsize;
     size_t   vbo_data_offset;
     size_t   vbo_num_vertices;
     

@@ -14,6 +14,7 @@
 struct scrollback_row {
     VTermScreenCell* cells;
     uint32_t         num_cells;
+    uint32_t         num_cells_alloc;
 };
 
 struct scrollback {
@@ -22,13 +23,6 @@ struct scrollback {
     size_t num_rows_max;
     int    offset;
 };
-
-/*
-enum vmode_move_opt {
-    VMODE_MOVE_WORD, // Skip words, separated by space. TODO: Add to config, what are separators.
-    VMODE_MOVE_CELL  // Normal movement.
-};
-*/
 
 enum term_write_target {
     TERM_WRITE_PTY,
@@ -92,11 +86,6 @@ void render_terminal       (struct nemi* st, struct terminal* term);
 void write_term            (struct terminal* term, enum term_write_target target, char* fmt, ...);
 void terminal_scroll       (struct terminal* term, int offset);
 void terminal_set_scroll   (struct terminal* term, int scroll);
-//void terminal_move_vmode  
-//    (struct terminal* term, int col_off, int row_off, enum vmode_move_opt mov_opt);
-
-    // Add word separator for vmode.
-//void terminal_vmode_add_word_sep(struct terminal* term, char ch);
 
 void terminal_handle_char_event   (struct nemi* st, struct terminal* term);
 void terminal_handle_key_event    (struct nemi* st, struct terminal* term);

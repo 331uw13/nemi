@@ -108,6 +108,7 @@ sub main {
         print("$ok_prefix libvterm compiled succesfully.\n");
     }
 
+    my $perl_prefix = argument_exists("-using_perlbrew") ? "perlbrew exec" : "";
 
     my @ccflags = ();
     my @ldflags = ();
@@ -120,9 +121,8 @@ sub main {
     push(@ccflags, "-I$perl_dir"); 
     push(@ccflags, "-I/usr/include/freetype2");
     push(@ccflags, "-I/usr/include/libpng16");
-    push(@ccflags, "-I$libvterm_dir/include");
-    push(@ccflags, "`perl -MExtUtils::Embed -e ccopts -e ldopts`");
-
+    push(@ccflags, "-I$libvterm_dir/include"); 
+    push(@ccflags, "`$perl_prefix perl -MExtUtils::Embed -e ccopts -e ldopts`");
     push(@ldflags, "-lglfw");
     push(@ldflags, "-lGL");
     push(@ldflags, "-lGLEW");
@@ -177,11 +177,10 @@ sub main {
     f_append("\n");
 
     f_append("all: pre-build $target\n\n");
-    my $xsubpp_prefix = argument_exists("-using_perlbrew") ? "perlbrew exec " : "";
     f_append(
         "pre-build:\n" .
-        "\t\@perl -MExtUtils::Embed -e xsinit -- -o xs/xsinit.c\n" .
-        "\t\@".$xsubpp_prefix."xsubpp xs/nemi.xs > xs/nemi.c\n" .
+        "\t\@$perl_prefix perl -MExtUtils::Embed -e xsinit -- -o xs/xsinit.c\n" .
+        "\t\@$perl_prefix xsubpp xs/nemi.xs > xs/nemi.c\n" .
         "\n"
     );
 

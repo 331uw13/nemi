@@ -59,7 +59,11 @@ float leaf_draw_char
     };
 
     //memcpy(glyph->vertices, glyph_vertices, sizeof(glyph_vertices));
-     
+    
+
+//    printf("%s: %li / %li\n", __func__, 
+//            font->vbo_data_offset, font->vbo_memsize);
+
     glBindBuffer(GL_ARRAY_BUFFER, font->vbo);
     glBufferSubData(
             GL_ARRAY_BUFFER,

@@ -15,11 +15,6 @@ void glfw_scroll_callback(GLFWwindow* window, double x_offset, double y_offset);
 void glfw_char_callback(GLFWwindow* window, uint32_t codepoint);
 
 
-
-static int test_texture = 0;
-static int test_w = 0;
-static int test_h = 0;
-
 struct nemi* start_session(const char* config_file) {
     struct nemi* st = malloc(sizeof *st);
 
@@ -93,8 +88,6 @@ struct nemi* start_session(const char* config_file) {
     glfwSwapInterval(st->cfg.vsync ? 0 : 1);
 
 
-    test_texture = leaf_load_texture("font.png", &test_w, &test_h);
-
     return st;
 }
 
@@ -112,7 +105,7 @@ void quit_session(struct nemi* st) {
 
 
     for(size_t i = 0; i < ARRAY_LEN(st->scripts); i++) {
-        nemi_unload_perl_script(&st->scripts[i]);
+        unload_perl_script(&st->scripts[i]);
     }
 
     for(size_t i = 0; i < ARRAY_LEN(st->renderbufs); i++) {
@@ -144,6 +137,7 @@ void begin_frame(struct nemi* st) {
 }
 
 void end_frame(struct nemi* st) {
+    
     for(size_t i = 0; i < ARRAY_LEN(st->renderbufs); i++) {
         struct render_buffer* rb = &st->renderbufs[i];
         if(rb->num_nodes == 0) {
@@ -203,7 +197,7 @@ void end_frame(struct nemi* st) {
     glfwSwapBuffers(st->lfctx->glfw_win);
     glfwPollEvents();
    
-    usleep(10 * 3000);
+    usleep(10 * 1000);
 
 
     st->frame_time = glfwGetTime() - st->frame_time_begin;
@@ -223,7 +217,7 @@ void init_default_config(struct nemi* st) {
     int l_v = 30;
 
     st->cfg.colors[NEMI_COLOR_FG] = (struct color_t){ 200, 180, 160 };
-    st->cfg.colors[NEMI_COLOR_BG] = (struct color_t){ 10, 10, 10 };
+    st->cfg.colors[NEMI_COLOR_BG] = (struct color_t){ 12, 13, 15 };
     st->cfg.colors[NEMI_COLOR_BLACK]   = (struct color_t){ 0, 0, 0 };
     st->cfg.colors[NEMI_COLOR_RED]     = (struct color_t){ d_v, l_v, l_v };
     st->cfg.colors[NEMI_COLOR_GREEN]   = (struct color_t){ l_v, d_v, l_v };
@@ -244,11 +238,51 @@ void init_default_config(struct nemi* st) {
 
 }
 
+
+void trigger_key_event_for_scripts(struct nemi* st, int key, int key_modifiers) {
+    
+    char key_str[8] = { 0 };
+    snprintf(key_str, sizeof(key_str)-1, "%d", key);
+    
+    char mods_str[8] = { 0 };
+    snprintf(mods_str, sizeof(mods_str)-1, "%d", key_modifiers);
+    
+    char* args[] = {
+        key_str,
+        mods_str,
+        NULL
+    };
+
+    for(size_t i = 0; i < ARRAY_LEN(st->scripts); i++) {
+        struct perl_script* script = &st->scripts[i];
+        if(!script->is_loaded) {
+            continue;
+        }
+        plscript_call_args(script, "event_key_input", args);
+    }
+}
+
+void trigger_char_event_for_scripts(struct nemi* st, char chr) {
+    if(st->last_char_in != 0) {
+        char* args[] = {
+            &chr,
+            NULL
+        };
+
+        for(size_t i = 0; i < ARRAY_LEN(st->scripts); i++) {
+            struct perl_script* script = &st->scripts[i];
+            if(!script->is_loaded) {
+                continue;
+            }
+            plscript_call_args(script, "event_char_input", args);
+        }
+    }
+}
+
 void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     (void)scancode;
 
-    if((action != GLFW_PRESS)
-    && (action != GLFW_REPEAT)) {
+    if(action != GLFW_PRESS && action != GLFW_REPEAT) {
         return;
     }
 
@@ -257,27 +291,18 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
 
     st->last_key_in = key;
     st->last_keymod_in = mods;
-    /*
-    if(key == GLFW_KEY_SPACE) {
-        renderbuf_test(st);
-    }
-    */
+    
 
-    if(mods & GLFW_MOD_CONTROL) {
-        if(key == GLFW_KEY_1) {
-            leaf_set_font_scale(&st->font, st->font.scale - 0.1f);
-        }
-        else
-        if(key == GLFW_KEY_2) {
-            leaf_set_font_scale(&st->font, st->font.scale + 0.1f);
-        }
-    }
+    trigger_key_event_for_scripts(st, key, mods);
     terminal_handle_key_event(st, st->terminal);
 }
 
 void glfw_char_callback(GLFWwindow* window, uint32_t codepoint) {
     struct nemi* st = (struct nemi*)glfwGetWindowUserPointer(window);
+
     if(codepoint >= 0x20 && codepoint <= 0x7E) {
+        trigger_char_event_for_scripts(st, codepoint);
+        
         push_char_input(st, codepoint);
         st->last_char_in = codepoint;
     
@@ -298,8 +323,8 @@ void glfw_window_resize_callback(GLFWwindow* window, int width, int height) {
 
     glViewport(0, 0, width, height);
 
-    st->win_rows = st->lfctx->win_width / st->font.char_width;
-    st->win_cols = st->lfctx->win_height / (st->font.char_height + st->cfg.line_padding);
+    st->win_cols = width / st->font.char_width;
+    st->win_rows = height / (st->font.char_height + st->cfg.line_padding);
 
     st->win_cols -= 1;
     st->win_rows -= 1;
@@ -352,4 +377,6 @@ int new_renderbuf(struct nemi* st, int num_nodes_max) {
 
     return ret_index;
 }
+
+
 

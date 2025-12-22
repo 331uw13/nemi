@@ -43,6 +43,18 @@ void vterm_scroll_callback(VTermRect rect, int downward, int rightward, void *us
 
     sbrow->num_cells = 0;
 
+    if(sbrow->num_cells_alloc != term->cols) {
+        sbrow->num_cells_alloc = term->cols;
+        size_t num_bytes = sbrow->num_cells_alloc * sizeof *sbrow->cells;
+        void* cells_new_ptr = realloc(sbrow->cells, num_bytes);
+        if(cells_new_ptr == NULL) {
+            logprintf(LOG_ERROR, "Failed to reallocate scrollback buffer row %p cells. "
+                    "Tried to allocate %li bytes", sbrow, num_bytes);
+            return;
+        }
+        sbrow->cells = cells_new_ptr;
+    }
+
     for(int col = 0; col < term->cols; col++) {
         if(vterm_screen_get_cell(term->vtscrn, 
                 (VTermPos){ cell_row, col }, &sbrow->cells[ sbrow->num_cells ])) {
@@ -61,13 +73,16 @@ void init_scrollback_buffer(struct terminal* term) {
     term->sb.num_rows = 0;
     term->sb.num_rows_max = SCROLLBACK_LIMIT;
     term->sb.rows = malloc(SCROLLBACK_LIMIT * sizeof *term->sb.rows);
+
     for(size_t i = 0; i < SCROLLBACK_LIMIT; i++) {
         struct scrollback_row* row = &term->sb.rows[i];
 
-        row->cells = malloc(term->cols * sizeof *row->cells);
+        row->num_cells_alloc = term->cols;
+        row->cells = malloc(row->num_cells_alloc * sizeof *row->cells);
         row->num_cells = 0;
     }
 
+    logprintf(LOG_INFO, "Initialized scrollback buffer (%i rows)", SCROLLBACK_LIMIT);
 }
 
 struct terminal* spawn_terminal(struct nemi* st, int rows, int cols) {
@@ -95,8 +110,6 @@ struct terminal* spawn_terminal(struct nemi* st, int rows, int cols) {
 
     term->flags = 0;
     term->line_height = st->font.char_height + st->cfg.line_padding;
-
-
     
     init_scrollback_buffer(term);
     term->vt = vterm_new(rows, cols);
@@ -115,23 +128,9 @@ struct terminal* spawn_terminal(struct nemi* st, int rows, int cols) {
 
     term->is_altscreen = false;
 
-    /*
-    term->vmode.mode = VMODE_MODE_FILES;
-    term->vmode.enabled = false;
-    term->vmode.curs.row = 0;
-    term->vmode.curs.col = 0;
-    term->vmode.sel_start_row = 0;
-    term->vmode.sel_start_col = 0;
-    */
     terminal_init_palette(st, term);
 
-    // Add vmode word separators.
-    //terminal_vmode_add_word_sep(term, ' ');
-    //terminal_vmode_add_word_sep(term, '\0');
-
     logprintf(LOG_INFO, "Created terminal (%ix%i)", term->rows, term->cols);
-    //printf("%s() %p (%ix%i)\n", __func__, term, term->rows, term->cols);
-
     return term;
 }
 
@@ -222,6 +221,9 @@ void render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, 
         return;
     }
 
+    int char_x = coltox(st, pos.col);
+    int char_y = rowtoy(st, pos.row);
+    
     if(VTERM_COLOR_IS_INDEXED(&cell->fg)) {
         vterm_state_convert_color_to_rgb(term->vtstate, &cell->fg);
     }
@@ -232,9 +234,30 @@ void render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, 
                 (float)cell->fg.rgb.green / 255.0f,
                 (float)cell->fg.rgb.blue  / 255.0f);
     }
-    
-    int char_x = coltox(st, pos.col);
-    int char_y = rowtoy(st, pos.row);
+
+
+    if(VTERM_COLOR_IS_INDEXED(&cell->bg)) {
+        vterm_state_convert_color_to_rgb(term->vtstate, &cell->bg);
+    }
+
+    if(VTERM_COLOR_IS_RGB(&cell->fg)) {
+        if(cell->bg.rgb.red   != st->cfg.colors[NEMI_COLOR_BG].r
+        || cell->bg.rgb.green != st->cfg.colors[NEMI_COLOR_BG].g
+        || cell->bg.rgb.blue  != st->cfg.colors[NEMI_COLOR_BG].b) {
+            
+            leaf_draw_rect(
+                    char_x, char_y,
+                    st->font.char_width,
+                    st->font.char_height,
+                    (struct color_t){
+                        cell->bg.rgb.red,
+                        cell->bg.rgb.green,
+                        cell->bg.rgb.blue,
+                    });
+        }
+    }
+    //printf("%i, %i, %i\n", cellbg_R, cellbg_G, cellbg_B);
+
 
     st->font.italic = (cell->attrs.italic) ? st->cfg.italic_tilt : 0.0f;
 
@@ -253,18 +276,30 @@ void render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, 
                 });
     }
 }
-/*
+
+
 static
-void render_vmode(struct nemi* st, struct terminal* term) {
-        
-    leaf_set_font_color(&st->font, 0.7, 0.3, 0.5);
+void render_scrollback_buffer(struct nemi* st, struct terminal* term) {
+    if(term->sb.offset > 0 && term->sb.num_rows > 0) {
+        int row = 0;
 
-    int label_width = coltox(st, 10);
+        ssize_t start_offset = term->sb.num_rows - term->sb.offset;
+        if(start_offset < 0) {
+            logprintf(LOG_ERROR, "Invalid scrollback offset %li", start_offset);
+            return;
+        }
+            
+        struct scrollback_row* sbrow = &term->sb.rows[ start_offset ];
 
-    leaf_draw_text_fmt(&st->font, st->lfctx->win_width - label_width, 10, 
-            "[vmode]:%c", (char)term->vmode.mode);
+        while(row < term->sb.offset) {
+            for(int col = 0; col < term->cols; col++) {
+                render_cell(st, term, &sbrow->cells[col], (VTermPos){ row, col });
+            }
+            row++;
+            sbrow++;
+        }
+    }
 }
-*/
 
 void render_terminal(struct nemi* st, struct terminal* term) {
 
@@ -273,33 +308,12 @@ void render_terminal(struct nemi* st, struct terminal* term) {
         term->sb.offset = 0;
     }
 
-    if(term->sb.offset > 0 && term->sb.num_rows > 0) {
-        int row = 0;
-
-        ssize_t start_offset = term->sb.num_rows - term->sb.offset;
-        if(start_offset < 0) {
-            logprintf(LOG_ERROR, "Invalid scrollback offset %li", start_offset);
-            goto scrollback_err;
-        }
-            
-        struct scrollback_row* sbrow = &term->sb.rows[ start_offset ];
-
-        while(row < term->sb.offset) {
-            for(int col = 0; col < term->cols; col++) {
-                render_cell(st, term, &sbrow->cells[col], 
-                        (VTermPos){ row, col });
-            }
-            row++;
-            sbrow++;
-        }
-    }
-scrollback_err:
+    render_scrollback_buffer(st, term);
 
     for(int row = 0; row < term->rows; row++) {
         for(int col = 0; col < term->cols; col++) {
             VTermScreenCell cell;
-            if(!vterm_screen_get_cell(term->vtscrn, 
-                        (VTermPos){ row, col }, &cell)) {
+            if(!vterm_screen_get_cell(term->vtscrn,  (VTermPos){ row, col }, &cell)) {
                 return;
             }
             render_cell(st, term, &cell,
@@ -361,22 +375,6 @@ bool terminal_get_char(struct terminal* term, char* ch, VTermPos pos) {
 */
 
 void terminal_handle_char_event(struct nemi* st, struct terminal* term) {
-
-    if(st->last_char_in != 0) {
-        char* args[] = {
-            &st->last_char_in,
-            NULL
-        };
-
-        for(size_t i = 0; i < ARRAY_LEN(st->scripts); i++) {
-            struct perl_script* script = &st->scripts[i];
-            if(!script->is_loaded) {
-                continue;
-            }
-            plscript_call_args(script, "event_char_input", args);
-        }
-    }
-
     if(st->flags & FLG_IGNORE_CHR_INPUT) {
         return;
     }
@@ -387,28 +385,9 @@ void terminal_handle_char_event(struct nemi* st, struct terminal* term) {
 
 
 void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
- 
-    if(st->last_key_in != 0) {
-        char key_str[8] = { 0 };
-        snprintf(key_str, sizeof(key_str), "%d", st->last_key_in);
-        char* args[] = {
-            key_str,
-            NULL
-        };
-
-        for(size_t i = 0; i < ARRAY_LEN(st->scripts); i++) {
-            struct perl_script* script = &st->scripts[i];
-            if(!script->is_loaded) {
-                continue;
-            }
-            plscript_call_args(script, "event_key_input", args);
-        }
-    }   
-
     if(st->flags & FLG_IGNORE_KEY_INPUT) {
         return;
     }
-
     
     // Im not sure if this is 100% correct
     // but tried to match behaviour with other terminal emulators
@@ -430,36 +409,6 @@ void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
         }
     }
 
-        /*
-        switch(st->last_key_in) { 
-
-            case GLFW_KEY_C:
-                write_term(term, TERM_WRITE_PTY, "\03");
-                break;
-
-            case GLFW_KEY_E:
-                write_term(term, TERM_WRITE_PTY, "clear\n");
-                break;
-
-            case GLFW_KEY_I:
-                if(!vterm_screen_is_altscreen(term->vtscrn)) {
-                    terminal_scroll(term, +1);
-                }
-                break;
-
-            case GLFW_KEY_K:
-                if(!vterm_screen_is_altscreen(term->vtscrn)) {
-                    terminal_scroll(term, -1);
-                }
-                break;
-
-            default:
-                break;
-        }
-
-        return;
-        */
-     
     switch(st->last_key_in) {
 
         case GLFW_KEY_ENTER:
@@ -496,11 +445,11 @@ void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
             break;
 
     }
-
 }
 
 void terminal_handle_resize_event(struct nemi* st, struct terminal* term) {
 
+    int old_cols = st->win_cols;
     term->cols = st->win_cols;
     term->rows = st->win_rows;
 

@@ -5,8 +5,7 @@
 #include "script.h"
 #include "nemi.h"
 #include "common.h"
-
-
+#include "fileio.h"
 #include "xs_wrappers/nemi.h"
 
 
@@ -50,7 +49,24 @@ void register_functions(struct perl_script* script) {
 }
 
 
-bool nemi_load_perl_script(struct nemi* st, const char* filepath) {
+static
+void get_script_reg_events(struct perl_script* script, const char* script_filepath) {
+    script->reg_events = 0;
+
+    char* file = NULL;
+    size_t file_size = 0;
+    if(!map_file(script_filepath, PROT_READ, &file, &file_size)) {
+        logprintf(LOG_ERROR, "Failed to map \"%s\"", script_filepath);
+        return;
+    }
+
+    printf("%s\n", file);
+
+
+    munmap(file, file_size);
+}
+
+bool load_perl_script(struct nemi* st, const char* filepath) {
     if(!filepath) {
         return false;
     }
@@ -68,26 +84,30 @@ bool nemi_load_perl_script(struct nemi* st, const char* filepath) {
 
 
 
+
     script->perl_interp = perl_alloc();
     PERL_SET_CONTEXT(script->perl_interp);
     perl_construct(script->perl_interp);
     
     char* args[] = { "", filepath, NULL };
     perl_parse(script->perl_interp, NULL, 2, args, NULL);
+    
+    get_script_reg_events(script, filepath);
+
+    logprintf(LOG_INFO, "Loaded script \"%s\"", filepath);
 
     register_functions(script);
     plscript_call(script, "init_script");    
 
 
     script->is_loaded = true;
-    logprintf(LOG_INFO, "Loaded script \"%s\"", filepath);
 
 
     return true;
 }
 
 
-void nemi_unload_perl_script(struct perl_script* script) {
+void unload_perl_script(struct perl_script* script) {
     if(!script->is_loaded) {
         return;
     }

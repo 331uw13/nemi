@@ -41,12 +41,14 @@ use strict;
 our $vmode;
 
 our $renderbuf;
+our $test_text;
 
 
-sub event_char_input {} # Arguments: 0 = character
-sub event_key_input { # Arguments: 0 = key, 1 = modifier.
-    
-}
+#!REGISTER_EVENT
+sub event_char_input {}
+
+
+sub event_key_input {}
 
 
 sub init_script {
@@ -54,19 +56,17 @@ sub init_script {
     my $rbuf_max_nodes = 80;
     $renderbuf = Nemi::new_renderbuf($rbuf_max_nodes);
     
-    Nemi::rb_use_cellcoords($renderbuf);
     
     my $term_rows = Nemi::term_get_rows();
     my $term_cols = Nemi::term_get_cols();
     print("(vmode) Terminal rows = $term_rows\n");
     print("(vmode) Terminal cols = $term_cols\n");
 
-    #Nemi::rb_use_arbcoords(); # Arbitrary coordinates. (X, Y)
-    #Nemi::rb_use_cellcoords(); # Cell coordinates. (Row, Column)
-
-
-    #$test_rect = Nemi::rb_add_rect($renderbuf, 7, 10, 1, 10, 0x30FFA0);
-    #$test_text = Nemi::rb_add_text($renderbuf, 80, 100, "Hello from perl!", 0xFF30FF);
+    #Nemi::rb_use_arbcoords($renderbuf); # Arbitrary coordinates. (X, Y)
+    Nemi::rb_use_cellcoords($renderbuf); # Cell coordinates. (Row, Column)
+    
+    #my $test_rect = Nemi::rb_add_rect($renderbuf, 7, 10, 1, 10, 0x30FFA0);
+    #$test_text = Nemi::rb_add_text($renderbuf, 6, $term_rows-2, "Hello from perl!", 0xFF30FF);
     
 
 

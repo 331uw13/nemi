@@ -69,6 +69,9 @@ void begin_frame(struct nemi* st);
 void end_frame(struct nemi* st);
 
 bool key_down(struct nemi* st, int key);
+void trigger_key_event_for_scripts(struct nemi* st, int key, int key_modifiers);
+void trigger_char_event_for_scripts(struct nemi* st, char chr);
+
 
 // Convert column/row to window x/y position.
 int coltox(struct nemi* st, int col);

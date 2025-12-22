@@ -91,7 +91,7 @@ int handler
     }
 
     if(STR_MATCH(section, "scripts")) {
-        nemi_load_perl_script(v->st, value);
+        load_perl_script(v->st, value);
     }
     else
     if(STR_MATCH(section, "render_settings")) {
