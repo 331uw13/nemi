@@ -14,7 +14,6 @@ struct glyph_t {
     int bearing_y;
 
     int atlas_x;
-    //float vertices [ 5 * 6 ]; // (x, y, tex_x, tex_y, atlas_x) * 6
 };
 
 struct font_t {
@@ -62,7 +61,7 @@ struct font_t {
 };
 
 struct leaf_ctx_t;
-bool leaf_load_font(struct leaf_ctx_t* lfctx, struct font_t* font, const char* filepath);
+bool leaf_load_font(struct font_t* font, const char* filepath);
 void leaf_unload_font(struct font_t* font);
 
 void leaf_set_font_scale(struct font_t* font, float scale);

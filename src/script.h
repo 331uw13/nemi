@@ -7,11 +7,12 @@
 #include <stdbool.h>
 
 
+// Event nums.
+#define REG_EVENT_KEY_INPUT            (1 << 0)
+#define REG_EVENT_CHAR_INPUT           (1 << 1)
+#define REG_EVENT_WIN_RESIZED          (1 << 2)
+#define REG_EVENT_TERM_BUFFER_CHANGED  (1 << 3)
 
-#define REG_EVENT_KEY_INPUT (1 << 0)
-#define REG_EVENT_CHAR_INPUT (1 << 1)
-#define REG_EVENT_ALTBUF_CHANGED (1 << 2)
-#define REG_EVENT_TERM_RESIZED (1 << 3)
 
 struct perl_script {
     PerlInterpreter* perl_interp;
@@ -26,6 +27,8 @@ struct nemi;
 
 bool load_perl_script(struct nemi* st, const char* filepath);
 void unload_perl_script(struct perl_script* script);
+
+const char* plscript_get_event_name(int event_num);
 
 void plscript_call
     (struct perl_script* script, const char* func);

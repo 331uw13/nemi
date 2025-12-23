@@ -20,10 +20,8 @@ static const char FONT_VERTEX_SHADER_SRC[] = {
     "layout (location = 1) in vec2 in_tex_coords;"
     "layout (location = 2) in float in_atlas_offset;"
     "layout (location = 3) in vec3  in_char_color;"
-    //"uniform vec3 font_color;\n"
-    //"uniform float u_italic;\n"
-    //"uniform float u_char_y;\n"
-    //"uniform float u_char_x;\n"
+    "layout (location = 4) in float in_char_origin_y;"
+    "layout (location = 5) in float in_char_italic;"
     "uniform float u_scale;"
     
     "out vec2 tex_coords;" 
@@ -37,14 +35,8 @@ static const char FONT_VERTEX_SHADER_SRC[] = {
         "color        = in_char_color;"
         
         "vec2 p = in_pos;"
+        "p.x += (p.y - in_char_origin_y) * (in_char_italic * 0.5);"
         "gl_Position = vec4(p.x, p.y, 0.0, 1.0);"
-    //"   color = vec3(1, 1, 1);\n"
-    //"   p.x += (p.y - u_char_y) * (u_italic * 0.5);\n"
-    //"   p.x += u_char_x;\n"
-    //"   p.y += u_char_y;\n"
-    //"   tex_coords = texture_coords;\n"
-    //"   gl_Position = vec4(p.x, p.y, 0.0, 1.0);\n"
-    //"   \n"
     "}"
 };
 
@@ -105,7 +97,7 @@ void leaf_font_render(struct leaf_ctx_t* lfctx, struct font_t* font) {
     font->vbo_num_vertices = 0;
 }
 
-bool leaf_load_font(struct leaf_ctx_t* lfctx, struct font_t* font, const char* filepath) {
+bool leaf_load_font(struct font_t* font, const char* filepath) {
     int res = 0;
 
     FT_Library ft;
@@ -163,8 +155,8 @@ bool leaf_load_font(struct leaf_ctx_t* lfctx, struct font_t* font, const char* f
             continue;
         }
 
-        int bitmap_width = face->glyph->bitmap.width;
-        int bitmap_height = face->glyph->bitmap.rows;
+        uint32_t bitmap_width = face->glyph->bitmap.width;
+        uint32_t bitmap_height = face->glyph->bitmap.rows;
 
         if(bitmap_width > font->max_bitmap_width) {
             font->max_bitmap_width = bitmap_width;
@@ -213,8 +205,8 @@ bool leaf_load_font(struct leaf_ctx_t* lfctx, struct font_t* font, const char* f
 
         FT_Bitmap* bitmap = &face->glyph->bitmap;
 
-        for(int row = 0; row < bitmap->rows; row++) {
-            for(int col = 0; col < bitmap->width; col++) {
+        for(uint32_t row = 0; row < bitmap->rows; row++) {
+            for(uint32_t col = 0; col < bitmap->width; col++) {
                 
                 int y = row;
                 int x = col + char_index * font->max_bitmap_width;
@@ -254,8 +246,6 @@ bool leaf_load_font(struct leaf_ctx_t* lfctx, struct font_t* font, const char* f
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    
-
 
     free(pixels);
   
@@ -270,8 +260,10 @@ bool leaf_load_font(struct leaf_ctx_t* lfctx, struct font_t* font, const char* f
     // atlas_offset,
     // char red, 
     // char green,
-    // char blue
-    const int stride_num_floats = 2 + 2 + 1 + 3;
+    // char blue,
+    // char origin y
+    // char italic
+    const int stride_num_floats = 2 + 2 + 1 + 3 + 1 + 1;
 
     font->vbo_memsize = (100*100) * (sizeof(float) * (stride_num_floats * 6));
     glGenBuffers(1, &font->vbo);
@@ -291,7 +283,7 @@ bool leaf_load_font(struct leaf_ctx_t* lfctx, struct font_t* font, const char* f
             stride_size, (void*)(2*sizeof(float)));
     glEnableVertexAttribArray(1);
  
-    // Texture atlas coordinate X offset
+    // Texture atlas X offset
     glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE,
             stride_size, (void*)(4*sizeof(float)));
     glEnableVertexAttribArray(2);
@@ -301,6 +293,15 @@ bool leaf_load_font(struct leaf_ctx_t* lfctx, struct font_t* font, const char* f
             stride_size, (void*)(5*sizeof(float)));
     glEnableVertexAttribArray(3);
 
+    // Character origin y
+    glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE,
+            stride_size, (void*)(8*sizeof(float)));
+    glEnableVertexAttribArray(4);
+
+    // Character italic
+    glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE,
+            stride_size, (void*)(9*sizeof(float)));
+    glEnableVertexAttribArray(5);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);  

@@ -71,11 +71,11 @@ int renderbuf_add_text(struct nemi* st,
 
 
 void renderbuf_update_rect(struct nemi* st, 
-        struct render_buffer* rb, int node_index, int x, int y, int w, int h, int color);
+        struct render_buffer* rb, uint32_t node_index, int x, int y, int w, int h, int color);
 
 
 void renderbuf_update_text(struct nemi* st, 
-        struct render_buffer* rb, int node_index, int x, int y, char* text, size_t len, int color);
+        struct render_buffer* rb, uint32_t node_index, int x, int y, char* text, size_t len, int color);
 
 
         

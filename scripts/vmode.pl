@@ -44,13 +44,6 @@ our $renderbuf;
 our $test_text;
 
 
-#!REGISTER_EVENT
-sub event_char_input {}
-
-
-sub event_key_input {}
-
-
 sub init_script {
 
     my $rbuf_max_nodes = 80;
@@ -67,12 +60,8 @@ sub init_script {
     
     #my $test_rect = Nemi::rb_add_rect($renderbuf, 7, 10, 1, 10, 0x30FFA0);
     #$test_text = Nemi::rb_add_text($renderbuf, 6, $term_rows-2, "Hello from perl!", 0xFF30FF);
-    
-
-
 
     $vmode = vmode->new();
-
 }
 
 

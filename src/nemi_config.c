@@ -128,6 +128,10 @@ int handler
         if(STR_MATCH(name, "show_frametime")) {
             v->st->cfg.show_frametime = strbool_istrue(value);
         }
+        else
+        if(STR_MATCH(name, "hide_mouse")) {
+            v->st->cfg.hide_mouse = strbool_istrue(value);
+        }
     }
 
 

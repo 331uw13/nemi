@@ -43,7 +43,7 @@ void vterm_scroll_callback(VTermRect rect, int downward, int rightward, void *us
 
     sbrow->num_cells = 0;
 
-    if(sbrow->num_cells_alloc != term->cols) {
+    if((int)sbrow->num_cells_alloc != term->cols) {
         sbrow->num_cells_alloc = term->cols;
         size_t num_bytes = sbrow->num_cells_alloc * sizeof *sbrow->cells;
         void* cells_new_ptr = realloc(sbrow->cells, num_bytes);
@@ -449,7 +449,6 @@ void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
 
 void terminal_handle_resize_event(struct nemi* st, struct terminal* term) {
 
-    int old_cols = st->win_cols;
     term->cols = st->win_cols;
     term->rows = st->win_rows;
 
@@ -475,8 +474,12 @@ void terminal_handle_altscreen_change_event(struct nemi* st, struct terminal* te
     else {
         term->vmode.enabled = term->vmode.was_enabled_before_altscreen;
     }*/
-
+    
     terminal_set_scroll(term, 0);
+
+    trigger_event_for_scripts(st, REG_EVENT_TERM_BUFFER_CHANGED,
+            "i",
+            term->is_altscreen);
 }
 
 static

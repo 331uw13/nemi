@@ -31,7 +31,7 @@ struct nemi* start_session(const char* config_file) {
     struct nemi_font_config font_cfg;
     nemi_read_font_config(st, config_file, &font_cfg);
 
-    if(!leaf_load_font(st->lfctx, &st->font, font_cfg.font_filepath)) {
+    if(!leaf_load_font(&st->font, font_cfg.font_filepath)) {
         quit_session(st);
         return NULL;
     }
@@ -48,7 +48,7 @@ struct nemi* start_session(const char* config_file) {
     glfwSetCharCallback       (st->lfctx->glfw_win, glfw_char_callback);
     glfwSetScrollCallback     (st->lfctx->glfw_win, glfw_scroll_callback);
     glfwSetWindowSizeCallback (st->lfctx->glfw_win, glfw_window_resize_callback);
-    
+
     const size_t renderer_memory_size = 1024 * sizeof(float);
     leaf_init_renderer(st->lfctx, renderer_memory_size);
     
@@ -84,6 +84,11 @@ struct nemi* start_session(const char* config_file) {
         free(st);
         return NULL;
     }
+
+    if(st->cfg.hide_mouse) {
+        glfwSetInputMode(st->lfctx->glfw_win, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+    }
+
 
     glfwSwapInterval(st->cfg.vsync ? 0 : 1);
 
@@ -148,6 +153,7 @@ void end_frame(struct nemi* st) {
         while(rnode) {
 
             switch(rnode->type) {
+                case RBNODE_UNUSED: break; // Ignored.
                    
                 case RBNODE_MESH:
                     leaf_render_vertices(st->lfctx, 
@@ -164,6 +170,7 @@ void end_frame(struct nemi* st) {
                             rnode->text.data,
                             rnode->text.len);
                     break;
+
 
 
                 // More will be added later.
@@ -239,45 +246,81 @@ void init_default_config(struct nemi* st) {
 }
 
 
-void trigger_key_event_for_scripts(struct nemi* st, int key, int key_modifiers) {
+// 'event_num' corresponds to REG_EVENT... defined in "script.h"
+void trigger_event_for_scripts(struct nemi* st, int event_num, 
+        const char* arg_types, ...) {
     
-    char key_str[8] = { 0 };
-    snprintf(key_str, sizeof(key_str)-1, "%d", key);
-    
-    char mods_str[8] = { 0 };
-    snprintf(mods_str, sizeof(mods_str)-1, "%d", key_modifiers);
-    
-    char* args[] = {
-        key_str,
-        mods_str,
-        NULL
-    };
+    size_t num_args = strlen(arg_types);
 
-    for(size_t i = 0; i < ARRAY_LEN(st->scripts); i++) {
+    char* func_args[num_args+1];
+    func_args[num_args] = NULL;
+        
+    char args_str[num_args][16];
+
+
+    if(num_args > 0) {
+
+        for(size_t i = 0; i < num_args; i++){
+            memset(args_str[i], 0, sizeof(args_str[i]));
+        }
+
+        va_list args;
+        va_start(args, arg_types);
+        for(size_t i = 0; i < num_args; i++) {
+            char* buf = args_str[i];
+            size_t buf_memsize = sizeof(args_str[i])-1;
+            
+            switch(arg_types[i]) {
+                case 'i':
+                    snprintf(buf, buf_memsize, "%d", va_arg(args, int));
+                    break;
+
+                case 'f':
+                    snprintf(buf, buf_memsize, "%f", va_arg(args, double));
+                    break;
+
+            }
+
+            func_args[i] = args_str[i];
+        }
+
+        va_end(args);
+    }
+
+    const char* event_name = plscript_get_event_name(event_num);
+
+    for(size_t i = 0; i < NEMI_SCRIPTS_MAX; i++) {
         struct perl_script* script = &st->scripts[i];
         if(!script->is_loaded) {
             continue;
         }
-        plscript_call_args(script, "event_key_input", args);
-    }
-}
 
-void trigger_char_event_for_scripts(struct nemi* st, char chr) {
-    if(st->last_char_in != 0) {
-        char* args[] = {
-            &chr,
-            NULL
-        };
-
-        for(size_t i = 0; i < ARRAY_LEN(st->scripts); i++) {
-            struct perl_script* script = &st->scripts[i];
-            if(!script->is_loaded) {
-                continue;
-            }
-            plscript_call_args(script, "event_char_input", args);
+        if(!(script->reg_events & event_num)) {
+            continue;
+        }
+        
+        if(num_args > 0) {
+            plscript_call_args(script, event_name, func_args);
+        }
+        else {
+            plscript_call(script, event_name);
         }
     }
 }
+
+/*void trigger_key_event_for_scripts(struct nemi* st, int key, int key_modifiers) {
+    trigger_event_for_scripts(st, REG_EVENT_KEY_INPUT,
+            "ii",
+            key,
+            key_modifiers);
+
+    //trigger_event_for_scripts(st, REG_EVENT_KEY_INPUT, args);
+}
+
+void trigger_char_event_for_scripts(struct nemi* st, char chr) {
+}
+*/
+
 
 void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     (void)scancode;
@@ -293,7 +336,19 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
     st->last_keymod_in = mods;
     
 
-    trigger_key_event_for_scripts(st, key, mods);
+    trigger_event_for_scripts(st, REG_EVENT_KEY_INPUT,
+            "ii",
+            key, 
+            mods);
+
+    if(mods == GLFW_MOD_CONTROL) {
+        if(key == GLFW_KEY_1) {
+            font_scale(st, -0.1);
+        }
+        if(key == GLFW_KEY_2) {
+            font_scale(st, +0.1);
+        }
+    }
     terminal_handle_key_event(st, st->terminal);
 }
 
@@ -301,8 +356,10 @@ void glfw_char_callback(GLFWwindow* window, uint32_t codepoint) {
     struct nemi* st = (struct nemi*)glfwGetWindowUserPointer(window);
 
     if(codepoint >= 0x20 && codepoint <= 0x7E) {
-        trigger_char_event_for_scripts(st, codepoint);
-        
+        trigger_event_for_scripts(st, REG_EVENT_CHAR_INPUT,
+            "i",
+            codepoint);
+
         push_char_input(st, codepoint);
         st->last_char_in = codepoint;
     
@@ -332,6 +389,11 @@ void glfw_window_resize_callback(GLFWwindow* window, int width, int height) {
     for(size_t i = 0; i < st->num_terminals; i++) {
         terminal_handle_resize_event(st, &st->terminals[i]);
     }
+
+    trigger_event_for_scripts(st, REG_EVENT_WIN_RESIZED,
+            "ii",
+            st->win_cols,
+            st->win_rows);
 }
 
 void push_key_input(struct nemi* st, int key) {
@@ -378,5 +440,16 @@ int new_renderbuf(struct nemi* st, int num_nodes_max) {
     return ret_index;
 }
 
+void font_scale(struct nemi* st, float offset) {
+    leaf_set_font_scale(&st->font, st->font.scale + offset);
 
+    // We can call glfw window resize callback here
+    // it resizes the terminals rows and columns too.
+    glfw_window_resize_callback(st->lfctx->glfw_win, st->lfctx->win_width, st->lfctx->win_height);
+}
+
+void set_font_scale(struct nemi* st, float scale) {
+    leaf_set_font_scale(&st->font, scale);
+    glfw_window_resize_callback(st->lfctx->glfw_win, st->lfctx->win_width, st->lfctx->win_height);
+}
 

@@ -5,11 +5,26 @@
 #include "script.h"
 #include "nemi.h"
 #include "common.h"
-#include "fileio.h"
+#include "string.h"
 #include "xs_wrappers/nemi.h"
 
 
+struct script_event_name {
+    const char* name;
+    int         num; // Should correspond to REG_EVENT... defined in "script.h"
+};
+static
+const struct script_event_name SCRIPT_EVENTS[] = {
+    { "event_key_input", REG_EVENT_KEY_INPUT },
+    { "event_char_input", REG_EVENT_CHAR_INPUT },
+    { "event_win_resized", REG_EVENT_WIN_RESIZED },
+    { "event_term_buffer_changed", REG_EVENT_TERM_BUFFER_CHANGED }
+};
 
+
+const char* plscript_get_event_name(int event_num) {
+    return SCRIPT_EVENTS[__builtin_ctz(event_num)].name;
+}
 
 static
 struct perl_script* nemi_find_unloaded_script(struct nemi* st) {
@@ -49,21 +64,72 @@ void register_functions(struct perl_script* script) {
 }
 
 
+
+
 static
 void get_script_reg_events(struct perl_script* script, const char* script_filepath) {
     script->reg_events = 0;
 
-    char* file = NULL;
-    size_t file_size = 0;
-    if(!map_file(script_filepath, PROT_READ, &file, &file_size)) {
-        logprintf(LOG_ERROR, "Failed to map \"%s\"", script_filepath);
+
+    FILE* f = fopen(script_filepath, "r");
+    if(!f) {
+        logprintf(LOG_ERROR, "Failed to open \"%s\" | %s", 
+                script_filepath, strerror(errno));
         return;
     }
 
-    printf("%s\n", file);
+    ssize_t line_len = 0;
+    size_t line_memsize = 256;
+    char* line = calloc(line_memsize, sizeof *line);
 
+    const char* reg_event_tag = "#!REGISTER_EVENT\n";
+    const size_t reg_event_taglen = strlen(reg_event_tag);
 
-    munmap(file, file_size);
+    int line_num = 0;
+
+    // Search for "#!REGISTER_EVENT"
+    // when found, check line after that to know what events
+    // the script wants to get.
+    while((line_len = getline(&line, &line_memsize, f)) != -1) {
+        line_num++;
+        if(line_len < (ssize_t)reg_event_taglen) {
+            continue;
+        }
+
+        if(line[0] != '#' && line[1] != '!') {
+            continue;
+        }
+
+        if(STR_MATCH(line, reg_event_tag)) {
+            // Get next line.
+            ssize_t line_len = getline(&line, &line_memsize, f);
+            if(line_len < 0) {
+                break;
+            }
+
+            if(string_charptr_find(line, line_len, "sub", 3)) {
+                logprintf(LOG_ERROR, "Expected subroutine definition after %s Script \"%s\" line: %i",
+                        reg_event_tag, script_filepath, line_num);
+                continue;
+            }
+
+            for(size_t i = 0; i < ARRAY_LEN(SCRIPT_EVENTS); i++) {
+                const struct script_event_name* event_name = &SCRIPT_EVENTS[i];
+            
+                if(string_charptr_find(
+                            line, 
+                            line_len, 
+                            event_name->name,
+                            strlen(event_name->name)) >= 0) {
+                    script->reg_events |= event_name->num;
+                    break;
+                }
+            }
+        }
+    }
+
+    freeif(line);
+    fclose(f);
 }
 
 bool load_perl_script(struct nemi* st, const char* filepath) {
@@ -81,8 +147,6 @@ bool load_perl_script(struct nemi* st, const char* filepath) {
         logprintf(LOG_ERROR, "No space to load new script, all slots have been taken.");
         return false;
     }
-
-
 
 
     script->perl_interp = perl_alloc();

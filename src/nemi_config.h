@@ -44,6 +44,7 @@ struct nemi_config {
     float italic_tilt;
     int   underline_height;
     float underline_offset;
+    bool hide_mouse;
     struct color_t colors [NEMI_COLOR_COUNT];
 };
 

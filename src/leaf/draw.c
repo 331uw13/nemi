@@ -37,8 +37,8 @@ float leaf_draw_char
    // float ch_width = glyph->width * font->scale;
    // float ch_height = glyph->height * font->scale;
 
-    float ch_width = (float)font->max_bitmap_width;
-    float ch_height = (float)font->max_bitmap_height;
+    float ch_width = (float)font->max_bitmap_width * font->scale;
+    float ch_height = (float)font->max_bitmap_height * font->scale;
 
     float cw = ch_width / (float)g_leaf_ctx->win_width;
     float ch = ch_height / (float)g_leaf_ctx->win_height;
@@ -50,16 +50,13 @@ float leaf_draw_char
 
     float cw_n = (float)glyph->width / (float)font->texture_width;
     float glyph_vertices[] = {
-        x,    y-ch, 0.0f, 1.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, 
-        x,    y,    0.0f, 0.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b,  
-        x+cw, y,    1.0f, 0.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, 
-        x,    y-ch, 0.0f, 1.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, 
-        x+cw, y,    1.0f, 0.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, 
-        x+cw, y-ch, 1.0f, 1.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b  
+        x,    y-ch, 0.0f, 1.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, y, font->italic,  
+        x,    y,    0.0f, 0.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, y, font->italic,  
+        x+cw, y,    1.0f, 0.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, y, font->italic, 
+        x,    y-ch, 0.0f, 1.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, y, font->italic, 
+        x+cw, y,    1.0f, 0.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, y, font->italic, 
+        x+cw, y-ch, 1.0f, 1.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, y, font->italic
     };
-
-    //memcpy(glyph->vertices, glyph_vertices, sizeof(glyph_vertices));
-    
 
 //    printf("%s: %li / %li\n", __func__, 
 //            font->vbo_data_offset, font->vbo_memsize);

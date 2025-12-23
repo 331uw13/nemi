@@ -48,7 +48,7 @@ struct nemi {
     char char_inputs [NEMI_CHARINBUF_MAX];
 
     struct perl_script scripts [NEMI_SCRIPTS_MAX];
-
+    
     struct render_buffer renderbufs [NEMI_RENDERBUFS_MAX];
     uint32_t             num_renderbufs;
 
@@ -64,14 +64,21 @@ void         quit_session(struct nemi* st);
 void zero_input_buffers(struct nemi* st);
 void push_key_input(struct nemi* st, int key);
 void push_char_input(struct nemi* st, char ch);
+void font_scale(struct nemi* st, float offset);
+void set_font_scale(struct nemi* st, float scale);
 
 void begin_frame(struct nemi* st);
 void end_frame(struct nemi* st);
 
 bool key_down(struct nemi* st, int key);
-void trigger_key_event_for_scripts(struct nemi* st, int key, int key_modifiers);
-void trigger_char_event_for_scripts(struct nemi* st, char chr);
 
+// 'event_num' corresponds to REG_EVENT... defined in "script.h"
+// 'arg_types' should be array of characters matching the variable type's
+// first letter, respectively to variadic arguments.
+// For example if arguments to function is int, int, float, float,
+// then arg_types should be "iiff".
+// TODO: Not all types are currently supported.
+void trigger_event_for_scripts(struct nemi* st, int event_num, const char* arg_types, ...);
 
 // Convert column/row to window x/y position.
 int coltox(struct nemi* st, int col);
