@@ -45,6 +45,9 @@ struct nemi_config {
     int   underline_height;
     float underline_offset;
     bool hide_mouse;
+    bool soft_blink;
+    float soft_blink_pow;
+    float blink_speed;
     struct color_t colors [NEMI_COLOR_COUNT];
 };
 

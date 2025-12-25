@@ -308,20 +308,6 @@ void trigger_event_for_scripts(struct nemi* st, int event_num,
     }
 }
 
-/*void trigger_key_event_for_scripts(struct nemi* st, int key, int key_modifiers) {
-    trigger_event_for_scripts(st, REG_EVENT_KEY_INPUT,
-            "ii",
-            key,
-            key_modifiers);
-
-    //trigger_event_for_scripts(st, REG_EVENT_KEY_INPUT, args);
-}
-
-void trigger_char_event_for_scripts(struct nemi* st, char chr) {
-}
-*/
-
-
 void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     (void)scancode;
 

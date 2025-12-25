@@ -50,6 +50,7 @@ struct terminal {
     int cols;
     int line_height;
 
+    float blink_timer;
     /*
     // Visual mode.
     struct {
@@ -86,6 +87,7 @@ void render_terminal       (struct nemi* st, struct terminal* term);
 void write_term            (struct terminal* term, enum term_write_target target, char* fmt, ...);
 void terminal_scroll       (struct terminal* term, int offset);
 void terminal_set_scroll   (struct terminal* term, int scroll);
+void update_terminal_blink_timer  (struct nemi* st, struct terminal* term);
 
 void terminal_handle_char_event   (struct nemi* st, struct terminal* term);
 void terminal_handle_key_event    (struct nemi* st, struct terminal* term);

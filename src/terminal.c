@@ -110,7 +110,8 @@ struct terminal* spawn_terminal(struct nemi* st, int rows, int cols) {
 
     term->flags = 0;
     term->line_height = st->font.char_height + st->cfg.line_padding;
-    
+    term->blink_timer = 0;
+
     init_scrollback_buffer(term);
     term->vt = vterm_new(rows, cols);
     vterm_set_utf8(term->vt, true);
@@ -213,6 +214,12 @@ void render_terminal_cursor(struct nemi* st, struct terminal* term) {
             (struct color_t) { 60, 60, 60 });
 }
 
+static
+struct color_t vtermcolor_to_leafcolor(VTermColor* c) {
+    return (struct color_t) {
+        c->rgb.red, c->rgb.green, c->rgb.blue
+    };
+}
 
 static
 void render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, VTermPos pos) {
@@ -223,44 +230,50 @@ void render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, 
 
     int char_x = coltox(st, pos.col);
     int char_y = rowtoy(st, pos.row);
-    
-    if(VTERM_COLOR_IS_INDEXED(&cell->fg)) {
-        vterm_state_convert_color_to_rgb(term->vtstate, &cell->fg);
-    }
 
-    if(VTERM_COLOR_IS_RGB(&cell->fg)) {
-        leaf_set_font_color(&st->font,
-                (float)cell->fg.rgb.red   / 255.0f,
-                (float)cell->fg.rgb.green / 255.0f,
-                (float)cell->fg.rgb.blue  / 255.0f);
-    }
 
+    // Cell background.
+
+    struct color_t bg_color = st->cfg.colors[NEMI_COLOR_BG];
 
     if(VTERM_COLOR_IS_INDEXED(&cell->bg)) {
         vterm_state_convert_color_to_rgb(term->vtstate, &cell->bg);
     }
 
-    if(VTERM_COLOR_IS_RGB(&cell->fg)) {
-        if(cell->bg.rgb.red   != st->cfg.colors[NEMI_COLOR_BG].r
-        || cell->bg.rgb.green != st->cfg.colors[NEMI_COLOR_BG].g
-        || cell->bg.rgb.blue  != st->cfg.colors[NEMI_COLOR_BG].b) {
+    if(VTERM_COLOR_IS_RGB(&cell->bg)) {
+        bg_color = vtermcolor_to_leafcolor(&cell->bg);
+        if(bg_color.r != st->cfg.colors[NEMI_COLOR_BG].r
+        || bg_color.g != st->cfg.colors[NEMI_COLOR_BG].g
+        || bg_color.b != st->cfg.colors[NEMI_COLOR_BG].b) {
             
             leaf_draw_rect(
                     char_x, char_y,
                     st->font.char_width,
                     st->font.char_height,
-                    (struct color_t){
-                        cell->bg.rgb.red,
-                        cell->bg.rgb.green,
-                        cell->bg.rgb.blue,
-                    });
+                    bg_color);
         }
     }
-    //printf("%i, %i, %i\n", cellbg_R, cellbg_G, cellbg_B);
 
+    // Cell foreground.
+
+
+    struct color_t fg_color = st->cfg.colors[NEMI_COLOR_FG]; // Default color.
+
+    if(VTERM_COLOR_IS_INDEXED(&cell->fg)) {
+        vterm_state_convert_color_to_rgb(term->vtstate, &cell->fg);
+    }
+
+    if(VTERM_COLOR_IS_RGB(&cell->fg)) {
+        fg_color = vtermcolor_to_leafcolor(&cell->fg);    
+    }
+    
+    if(cell->attrs.blink) {
+        fg_color = leaf_color_lerp(fg_color, bg_color, term->blink_timer);
+    }
 
     st->font.italic = (cell->attrs.italic) ? st->cfg.italic_tilt : 0.0f;
 
+    leaf_set_font_color(&st->font, fg_color);
     leaf_draw_char(&st->font, char_x, char_y, cell->chars[0]);
 
     if(cell->attrs.underline) {
@@ -269,11 +282,7 @@ void render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, 
                 char_y + st->font.char_height + st->cfg.underline_offset,
                 st->font.char_width,
                 st->cfg.underline_height,
-                (struct color_t){ 
-                    cell->fg.rgb.red, 
-                    cell->fg.rgb.green, 
-                    cell->fg.rgb.blue, 
-                });
+                fg_color);
     }
 }
 
@@ -322,6 +331,20 @@ void render_terminal(struct nemi* st, struct terminal* term) {
     }
 
     render_terminal_cursor(st, term);
+}
+
+void update_terminal_blink_timer(struct nemi* st, struct terminal* term) {
+    if(st->cfg.soft_blink) {
+        // https://en.wikipedia.org/wiki/Triangle_wave
+        //
+        // Here triangle wave amplitude is 1.0 and lowest point is 0.0
+        float tri_wave = 0.5+(1.0/M_PI)*asin(sin(glfwGetTime() * st->cfg.blink_speed));
+
+        term->blink_timer = pow(tri_wave, st->cfg.soft_blink_pow);
+    }
+    else {
+        
+    }
 }
 
 void write_term(struct terminal* term, enum term_write_target target, char* fmt, ...) {

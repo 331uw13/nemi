@@ -23,6 +23,7 @@ int main(int argc, char** argv) {
         
         read_terminal(st, st->terminal);
         render_terminal(st, st->terminal);
+        update_terminal_blink_timer(st, st->terminal);
 
         end_frame(st);
    

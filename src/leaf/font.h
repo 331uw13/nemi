@@ -3,6 +3,9 @@
 
 #include <stdbool.h>
 
+#include "color_type.h"
+
+
 #define FONT_NUM_CHARS 95
 
 
@@ -65,7 +68,7 @@ bool leaf_load_font(struct font_t* font, const char* filepath);
 void leaf_unload_font(struct font_t* font);
 
 void leaf_set_font_scale(struct font_t* font, float scale);
-void leaf_set_font_color(struct font_t* font, float r, float g, float b);
+void leaf_set_font_color(struct font_t* font, struct color_t color);
 void leaf_set_font_space_width(struct font_t* font, float space_width);
 void leaf_set_font_tab_width(struct font_t* font, float tab_width);
 void leaf_set_font_spacing(struct font_t* font, float spacing);

@@ -310,7 +310,7 @@ bool leaf_load_font(struct font_t* font, const char* filepath) {
     font->char_width = 0;
     font->char_height = 0;
     leaf_set_font_scale(font, 4.0f);
-    leaf_set_font_color(font, 1.0f, 1.0f, 1.0f);
+    leaf_set_font_color(font, (struct color_t){ 255, 255, 255 });
   
     // Set default values.
     leaf_set_font_spacing(font, 1.0f);
@@ -356,10 +356,10 @@ void leaf_set_font_scale(struct font_t* font, float scale) {
     leaf_set_font_tab_width(font, font->real_tab_width);
 }
 
-void leaf_set_font_color(struct font_t* font, float r, float g, float b) {
-    font->char_color_r = r;
-    font->char_color_g = g;
-    font->char_color_b = b;
+void leaf_set_font_color(struct font_t* font, struct color_t color) {
+    font->char_color_r = (float)color.r / 255.0f;
+    font->char_color_g = (float)color.g / 255.0f;
+    font->char_color_b = (float)color.b / 255.0f;
 }
 
 void leaf_set_font_space_width(struct font_t* font, float space_width) {

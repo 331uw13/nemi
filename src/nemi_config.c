@@ -122,6 +122,18 @@ int handler
         if(STR_MATCH(name, "underline_offset")) {
             v->st->cfg.underline_offset = atof(value);
         }
+        else
+        if(STR_MATCH(name, "soft_blink")) {
+            v->st->cfg.soft_blink = strbool_istrue(value);
+        }
+        else
+        if(STR_MATCH(name, "soft_blink_pow")) {
+            v->st->cfg.soft_blink_pow = atof(value);
+        }
+        else
+        if(STR_MATCH(name, "blink_speed")) {
+            v->st->cfg.blink_speed = atof(value);
+        }
     }
     else
     if(STR_MATCH(section, "misc_settings")) {

@@ -41,7 +41,10 @@ void leaf_free_renderer(struct leaf_ctx_t* ctx);
 
 // One vertex: [x, y, r, g, b]
 void leaf_render_vertices(struct leaf_ctx_t* ctx, float* vertices, size_t vertices_memsize);
-
 uint32_t leaf_load_texture(const char* path, int* width, int* height);
+
+
+float leaf_lerp(float x, float y, float t);
+struct color_t leaf_color_lerp(struct color_t x, struct color_t y, float t);
 
 #endif
