@@ -41,7 +41,10 @@ struct nemi* start_session(const char* config_file) {
     st->font.center_char_to_cell = font_cfg.font_center_char_to_cell;
     st->font.spacing = 0.2f;
     leaf_set_font_scale(&st->font, 0.9);
-    leaf_set_font_color(&st->font, 1.0, 0.8, 0.6);
+
+
+    leaf_set_font_color(&st->font, (struct color_t) { 255, 200, 150 });
+
 
     glfwSetWindowUserPointer(st->lfctx->glfw_win, st);
     glfwSetKeyCallback        (st->lfctx->glfw_win, glfw_key_callback);
@@ -161,10 +164,8 @@ void end_frame(struct nemi* st) {
                     break;
 
                 case RBNODE_TEXT:
-                    leaf_set_font_color(&st->font,
-                           (float)rnode->text.red / 255.0f,
-                           (float)rnode->text.grn / 255.0f,
-                           (float)rnode->text.blu / 255.0f);
+                    leaf_set_font_color(&st->font, rnode->text.color);
+
                     leaf_draw_text(&st->font, 
                             rnode->text.pos_x, rnode->text.pos_y,
                             rnode->text.data,

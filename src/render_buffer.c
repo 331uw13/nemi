@@ -159,9 +159,9 @@ void renderbuf_text_node(struct nemi* st,
     memcpy(node->text.data, text, len);
     node->text.data[ sizeof(node->text.data)-1 ] = '\0';
 
-    node->text.red = HEX2RED_CHANNEL(color);
-    node->text.grn = HEX2GRN_CHANNEL(color);
-    node->text.blu = HEX2BLU_CHANNEL(color);
+    node->text.color.r = HEX2RED_CHANNEL(color);
+    node->text.color.g = HEX2GRN_CHANNEL(color);
+    node->text.color.b = HEX2BLU_CHANNEL(color);
 
     node->text.pos_x = x;
     node->text.pos_y = y;

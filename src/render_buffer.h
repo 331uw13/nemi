@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 #include "string.h"
-
+#include "leaf/color_type.h"
 
 
 
@@ -27,8 +27,8 @@ struct rb_node {
         struct {
             char     data [256];
             uint32_t len;
-            uint8_t  red, grn, blu;
             int      pos_x, pos_y;
+            struct   color_t color;
         }
         text;
 
