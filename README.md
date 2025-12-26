@@ -14,8 +14,6 @@ and it should be automatically loaded.
 `nemi.ini' is the configuration file for the program.
 
 
-Read documentation for working with scripts:
-https://github.com/331uw13/nemi/tree/main/scripts
 ```
 
 
@@ -38,4 +36,6 @@ You can try to use perlbrew to use recent version.
 $ perl configure.pl && make
 ```
 
+Read documentation for working with scripts:
+https://github.com/331uw13/nemi/tree/main/scripts
 
