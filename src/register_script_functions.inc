@@ -4,6 +4,7 @@ newXS("Nemi::new_renderbuf", xsw_new_renderbuf, __FILE__);
 newXS("Nemi::rb_hide_node", xsw_rb_hide_node, __FILE__);
 newXS("Nemi::rb_show_node", xsw_rb_show_node, __FILE__);
 newXS("Nemi::rb_add_rect", xsw_rb_add_rect, __FILE__);
+newXS("Nemi::create_msg", xsw_create_msg, __FILE__);
 newXS("Nemi::rb_update_rect", xsw_rb_update_rect, __FILE__);
 newXS("Nemi::rb_add_text", xsw_rb_add_text, __FILE__);
 newXS("Nemi::rb_update_text", xsw_rb_update_text, __FILE__);

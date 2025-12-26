@@ -109,8 +109,8 @@ Nemi::rb_node_layer_last   (rb_index, node_index);
 
 ////  Misc  ////
 
-Nemi::keydown              ( GLFW Key number )
-
+Nemi::keydown              (GLFW Key number)
+Nemi::create_msg           (text)
 
 ```
 

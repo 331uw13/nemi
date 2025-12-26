@@ -26,7 +26,10 @@ enum nemi_config_colors {
     
     NEMI_COLOR_BG,
     NEMI_COLOR_FG,
-
+    
+    NEMI_COLOR_MESSAGES_FG,
+    NEMI_COLOR_MESSAGES_BG,
+    NEMI_COLOR_MESSAGES_BORDER,
     NEMI_COLOR_COUNT
 };
 
@@ -48,6 +51,7 @@ struct nemi_config {
     bool soft_blink;
     float soft_blink_pow;
     float blink_speed;
+    float char_spacing;
     struct color_t colors [NEMI_COLOR_COUNT];
 };
 

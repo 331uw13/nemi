@@ -28,9 +28,10 @@ sub new {
     $cmdl::rb = Nemi::new_renderbuf($num_rb_nodes);
 
     Nemi::rb_use_cellcoords($cmdl::rb);
-    $cmdl::rb_bgrect_node = Nemi::rb_add_rect($cmdl::rb, 10, 10, 10, 10, $cmdl::bgrect_color);
-    $cmdl::rb_cursor_node = Nemi::rb_add_rect($cmdl::rb, 0, 0, 3, 3, $cmdl::cursor_color);
-    $cmdl::rb_input_node = Nemi::rb_add_text($cmdl::rb, 10, 20, "HELLO????", $cmdl::input_color);
+
+    $cmdl::rb_bgrect_node = Nemi::rb_add_rect($cmdl::rb, 0, 0, 0, 0, $cmdl::bgrect_color);
+    $cmdl::rb_cursor_node = Nemi::rb_add_rect($cmdl::rb, 0, 0, 0, 0, $cmdl::cursor_color);
+    $cmdl::rb_input_node = Nemi::rb_add_text($cmdl::rb, 10, 20, "", $cmdl::input_color);
 
 
     print("input_node = $cmdl::rb_input_node\n");
@@ -48,14 +49,22 @@ sub update_view {
     my $x = 1;
     my $y = Nemi::term_get_rows() - 1;
 
+    my $prefix = "> ";
+
     Nemi::rb_update_text($cmdl::rb, $cmdl::rb_input_node, 
         $x, $y, 
-        "> ".$cmdl::input, $cmdl::input_color
+        $prefix . $cmdl::input, $cmdl::input_color
     );
 
+    Nemi::rb_update_rect($cmdl::rb, $cmdl::rb_bgrect_node, 
+        0, $y,
+        Nemi::term_get_cols(), 1, $cmdl::bgrect_color);
 
-    print("bgrect_node = $cmdl::rb_bgrect_node\n");
-    Nemi::rb_update_rect($cmdl::rb, $cmdl::rb_bgrect_node, 20, 30, 30, 3, 0xFF00FF);
+    Nemi::rb_update_rect($cmdl::rb, $cmdl::rb_cursor_node,
+        $x + $cmdl::cursor + length($prefix),
+        $y,
+        1, 1, $cmdl::cursor_color);
+
 }
 
 
@@ -82,20 +91,28 @@ sub toggle_enabled {
     }
 }
 
+
 package main;
 use warnings;
 use strict;
-
+use feature qw(switch);
 
 our $cmdl; 
 
 
-sub execute {
-
-        
+sub execute {        
     print("Command input: '$cmdl::input'\n");    
 
+    my $v = eval($cmdl::input);
+    if(defined $v) {
+        Nemi::create_msg("$v");
+        return;
+    }
+
+
+
 }
+
 
 #!REGISTER_EVENT
 sub event_key_input {
@@ -104,18 +121,51 @@ sub event_key_input {
     my $mod_ctrl = 0x0002;
     my $key_dot = 46;
     my $key_enter = 257;
+    my $key_backspace = 259;
+    my $key_left = 263;
+    my $key_right = 262;
 
     # '.' and Control.
     if($_[0] == $key_dot and $_[1] == $mod_ctrl) {
         cmdl->toggle_enabled();
     }
-    elsif($cmdl::enabled and $_[0] == $key_enter) {
-    
-        execute();
-        $cmdl::input = "";
-        $cmdl::cursor = 0;
-        cmdl->update_view();
+    if(!$cmdl::enabled) {
+        return;
     }
+   
+
+    given($_[0]) {
+        when($key_enter) {
+            execute();
+            $cmdl::input = "";
+            $cmdl::cursor = 0;
+            cmdl->update_view();
+        }
+        when($key_backspace) {
+            if($cmdl::cursor > 0) {
+                substr($cmdl::input, $cmdl::cursor-1, 1, '');
+                $cmdl::cursor--;
+                cmdl->update_view();
+            }
+        }
+        when($key_left) {
+            if($cmdl::cursor > 0) {
+                $cmdl::cursor--;
+                cmdl->update_view();
+            }
+        }
+        when($key_right) {
+            if($cmdl::cursor+1 <= length($cmdl::input)) {
+                $cmdl::cursor++;
+                cmdl->update_view();
+            }
+        }
+    }
+}
+
+#!REGISTER_EVENT
+sub event_win_resized {
+    cmdl->update_view();
 }
 
 

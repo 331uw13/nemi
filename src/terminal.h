@@ -56,7 +56,7 @@ struct terminal {
 
 struct nemi;
 
-struct terminal* spawn_terminal(struct nemi* st, int rows, int cols);
+struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, const char* shell);
 void             close_terminal(struct terminal* term);
 
 void read_terminal         (struct nemi* st, struct terminal* term);

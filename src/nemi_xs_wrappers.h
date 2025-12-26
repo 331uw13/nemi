@@ -78,6 +78,17 @@ XS(xsw_rb_add_rect) {
                 color));
 }
 
+XS(xsw_create_msg) {
+    dXSARGS;
+    (void)items;
+    
+    STRLEN len;
+    char*  str = SvPV(ST(0), len);
+    struct nemi* st = get_state();
+
+    create_msg(st, str);
+}
+
 XS(xsw_rb_update_rect) {
     dXSARGS;
     (void)items;
@@ -90,7 +101,6 @@ XS(xsw_rb_update_rect) {
     int color = SvIV(ST(6));
     struct nemi* st = get_state();
     renderbuf_update_rect(st, &st->renderbufs[rb_index], rb_node_index, x, y, w, h, color);
-    //nemipl__rb_update_rect(rb_index, rb_node_index, x, y, w, h, color);
     XSRETURN_EMPTY;
 }
 

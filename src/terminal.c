@@ -85,7 +85,7 @@ void init_scrollback_buffer(struct terminal* term) {
     logprintf(LOG_INFO, "Initialized scrollback buffer (%i rows)", SCROLLBACK_LIMIT);
 }
 
-struct terminal* spawn_terminal(struct nemi* st, int rows, int cols) {
+struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, const char* shell) {
     if(st->num_terminals+1 >= NEMI_TERMINALS_MAX) {
         return NULL;
     }
@@ -101,7 +101,6 @@ struct terminal* spawn_terminal(struct nemi* st, int rows, int cols) {
     term->pid = forkpty(&term->master_fd, NULL, NULL, &ws);
 
     if(term->pid == 0) {
-        const char* shell = getenv("SHELL");
         execlp(shell, shell, NULL);
     }
 
@@ -116,6 +115,7 @@ struct terminal* spawn_terminal(struct nemi* st, int rows, int cols) {
 
     init_scrollback_buffer(term);
     term->vt = vterm_new(rows, cols);
+    
     vterm_set_utf8(term->vt, true);
     
     
@@ -209,7 +209,7 @@ void render_terminal_cursor(struct nemi* st, struct terminal* term) {
     vterm_state_get_cursorpos(term->vtstate, &vtcurs_pos);
 
     leaf_draw_rect(
-            coltox(st, vtcurs_pos.col),
+            coltox(st, vtcurs_pos.col) * st->cfg.char_spacing,
             rowtoy(st, vtcurs_pos.row + term->sb.offset),
             st->font.char_width,
             st->font.char_height,
@@ -267,6 +267,7 @@ void render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, 
     int char_x = coltox(st, pos.col);
     int char_y = rowtoy(st, pos.row);
 
+    char_x *= st->cfg.char_spacing;
 
     // Cell background.
 
@@ -366,7 +367,9 @@ void render_terminal(struct nemi* st, struct terminal* term) {
         }
     }
 
-    render_terminal_cursor(st, term);
+    if(term != st->messages) {
+        render_terminal_cursor(st, term);
+    }
 }
 
 void update_terminal_blink_timer(struct nemi* st, struct terminal* term) {
@@ -439,6 +442,10 @@ void terminal_handle_char_event(struct nemi* st, struct terminal* term) {
         return;
     }
 
+    if(term == st->messages) {
+        return; 
+    }
+    
     write_term(term, TERM_WRITE_PTY, &st->last_char_in);
     terminal_set_scroll(term, 0);
 }
@@ -448,7 +455,10 @@ void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
     if(st->flags & FLG_IGNORE_KEY_INPUT) {
         return;
     }
-   
+ 
+    if(term == st->messages) {
+        return; 
+    }  
     // Im not sure if this is 100% correct
     // but tried to match behaviour with other terminal emulators
     // when looking at 'showkey -a' output.

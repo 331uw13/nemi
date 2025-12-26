@@ -111,6 +111,10 @@ int handler
             v->st->cfg.line_padding = atof(value);
         }
         else
+        if(STR_MATCH(name, "char_spacing")) {
+            v->st->cfg.char_spacing = atof(value);
+        }
+        else
         if(STR_MATCH(name, "italic_tilt")) {
             v->st->cfg.italic_tilt = atof(value);
         }

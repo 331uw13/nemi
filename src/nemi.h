@@ -10,18 +10,19 @@
 #include "script.h"
 #include "render_buffer.h"
 #include "log.h"
+#include "string.h"
 
 #define FLG_FONT_LOADED (1 << 0)
 
 #define FLG_IGNORE_KEY_INPUT (1 << 1)
 #define FLG_IGNORE_CHR_INPUT (1 << 2)
 
-
 #define NEMI_TERMINALS_MAX 16
 #define NEMI_KEYINBUF_MAX 8
 #define NEMI_CHARINBUF_MAX 8
 #define NEMI_SCRIPTS_MAX 32
 #define NEMI_RENDERBUFS_MAX 32
+#define NEMI_MSG_LINES_MAX 64
 
 
 struct nemi {
@@ -33,6 +34,8 @@ struct nemi {
 
     struct terminal    terminals [NEMI_TERMINALS_MAX];
     struct terminal*   terminal; // Current terminal.
+    struct terminal*   messages; // Points to terminals[1]
+    struct terminal*   terminal_prev; // Previous current terminal.
     uint16_t           num_terminals;    
 
     int win_rows;
@@ -46,11 +49,13 @@ struct nemi {
     int  key_inputs  [NEMI_KEYINBUF_MAX];
     char char_inputs [NEMI_CHARINBUF_MAX];
 
-    struct perl_script scripts [NEMI_SCRIPTS_MAX];
+    struct perl_script   scripts [NEMI_SCRIPTS_MAX];
     
     struct render_buffer renderbufs [NEMI_RENDERBUFS_MAX];
     uint32_t             num_renderbufs;
 
+    //struct string_t      messages [NEMI_MSG_LINES_MAX];
+    //size_t               num_messages;
 
     double frame_time;
     double frame_time_begin;
@@ -67,6 +72,11 @@ void push_key_input(struct nemi* st, int key);
 void push_char_input(struct nemi* st, char ch);
 void font_scale(struct nemi* st, float offset);
 void set_font_scale(struct nemi* st, float scale);
+void create_msg(struct nemi* st, const char* msg, ...);
+
+// Switch current terminal.
+void switch_terminal(struct nemi* st, uint32_t index);
+void switch_terminal_ptr(struct nemi* st, struct terminal* term);
 
 void begin_frame(struct nemi* st);
 void end_frame(struct nemi* st);

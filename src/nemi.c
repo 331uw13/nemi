@@ -28,7 +28,6 @@ struct nemi* start_session(const char* config_file) {
     st->lfctx = leaf_open("Nemi - Terminal Emulator", 900, 700);
     st->num_terminals = 0;
 
-
     zero_input_buffers(st);
     init_default_config(st);
 
@@ -45,6 +44,7 @@ struct nemi* start_session(const char* config_file) {
     st->font.center_char_to_cell = font_cfg.font_center_char_to_cell;
     st->font.spacing = 0.2f;
     leaf_set_font_scale(&st->font, 0.9);
+    leaf_set_font_space_width(&st->font, st->font.max_bitmap_width / 2);
 
 
     leaf_set_font_color(&st->font, (struct color_t) { 255, 200, 150 });
@@ -66,7 +66,12 @@ struct nemi* start_session(const char* config_file) {
     st->win_rows -= 1;
 
     // Spawn default terminal.
-    st->terminal = spawn_terminal(st, st->win_rows, st->win_cols);
+    st->terminal = spawn_terminal(st, st->win_rows, st->win_cols, getenv("SHELL"));
+    st->messages = spawn_terminal(st, st->win_rows, st->win_cols, "/bin/cat");
+    st->terminal_prev = st->terminal;
+    
+    write_term(st->messages, TERM_WRITE_VTERM, 
+            "\033[2J\033[H\033[0m(start of messages. press ctrl+space to go back)\n\r");
 
     for(size_t i = 0; i < ARRAY_LEN(st->scripts); i++) {
         st->scripts[i] = (struct perl_script) {
@@ -125,7 +130,6 @@ void quit_session(struct nemi* st) {
         freeif(st->renderbufs[i].nodes);
     }
 
-
     log_close();
     freeif(st);
 }
@@ -139,6 +143,17 @@ void zero_input_buffers(struct nemi* st) {
     }
 }
 
+void switch_terminal(struct nemi* st, uint32_t index) {
+    switch_terminal_ptr(st, &st->terminals[index]);
+}
+
+void switch_terminal_ptr(struct nemi* st, struct terminal* term) {
+    if(st->terminal == term) {
+        return;
+    }
+    st->terminal_prev = st->terminal;
+    st->terminal = term;
+}
 
 static
 void render_rbbuffer_nodes(struct nemi* st, enum rb_node_layer layer) {
@@ -152,10 +167,6 @@ void render_rbbuffer_nodes(struct nemi* st, enum rb_node_layer layer) {
         struct rb_node* rnode = &rb->nodes[0];
         
         while(rnode) {
-
-//        for(size_t i = 0; i < rb->num_nodes; i++) {
-//            rnode = &rb->nodes[i];
-
             if(rnode->hidden || (rnode->layer != layer)) {
                 rnode = rnode->next;
                 continue;
@@ -202,6 +213,7 @@ void begin_frame(struct nemi* st) {
             (float)st->cfg.colors[NEMI_COLOR_BG].b / 255.0f,
             1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
+    render_rbbuffer_nodes(st, RBNODE_LAYER_FIRST);
 }
 
 void end_frame(struct nemi* st) {
@@ -217,7 +229,6 @@ void end_frame(struct nemi* st) {
    
 
     render_rbbuffer_nodes(st, RBNODE_LAYER_LAST);
-    render_rbbuffer_nodes(st, RBNODE_LAYER_FIRST);
     leaf_font_render(st->lfctx, &st->font);
 
 
@@ -265,6 +276,8 @@ void init_default_config(struct nemi* st) {
     st->cfg.colors[NEMI_BRIGHT_COLOR_CYAN]    = (struct color_t){ l_v, b_v, b_v };
     st->cfg.colors[NEMI_BRIGHT_COLOR_WHITE]   = (struct color_t){ b_v, b_v, b_v };
 
+    st->cfg.colors[NEMI_COLOR_MESSAGES_FG] = (struct color_t){ 200, 120, 60 };
+    st->cfg.colors[NEMI_COLOR_MESSAGES_BG] = (struct color_t){ 20, 10, 6 };
 }
 
 
@@ -350,12 +363,24 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
             mods);
 
     if(mods == GLFW_MOD_CONTROL) {
-        if(key == GLFW_KEY_1) {
-            font_scale(st, -0.1);
-        }
-        if(key == GLFW_KEY_2) {
-            font_scale(st, +0.1);
-        }
+        switch(key) {
+            case GLFW_KEY_1:
+                font_scale(st, -0.1);
+                break;
+
+            case GLFW_KEY_2:
+                font_scale(st, +0.1);
+                break;
+        
+            case GLFW_KEY_SPACE:
+                switch_terminal_ptr(st, st->terminal_prev);
+                break;
+
+            case GLFW_KEY_X:
+                switch_terminal_ptr(st, st->messages);
+                break;
+
+        }    
     }
     terminal_handle_key_event(st, st->terminal);
 }
@@ -458,5 +483,20 @@ void font_scale(struct nemi* st, float offset) {
 void set_font_scale(struct nemi* st, float scale) {
     leaf_set_font_scale(&st->font, scale);
     glfw_window_resize_callback(st->lfctx->glfw_win, st->lfctx->win_width, st->lfctx->win_height);
+}
+
+void create_msg(struct nemi* st, const char* msg, ...) {
+    va_list args;
+    va_start(args, msg);
+
+    char buffer[512] = { 0 };
+    vsnprintf(buffer, sizeof(buffer)-1, msg, args);
+
+    write_term(st->messages, TERM_WRITE_VTERM, buffer);
+    write_term(st->messages, TERM_WRITE_VTERM, "\n\r");
+    switch_terminal_ptr(st, st->messages);
+
+    logprintf(LOG_INFO, buffer);
+    va_end(args);
 }
 
