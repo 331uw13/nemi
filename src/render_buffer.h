@@ -21,6 +21,11 @@ enum rb_coord_mode {
     RBCOORDMODE_ARBITRARY  // Nnormal X and Y. (0,0) to (win_width, win_height).
 };
 
+enum rb_node_layer {
+    RBNODE_LAYER_FIRST,
+    RBNODE_LAYER_LAST
+};
+
 struct rb_node {
     enum rb_node_type type;
     union {
@@ -41,6 +46,8 @@ struct rb_node {
 
     struct rb_node* prev;
     struct rb_node* next;
+            
+    enum rb_node_layer layer;
 
     bool hidden;
 };
@@ -69,7 +76,6 @@ int renderbuf_add_rect(struct nemi* st,
 
 int renderbuf_add_text(struct nemi* st, 
         struct render_buffer* rb, int x, int y, char* text, size_t len, int color);
-
 
 
 void renderbuf_update_rect(struct nemi* st, 

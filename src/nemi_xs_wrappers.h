@@ -123,6 +123,30 @@ XS(xsw_rb_update_text) {
     renderbuf_update_text(st, &st->renderbufs[rb_index], rb_node_index, x, y, str, len, color);
 }
 
+XS(xsw_rb_node_layer_first) {
+    dXSARGS;
+    (void)items;
+    int rb_index = SvIV(ST(0));
+    int rb_node_index = SvIV(ST(1));
+    
+    struct nemi* st = get_state();
+    struct render_buffer* rb = &st->renderbufs[rb_index];
+
+    rb->nodes[rb_node_index].layer = RBNODE_LAYER_FIRST;
+}
+
+XS(xsw_rb_node_layer_last) {
+    dXSARGS;
+    (void)items;
+    int rb_index = SvIV(ST(0));
+    int rb_node_index = SvIV(ST(1));
+    
+    struct nemi* st = get_state();
+    struct render_buffer* rb = &st->renderbufs[rb_index];
+
+    rb->nodes[rb_node_index].layer = RBNODE_LAYER_LAST;
+}
+
 XS(xsw_rb_use_cellcoords) {
     dXSARGS;
     (void)items;
@@ -210,7 +234,7 @@ XS(xsw_term_unignore_chars) {
     (void)items;
     
     struct nemi* st = get_state();
-    st->terminal->flags &= ~FLG_IGNORE_CHR_INPUT;
+    st->flags &= ~FLG_IGNORE_CHR_INPUT;
     XSRETURN_EMPTY;
 }
 

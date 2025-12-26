@@ -26,7 +26,6 @@ int main(int argc, char** argv) {
         update_terminal_blink_timer(st, st->terminal);
 
         end_frame(st);
-   
         //printf("FrameTime = %f\n", st->frame_time * 1000.0);
     }
 

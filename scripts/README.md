@@ -98,6 +98,12 @@ Nemi::rb_show_node         (rb_index, node_index);
 Nemi::rb_use_cellcoords    (rb_index)   // Map X and Y coordinates to Column and Row.
 Nemi::rb_use_arbcoords     (rb_index)   // No coordinate mapping, Normal X and Y.
 
+// Setting layer specifies the rendering order.
+// Text is always rendered last,
+// thus changing text's layer is not going to have any effect.
+// Layer changing works for everything else.
+Nemi::rb_node_layer_first  (rb_index, node_index);
+Nemi::rb_node_layer_last   (rb_index, node_index);
 
 
 ////  Misc  ////

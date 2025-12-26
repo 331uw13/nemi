@@ -94,6 +94,7 @@ void renderbuf_rect_node(struct nemi* st,
         struct rb_node* node,
         int x, int y, int w, int h, int color) {
     node->type = RBNODE_MESH;
+    node->layer = RBNODE_LAYER_FIRST;
 
     if(rb->coordinate_mode == RBCOORDMODE_CELL) {
         x = coltox(st, x);
@@ -146,6 +147,7 @@ void renderbuf_text_node(struct nemi* st,
         struct rb_node* node,
         int x, int y, char* text, size_t len, int color) {
     node->type = RBNODE_TEXT;
+    node->layer = RBNODE_LAYER_LAST;
 
     if(rb->coordinate_mode == RBCOORDMODE_CELL) {
         x = coltox(st, x);
@@ -261,7 +263,7 @@ int renderbuf_add_rect(struct nemi* st,
     if(!node) {
         logprintf(LOG_ERROR, "Render buffer is full.");
     }
-   
+
     renderbuf_rect_node(st, rb, node, x, y, w, h, color);
     return ret_index;
 }

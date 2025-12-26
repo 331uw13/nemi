@@ -8,9 +8,6 @@
 #include "string.h"
 
 
-#define VMODE_WORD_MAX 64  // TODO Add to config.
-#define VMODE_WORD_SEPARATORS_MAX 16  // TODO: Add to config.
-
 
 struct scrollback_row {
     VTermScreenCell* cells;
@@ -30,11 +27,6 @@ enum term_write_target {
     TERM_WRITE_VTERM
 };
 
-/*
-#define VMODE_MODE_FILES     'F'   // Interact with files.
-#define VMODE_MODE_SEL       'S'   // Select mode.
-#define VMODE_MODE_BLOCK_SEL 'B'   // Block select mode.
-*/
 
 struct terminal {
     int          flags;
@@ -52,29 +44,6 @@ struct terminal {
     int line_height;
 
     float blink_timer;
-    /*
-    // Visual mode.
-    struct {
-        int  mode;
-        bool enabled;
-        bool was_enabled_before_altscreen;
-
-        VTermPos curs;
-
-        int  sel_start_row;
-        int  sel_start_col;
-
-        // Which characters define separators for word.
-        char     word_separators [VMODE_WORD_SEPARATORS_MAX];
-        uint32_t num_word_separators;
-
-        // Word where vmode cursor is on.
-        // Not valid if select region is enabled.
-        char     word [VMODE_WORD_MAX];
-        uint32_t word_len;
-    }
-    vmode;
-    */
 };
 
 

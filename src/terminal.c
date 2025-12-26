@@ -489,15 +489,6 @@ void terminal_handle_resize_event(struct nemi* st, struct terminal* term) {
 
 
 void terminal_handle_altscreen_change_event(struct nemi* st, struct terminal* term) {
-    
-    /*if(term->is_altscreen) {
-        term->vmode.was_enabled_before_altscreen = term->vmode.enabled;
-        term->vmode.enabled = false;
-    }
-    else {
-        term->vmode.enabled = term->vmode.was_enabled_before_altscreen;
-    }*/
-    
     terminal_set_scroll(term, 0);
 
     trigger_event_for_scripts(st, REG_EVENT_TERM_BUFFER_CHANGED,

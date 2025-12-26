@@ -139,18 +139,10 @@ void zero_input_buffers(struct nemi* st) {
     }
 }
 
-void begin_frame(struct nemi* st) {
-    st->frame_time_begin = glfwGetTime();
-    glClearColor(
-            (float)st->cfg.colors[NEMI_COLOR_BG].r / 255.0f,
-            (float)st->cfg.colors[NEMI_COLOR_BG].g / 255.0f,
-            (float)st->cfg.colors[NEMI_COLOR_BG].b / 255.0f,
-            1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-}
 
-void end_frame(struct nemi* st) {
-    
+static
+void render_rbbuffer_nodes(struct nemi* st, enum rb_node_layer layer) {
+
     for(size_t i = 0; i < ARRAY_LEN(st->renderbufs); i++) {
         struct render_buffer* rb = &st->renderbufs[i];
         if(rb->num_nodes == 0) {
@@ -160,36 +152,54 @@ void end_frame(struct nemi* st) {
         struct rb_node* rnode = &rb->nodes[0];
         while(rnode) {
 
-            if(!rnode->hidden) {
-                switch(rnode->type) {
-                    case RBNODE_UNUSED: break; // Ignored.
-                       
-                    case RBNODE_MESH:
-                        leaf_render_vertices(st->lfctx, 
-                                rnode->mesh.vertices, rnode->mesh.vertices_memsize);
-                        break;
+            if(rnode->hidden || (rnode->layer != layer)) {
+                rnode = rnode->next;
+                continue;
+            }
+            
+            switch(rnode->type) {
+                case RBNODE_UNUSED: break; // Ignored.
+                   
+                case RBNODE_MESH:
+                    leaf_render_vertices(st->lfctx, 
+                            rnode->mesh.vertices, rnode->mesh.vertices_memsize);
+                    break;
 
-                    case RBNODE_TEXT:
-                        leaf_set_font_color(&st->font, rnode->text.color);
+                case RBNODE_TEXT:
+                    leaf_set_font_color(&st->font, rnode->text.color);
 
-                        leaf_draw_text(&st->font, 
-                                rnode->text.pos_x, rnode->text.pos_y,
-                                rnode->text.data,
-                                rnode->text.len);
-                        break;
+                    leaf_draw_text(&st->font, 
+                            rnode->text.pos_x, rnode->text.pos_y,
+                            rnode->text.data,
+                            rnode->text.len);
+                    break;
 
-                    default:
-                        logprintf(LOG_ERROR, "Unknown rbnode type %i", rnode->type);
-                        break;
+                default:
+                    logprintf(LOG_ERROR, "Unknown rbnode type %i", rnode->type);
+                    break;
 
 
-                    // More will be added later.
-                }
+                // More will be added later.
             }
 
             rnode = rnode->next;
         }
     }
+}
+
+void begin_frame(struct nemi* st) {
+    st->frame_time_begin = glfwGetTime();
+    glClearColor(
+            (float)st->cfg.colors[NEMI_COLOR_BG].r / 255.0f,
+            (float)st->cfg.colors[NEMI_COLOR_BG].g / 255.0f,
+            (float)st->cfg.colors[NEMI_COLOR_BG].b / 255.0f,
+            1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    
+    render_rbbuffer_nodes(st, RBNODE_LAYER_FIRST);
+}
+
+void end_frame(struct nemi* st) {
 
     if(st->cfg.show_frametime) {
         float old_font_scale = st->font.scale;
@@ -200,15 +210,10 @@ void end_frame(struct nemi* st) {
         leaf_set_font_scale(&st->font, old_font_scale);
     }
    
-    /*
-    leaf_draw_texture_rect(
-            sin(glfwGetTime()*0.2)*1000-1000, 200.0f,
-            st->font.texture_width,
-            st->font.texture_height,
-            st->font.texture,
-            (struct color_t){ 255, 255, 255 });
-    */
+
     leaf_font_render(st->lfctx, &st->font);
+    render_rbbuffer_nodes(st, RBNODE_LAYER_LAST);
+
 
     st->last_char_in = 0;
     st->last_key_in = 0;
