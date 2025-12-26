@@ -44,6 +44,13 @@ struct terminal {
     int line_height;
 
     float blink_timer;
+
+
+    // Users can hide terminal's cells.
+    // This is done because then they can render
+    // anything they want from scripts without
+    // the terminal's cells being in the way.
+    bool* hidden_cells;
 };
 
 
@@ -58,11 +65,11 @@ void write_term            (struct terminal* term, enum term_write_target target
 void terminal_scroll       (struct terminal* term, int offset);
 void terminal_set_scroll   (struct terminal* term, int scroll);
 void update_terminal_blink_timer  (struct nemi* st, struct terminal* term);
-
 void terminal_handle_char_event   (struct nemi* st, struct terminal* term);
 void terminal_handle_key_event    (struct nemi* st, struct terminal* term);
 void terminal_handle_resize_event (struct nemi* st, struct terminal* term);
 void terminal_handle_altscreen_change_event(struct nemi* st, struct terminal* term);
+void terminal_hide_cells          (struct terminal* term, bool hidden, int col, int row, int width, int height);
 
 
 void terminal_init_palette        (struct nemi* st, struct terminal* term);

@@ -1,10 +1,6 @@
 # Scripting documentation.
 
-Here i will be referencing "Terminal emulator" as the actually compiled code (the C code side)
-
-
-
-
+> Here i will be referencing "Terminal emulator" as the actually compiled code (the C code side)
 
 ## Events
 
@@ -15,6 +11,8 @@ of calls to functions which may not exist in the script.
 
 ### Simple "Hello world" example.
 ```perl
+use strict;
+use warnings;
 
 #!REGISTER_EVENT
 sub event_key_input {
@@ -74,6 +72,9 @@ Nemi::term_ignore_keys     < No arguments >    // Terminals will ignore key inpu
 Nemi::term_unignore_chars  < No arguments >
 Nemi::term_unignore_keys   < No arguments >
 
+// Rendered terminal emulator's cells can be hidden.
+Nemi::term_hide_cells      (col, row, width, height)
+Nemi::term_show_cells      (col, row, width, height)
 
 
 ////  Rendering  ////

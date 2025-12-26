@@ -150,7 +150,11 @@ void render_rbbuffer_nodes(struct nemi* st, enum rb_node_layer layer) {
         }
 
         struct rb_node* rnode = &rb->nodes[0];
+        
         while(rnode) {
+
+//        for(size_t i = 0; i < rb->num_nodes; i++) {
+//            rnode = &rb->nodes[i];
 
             if(rnode->hidden || (rnode->layer != layer)) {
                 rnode = rnode->next;
@@ -158,11 +162,14 @@ void render_rbbuffer_nodes(struct nemi* st, enum rb_node_layer layer) {
             }
             
             switch(rnode->type) {
-                case RBNODE_UNUSED: break; // Ignored.
+                case RBNODE_UNUSED: 
+                    logprintf(LOG_WARN, "Trying to render unused rbnode.");
+                    break; // Ignored.
                    
                 case RBNODE_MESH:
                     leaf_render_vertices(st->lfctx, 
                             rnode->mesh.vertices, rnode->mesh.vertices_memsize);
+                    
                     break;
 
                 case RBNODE_TEXT:
@@ -195,8 +202,6 @@ void begin_frame(struct nemi* st) {
             (float)st->cfg.colors[NEMI_COLOR_BG].b / 255.0f,
             1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
-    
-    render_rbbuffer_nodes(st, RBNODE_LAYER_FIRST);
 }
 
 void end_frame(struct nemi* st) {
@@ -211,8 +216,9 @@ void end_frame(struct nemi* st) {
     }
    
 
-    leaf_font_render(st->lfctx, &st->font);
     render_rbbuffer_nodes(st, RBNODE_LAYER_LAST);
+    render_rbbuffer_nodes(st, RBNODE_LAYER_FIRST);
+    leaf_font_render(st->lfctx, &st->font);
 
 
     st->last_char_in = 0;
@@ -423,7 +429,6 @@ int rowtoy(struct nemi* st, int row) {
 int new_renderbuf(struct nemi* st, int num_nodes_max) {
     int ret_index = -1;
 
-    // Find unused one and return the index.
     for(size_t i = 0; i < ARRAY_LEN(st->renderbufs); i++) {
         struct render_buffer* rb = &st->renderbufs[i];
         if(rb->nodes) {

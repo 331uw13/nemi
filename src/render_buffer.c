@@ -100,7 +100,7 @@ void renderbuf_rect_node(struct nemi* st,
         x = coltox(st, x);
         y = rowtoy(st, y);
         w *= st->font.char_width * 2;
-        h *= st->font.char_height;
+        h *= st->font.char_height * 2;
     }
 
     uint32_t stride_size = 2 /* x, y */ + 3; /* r, g, b */
@@ -168,6 +168,7 @@ void renderbuf_text_node(struct nemi* st,
     node->text.pos_x = x;
     node->text.pos_y = y;
     node->text.len = len;
+    
 }
 
 /*
@@ -214,6 +215,14 @@ bool is_node_active(struct rb_node* node) {
     return !(node->next && node->prev);
 }
 
+
+static
+void print_node(struct rb_node* node) {
+    printf("Node %p\n", node);
+    printf("   - Prev = %p\n", node->prev);
+    printf("   - Next = %p\n", node->next);
+}
+
 static
 struct rb_node* renderbuf_add_node(struct render_buffer* rb, int* index_out) {
     int this_index = 0;
@@ -251,6 +260,7 @@ found_free_node:
     if(rb->num_nodes+1 < rb->num_nodes_max) {
         rb->num_nodes++;
     }
+
     return node;
 }
 
@@ -265,6 +275,8 @@ int renderbuf_add_rect(struct nemi* st,
     }
 
     renderbuf_rect_node(st, rb, node, x, y, w, h, color);
+    
+    logprintf(LOG_INFO, "Created rect rbnode %i", ret_index);
     return ret_index;
 }
 
@@ -279,6 +291,8 @@ int renderbuf_add_text(struct nemi* st,
     }
 
     renderbuf_text_node(st, rb, node, x, y, text, len, color);
+    
+    logprintf(LOG_INFO, "Created text rbnode %i", ret_index);
     return ret_index;
 }
 
@@ -290,7 +304,7 @@ void renderbuf_update_rect(struct nemi* st,
     }
 
     struct rb_node* node = rb->nodes + node_index;
-    if(is_node_active(node) && node->type == RBNODE_MESH) {
+    if(node->type == RBNODE_MESH) {
         renderbuf_rect_node(st, rb, node, x, y, w, h, color);
     }
 }
@@ -302,7 +316,7 @@ void renderbuf_update_text(struct nemi* st,
     }
 
     struct rb_node* node = rb->nodes + node_index;
-    if(is_node_active(node) && node->type == RBNODE_TEXT) {
+    if(node->type == RBNODE_TEXT) {
         renderbuf_text_node(st, rb, node, x, y, text, len, color);
     }
 }

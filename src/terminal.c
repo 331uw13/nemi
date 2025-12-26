@@ -112,11 +112,12 @@ struct terminal* spawn_terminal(struct nemi* st, int rows, int cols) {
     term->line_height = st->font.char_height + st->cfg.line_padding;
     term->blink_timer = 0;
 
+    term->hidden_cells = calloc(term->cols * term->rows, sizeof *term->hidden_cells);
+
     init_scrollback_buffer(term);
     term->vt = vterm_new(rows, cols);
     vterm_set_utf8(term->vt, true);
     
-
     
     term->vtscrn = vterm_obtain_screen(term->vt);
     term->vtstate = vterm_obtain_state(term->vt);
@@ -146,8 +147,9 @@ void close_terminal(struct terminal* term) {
     for(size_t i = 0; i < term->sb.num_rows_max; i++) {
         freeif(term->sb.rows[i].cells);
     }
-    freeif(term->sb.rows);
 
+    freeif(term->sb.rows);
+    freeif(term->hidden_cells);
 
     close(term->master_fd);
     term->master_fd = -1;
@@ -222,10 +224,44 @@ struct color_t vtermcolor_to_leafcolor(VTermColor* c) {
 }
 
 static
+bool* get_hidden_cell_status(struct terminal* term, int col, int row) {
+    size_t index = row * term->cols + col;
+
+    size_t num_cells = term->cols * term->rows;
+    if(index >= num_cells) {
+        return NULL;
+    }
+
+    return &term->hidden_cells[index];
+}
+
+void terminal_hide_cells(struct terminal* term, bool hidden, int col, int row, int width, int height) {
+    
+    for(int y = 0; y < height; y++) {
+        for(int x = 0; x < width; x++) {
+            bool* status = get_hidden_cell_status(term, x + col, y + row);
+            if(!status) {
+                continue;
+            }
+
+            *status = hidden;
+        }
+    }
+}
+
+
+static
 void render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, VTermPos pos) {
     
     if(cell->chars[0] == 0) {
         return;
+    }
+
+    bool* is_hidden = get_hidden_cell_status(term, pos.col, pos.row);
+    if(is_hidden) {
+        if(*is_hidden) {
+            return;
+        }
     }
 
     int char_x = coltox(st, pos.col);
@@ -343,7 +379,8 @@ void update_terminal_blink_timer(struct nemi* st, struct terminal* term) {
         term->blink_timer = pow(tri_wave, st->cfg.soft_blink_pow);
     }
     else {
-        
+
+
     }
 }
 
@@ -472,6 +509,9 @@ void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
 
 void terminal_handle_resize_event(struct nemi* st, struct terminal* term) {
 
+    int old_rows = term->rows;
+    int old_cols = term->cols;
+
     term->cols = st->win_cols;
     term->rows = st->win_rows;
 
@@ -485,6 +525,17 @@ void terminal_handle_resize_event(struct nemi* st, struct terminal* term) {
     };
 
     ioctl(term->master_fd, TIOCSWINSZ, &ws);
+
+
+    size_t old_num_cells = old_rows * old_cols;
+
+    term->hidden_cells = realloc(term->hidden_cells, 
+            (term->cols * term->rows) * sizeof *term->hidden_cells);
+
+    size_t num_curr_cells = term->rows * term->cols;
+    for(size_t i = old_num_cells; i < num_curr_cells; i++) {
+        term->hidden_cells[i] = false;
+    }
 }
 
 

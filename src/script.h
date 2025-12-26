@@ -19,6 +19,7 @@ struct perl_script {
     char filename [64];
     bool is_loaded;
     int reg_events; // What events the script wants to get.
+    int uid; // Unique identitifer.
 };
 
 

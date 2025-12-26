@@ -121,6 +121,7 @@ XS(xsw_rb_update_text) {
     
     struct nemi* st = get_state();
     renderbuf_update_text(st, &st->renderbufs[rb_index], rb_node_index, x, y, str, len, color);
+    XSRETURN_EMPTY;
 }
 
 XS(xsw_rb_node_layer_first) {
@@ -133,6 +134,7 @@ XS(xsw_rb_node_layer_first) {
     struct render_buffer* rb = &st->renderbufs[rb_index];
 
     rb->nodes[rb_node_index].layer = RBNODE_LAYER_FIRST;
+    XSRETURN_EMPTY;
 }
 
 XS(xsw_rb_node_layer_last) {
@@ -145,6 +147,33 @@ XS(xsw_rb_node_layer_last) {
     struct render_buffer* rb = &st->renderbufs[rb_index];
 
     rb->nodes[rb_node_index].layer = RBNODE_LAYER_LAST;
+    XSRETURN_EMPTY;
+}
+
+XS(xsw_term_hide_cells) {
+    dXSARGS;
+    (void)items;
+    int x = SvIV(ST(0));
+    int y = SvIV(ST(1));
+    int w = SvIV(ST(2));
+    int h = SvIV(ST(3));
+
+    struct nemi* st = get_state();
+    terminal_hide_cells(st->terminal, true, x, y, w, h);
+    XSRETURN_EMPTY;
+}
+
+XS(xsw_term_show_cells) {
+    dXSARGS;
+    (void)items;
+    int x = SvIV(ST(0));
+    int y = SvIV(ST(1));
+    int w = SvIV(ST(2));
+    int h = SvIV(ST(3));
+
+    struct nemi* st = get_state();
+    terminal_hide_cells(st->terminal, false, x, y, w, h);
+    XSRETURN_EMPTY;
 }
 
 XS(xsw_rb_use_cellcoords) {
