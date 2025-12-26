@@ -500,3 +500,12 @@ void create_msg(struct nemi* st, const char* msg, ...) {
     va_end(args);
 }
 
+void reload_config(struct nemi* st) {
+    printf("Reaaaaaaaaaaaaaaaaaaaaaaaaaload\n");
+
+
+
+}
+
+
+

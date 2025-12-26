@@ -96,7 +96,8 @@ int coltox(struct nemi* st, int col);
 int rowtoy(struct nemi* st, int row);
 
 int new_renderbuf(struct nemi* st, int num_nodes_max);
-
 void init_default_config(struct nemi* st);
+
+void reload_config(struct nemi* st);
 
 #endif

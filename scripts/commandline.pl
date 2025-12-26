@@ -6,24 +6,30 @@ struct( 'cmdl', {
     input_color => '$',
     cursor_color => '$',
     bgrect_color => '$',
+    suggest_color => '$',
     enabled => '$',
     cursor => '$',
     input => '$',
+    suggest => '$',
     rb => '$', # Render buffer index.
     rb_input_node => '$',
     rb_bgrect_node => '$',
-    rb_cursor_node => '$'
+    rb_cursor_node => '$',
+    rb_suggest_node => '$',
+    avail_extfuncs => '@'
 });
 
 sub new {
     $cmdl::enabled = 0;
     $cmdl::cursor = 0;
     $cmdl::input = "";
+    $cmdl::suggest = "";
 
     $cmdl::input_color = 0xFFFFFF;
     $cmdl::bgrect_color = 0x171b23;
     $cmdl::cursor_color = 0x50AE00;
-    
+    $cmdl::suggest_color = 0x206270;
+
     my $num_rb_nodes = 8;
     $cmdl::rb = Nemi::new_renderbuf($num_rb_nodes);
 
@@ -31,8 +37,8 @@ sub new {
 
     $cmdl::rb_bgrect_node = Nemi::rb_add_rect($cmdl::rb, 0, 0, 0, 0, $cmdl::bgrect_color);
     $cmdl::rb_cursor_node = Nemi::rb_add_rect($cmdl::rb, 0, 0, 0, 0, $cmdl::cursor_color);
-    $cmdl::rb_input_node = Nemi::rb_add_text($cmdl::rb, 10, 20, "", $cmdl::input_color);
-
+    $cmdl::rb_input_node = Nemi::rb_add_text($cmdl::rb, 0, 0, "", $cmdl::input_color);
+    $cmdl::rb_suggest_node = Nemi::rb_add_text($cmdl::rb, 0, 0, "", $cmdl::);
 
     print("input_node = $cmdl::rb_input_node\n");
     print("bgrect_node = $cmdl::rb_bgrect_node\n");
@@ -41,8 +47,39 @@ sub new {
     Nemi::rb_hide_node($cmdl::rb, $cmdl::rb_input_node);
     Nemi::rb_hide_node($cmdl::rb, $cmdl::rb_bgrect_node);
     Nemi::rb_hide_node($cmdl::rb, $cmdl::rb_cursor_node);
+    Nemi::rb_hide_node($cmdl::rb, $cmdl::rb_suggest_node);
 }
 
+
+sub get_best_cmd_suggestion {
+    $cmdl::suggest = "";
+    if(length($cmdl::input) == 0) {
+        Nemi::rb_hide_node($cmdl::rb, $cmdl::rb_suggest_node);
+        return;
+    }
+
+    my $match_count = 0;
+
+    my $suffix = " | ";
+    foreach my $fn (@cmdl::avail_extfuncs) {
+        if(rindex($fn, $cmdl::input, 0) != -1) {
+            $cmdl::suggest .= $fn . $suffix;
+            $match_count++;
+
+            if($match_count > 4) {
+                last;
+            }
+        }
+    }
+    
+    if($match_count == 0) {
+        Nemi::rb_hide_node($cmdl::rb, $cmdl::rb_suggest_node);
+    }
+    else {
+        $cmdl::suggest = substr($cmdl::suggest, 0, length($cmdl::suggest) - length($suffix));
+        Nemi::rb_show_node($cmdl::rb, $cmdl::rb_suggest_node);
+    }
+}
 
 sub update_view {
 
@@ -50,11 +87,11 @@ sub update_view {
     my $y = Nemi::term_get_rows() - 1;
 
     my $prefix = "> ";
-
     Nemi::rb_update_text($cmdl::rb, $cmdl::rb_input_node, 
         $x, $y, 
         $prefix . $cmdl::input, $cmdl::input_color
     );
+
 
     Nemi::rb_update_rect($cmdl::rb, $cmdl::rb_bgrect_node, 
         0, $y,
@@ -64,6 +101,24 @@ sub update_view {
         $x + $cmdl::cursor + length($prefix),
         $y,
         1, 1, $cmdl::cursor_color);
+
+
+    get_best_cmd_suggestion();
+
+    my $suggest_len = length($cmdl::suggest);
+    if($suggest_len == 0) {
+        return;
+    }
+    my $input_len = length($cmdl::input);
+    if($input_len <= $suggest_len) {
+        my $suggest_text = substr($cmdl::suggest, $input_len, $suggest_len);
+        Nemi::rb_update_text($cmdl::rb, $cmdl::rb_suggest_node, 
+            $x + length($prefix) + $input_len,
+            $y, 
+            $suggest_text, $cmdl::suggest_color
+        );
+    }
+
 
 }
 
@@ -76,9 +131,10 @@ sub toggle_enabled {
         Nemi::rb_show_node($cmdl::rb, $cmdl::rb_input_node);
         Nemi::rb_show_node($cmdl::rb, $cmdl::rb_bgrect_node);
         Nemi::rb_show_node($cmdl::rb, $cmdl::rb_cursor_node);
+        Nemi::rb_show_node($cmdl::rb, $cmdl::rb_suggest_node);
         update_view();
     
-        Nemi::term_hide_cells(0, Nemi::term_get_rows()-1, Nemi::term_get_cols(), 8);
+        Nemi::term_hide_cells(0, Nemi::term_get_rows()-1, Nemi::term_get_cols(), 1);
     }
     else {
         Nemi::term_unignore_chars();
@@ -86,8 +142,9 @@ sub toggle_enabled {
         Nemi::rb_hide_node($cmdl::rb, $cmdl::rb_input_node);
         Nemi::rb_hide_node($cmdl::rb, $cmdl::rb_bgrect_node);
         Nemi::rb_hide_node($cmdl::rb, $cmdl::rb_cursor_node);
+        Nemi::rb_hide_node($cmdl::rb, $cmdl::rb_suggest_node);
         
-        Nemi::term_show_cells(0, Nemi::term_get_rows()-1, Nemi::term_get_cols(), 8);
+        Nemi::term_show_cells(0, Nemi::term_get_rows()-1, Nemi::term_get_cols(), 1);
     }
 }
 
@@ -106,10 +163,7 @@ sub execute {
     my $v = eval($cmdl::input);
     if(defined $v) {
         Nemi::create_msg("$v");
-        return;
     }
-
-
 
 }
 
@@ -124,6 +178,7 @@ sub event_key_input {
     my $key_backspace = 259;
     my $key_left = 263;
     my $key_right = 262;
+    my $key_tab = 258;
 
     # '.' and Control.
     if($_[0] == $key_dot and $_[1] == $mod_ctrl) {
@@ -160,6 +215,16 @@ sub event_key_input {
                 cmdl->update_view();
             }
         }
+        when($key_tab) {
+            if(length($cmdl::suggest) > 0) {
+                my @test = split(/\|/, $cmdl::suggest);
+
+                $cmdl::input = @test[0];
+                $cmdl::input =~ tr/ //ds;
+                $cmdl::cursor = length($cmdl::input);
+                cmdl->update_view();
+            }
+        }
     }
 }
 
@@ -186,6 +251,15 @@ sub event_char_input {
 sub init_script {
     $cmdl = cmdl->new();
 
+
+    # Get available external functions for auto complete.
+    foreach my $entry ( keys %Nemi:: ) {
+        no strict 'refs';
+        if (defined &{"Nemi::$entry"}) {
+            push(@cmdl::avail_extfuncs, "Nemi::".$entry."()");
+            #print "sub $entry is defined\n" ;
+        }
+    }
 }
 
 

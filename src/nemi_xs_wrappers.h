@@ -78,16 +78,6 @@ XS(xsw_rb_add_rect) {
                 color));
 }
 
-XS(xsw_create_msg) {
-    dXSARGS;
-    (void)items;
-    
-    STRLEN len;
-    char*  str = SvPV(ST(0), len);
-    struct nemi* st = get_state();
-
-    create_msg(st, str);
-}
 
 XS(xsw_rb_update_rect) {
     dXSARGS;
@@ -277,5 +267,22 @@ XS(xsw_term_unignore_chars) {
     XSRETURN_EMPTY;
 }
 
+XS(xsw_create_msg) {
+    dXSARGS;
+    (void)items;
+    
+    STRLEN len;
+    char*  str = SvPV(ST(0), len);
+    struct nemi* st = get_state();
+
+    create_msg(st, str);
+}
+
+XS(xsw_reload_config) {
+    dXSARGS;
+    (void)items;
+
+    reload_config(get_state());
+}
 
 #endif

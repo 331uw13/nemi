@@ -187,9 +187,16 @@ int font_config_handler
 }
 
 
-bool nemi_read_config(struct nemi* st, const char* file) {
-    printf("config = '%s'\n", file);
-   
+bool nemi_read_config(struct nemi* st, const char* filepath) {
+    size_t filepath_len = strlen(filepath);
+    memset(st->cfg.filepath, 0, sizeof(st->cfg.filepath));
+    if(filepath_len >= sizeof(st->cfg.filepath)-1) {
+        fprintf(stderr, "Too long config filepath. Reloading will not work.\n");
+    }
+    else {
+        memcpy(st->cfg.filepath, filepath, filepath_len);
+    }
+
     struct config_values v = {
         .st = st,
         .log = { 0 }
@@ -199,16 +206,16 @@ bool nemi_read_config(struct nemi* st, const char* file) {
     v.log.flags |= LOG_ENABLED;
 
     v.pass = READ_LOG_SETTINGS;
-    if(ini_parse(file, handler, &v)) {
-        fprintf(stderr, "Cant parse config '%s'\n", file);
+    if(ini_parse(filepath, handler, &v)) {
+        fprintf(stderr, "Cant parse config '%s'\n", filepath);
         return false;
     }
     
     log_init(v.log);
 
     v.pass = READ_OTHER_SETTINGS;
-    if(ini_parse(file, handler, &v)) {
-        fprintf(stderr, "Cant parse config '%s'\n", file);
+    if(ini_parse(filepath, handler, &v)) {
+        fprintf(stderr, "Cant parse config '%s'\n", filepath);
         return false;
     }
 
@@ -216,9 +223,9 @@ bool nemi_read_config(struct nemi* st, const char* file) {
     return true;
 }
 
-bool nemi_read_font_config(struct nemi* st, const char* file, struct nemi_font_config* font_cfg) {
-    if(ini_parse(file, font_config_handler, font_cfg)) {
-        fprintf(stderr, "Cant parse config '%s', when trying to read font settings.\n", file);
+bool nemi_read_font_config(struct nemi* st, const char* filepath, struct nemi_font_config* font_cfg) {
+    if(ini_parse(filepath, font_config_handler, font_cfg)) {
+        fprintf(stderr, "Cant parse config '%s', when trying to read font settings.\n", filepath);
         return false;
     }
     return true;

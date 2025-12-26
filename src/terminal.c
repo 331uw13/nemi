@@ -513,7 +513,6 @@ void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
         case GLFW_KEY_LEFT:
             write_term(term, TERM_WRITE_PTY, "\x1b[D");
             break;
-
     }
 }
 

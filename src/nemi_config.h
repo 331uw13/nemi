@@ -39,6 +39,7 @@ enum nemi_config_colors {
 struct nemi;
 
 struct nemi_config {
+    char filepath [256];
     int padding_x;
     int padding_y;
     int line_padding;
@@ -60,8 +61,8 @@ struct nemi_font_config {
     bool   font_center_char_to_cell;
 };
 
-bool nemi_read_config(struct nemi* st, const char* file);
-bool nemi_read_font_config(struct nemi* st, const char* file, struct nemi_font_config* font_cfg);
+bool nemi_read_config(struct nemi* st, const char* filepath);
+bool nemi_read_font_config(struct nemi* st, const char* filepath, struct nemi_font_config* font_cfg);
 
 
 

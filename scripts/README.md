@@ -111,6 +111,7 @@ Nemi::rb_node_layer_last   (rb_index, node_index);
 
 Nemi::keydown              (GLFW Key number)
 Nemi::create_msg           (text)
+Nemi::reload_config        < No arguments >
 
 ```
 
