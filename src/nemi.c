@@ -6,7 +6,8 @@
 #include "nemi.h"
 #include "nemi_config.h"
 #include "common.h"
-#include "plscript_funcs.h"
+
+static struct nemi* g_nemi_state = NULL;
 
 
 void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
@@ -14,6 +15,9 @@ void glfw_window_resize_callback(GLFWwindow* window, int width, int height);
 void glfw_scroll_callback(GLFWwindow* window, double x_offset, double y_offset);;
 void glfw_char_callback(GLFWwindow* window, uint32_t codepoint);
 
+struct nemi* get_state() {
+    return g_nemi_state;
+}
 
 struct nemi* start_session(const char* config_file) {
     struct nemi* st = malloc(sizeof *st);
@@ -79,7 +83,8 @@ struct nemi* start_session(const char* config_file) {
         };
     }
 
-    plscript_funcs_set_context(st);
+    //plscript_funcs_set_context(st);
+    g_nemi_state = st;
 
 
     if(!nemi_read_config(st, config_file)) {
@@ -152,29 +157,34 @@ void end_frame(struct nemi* st) {
             continue;
         }
 
-        struct rb_node* rnode = &st->renderbufs[0].nodes[0];
+        struct rb_node* rnode = &rb->nodes[0];
         while(rnode) {
 
-            switch(rnode->type) {
-                case RBNODE_UNUSED: break; // Ignored.
-                   
-                case RBNODE_MESH:
-                    leaf_render_vertices(st->lfctx, 
-                            rnode->mesh.vertices, rnode->mesh.vertices_memsize);
-                    break;
+            if(!rnode->hidden) {
+                switch(rnode->type) {
+                    case RBNODE_UNUSED: break; // Ignored.
+                       
+                    case RBNODE_MESH:
+                        leaf_render_vertices(st->lfctx, 
+                                rnode->mesh.vertices, rnode->mesh.vertices_memsize);
+                        break;
 
-                case RBNODE_TEXT:
-                    leaf_set_font_color(&st->font, rnode->text.color);
+                    case RBNODE_TEXT:
+                        leaf_set_font_color(&st->font, rnode->text.color);
 
-                    leaf_draw_text(&st->font, 
-                            rnode->text.pos_x, rnode->text.pos_y,
-                            rnode->text.data,
-                            rnode->text.len);
-                    break;
+                        leaf_draw_text(&st->font, 
+                                rnode->text.pos_x, rnode->text.pos_y,
+                                rnode->text.data,
+                                rnode->text.len);
+                        break;
+
+                    default:
+                        logprintf(LOG_ERROR, "Unknown rbnode type %i", rnode->type);
+                        break;
 
 
-
-                // More will be added later.
+                    // More will be added later.
+                }
             }
 
             rnode = rnode->next;

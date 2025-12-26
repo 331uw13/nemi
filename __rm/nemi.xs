@@ -5,6 +5,7 @@
 #include "../src/plscript_funcs.h"
 
 
+
 MODULE = Nemi       PACKAGE = Nemi
 
 
@@ -16,6 +17,14 @@ new_renderbuf()
         RETVAL = nemipl__new_renderbuf(size);
     OUTPUT:
         RETVAL
+
+void
+rb_hide_node()
+    int rb_index;
+    int rb_node;
+    PROTOTYPE: DISABLE
+    CODE:
+        
 
 int
 rb_add_rect()

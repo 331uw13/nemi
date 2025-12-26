@@ -411,7 +411,7 @@ void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
     if(st->flags & FLG_IGNORE_KEY_INPUT) {
         return;
     }
-    
+   
     // Im not sure if this is 100% correct
     // but tried to match behaviour with other terminal emulators
     // when looking at 'showkey -a' output.

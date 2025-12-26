@@ -1,0 +1,19 @@
+// GENERATED CODE. Changes here will be lost when project is compiled.
+// Modify 'nemi_xs_wrappers.h'.
+newXS("Nemi::new_renderbuf", xsw_new_renderbuf, __FILE__);
+newXS("Nemi::rb_hide_node", xsw_rb_hide_node, __FILE__);
+newXS("Nemi::rb_show_node", xsw_rb_show_node, __FILE__);
+newXS("Nemi::rb_add_rect", xsw_rb_add_rect, __FILE__);
+newXS("Nemi::rb_update_rect", xsw_rb_update_rect, __FILE__);
+newXS("Nemi::rb_add_text", xsw_rb_add_text, __FILE__);
+newXS("Nemi::rb_update_text", xsw_rb_update_text, __FILE__);
+newXS("Nemi::rb_use_cellcoords", xsw_rb_use_cellcoords, __FILE__);
+newXS("Nemi::rb_use_arbcoords", xsw_rb_use_arbcoords, __FILE__);
+newXS("Nemi::term_scroll_y", xsw_term_scroll_y, __FILE__);
+newXS("Nemi::term_get_rows", xsw_term_get_rows, __FILE__);
+newXS("Nemi::term_get_cols", xsw_term_get_cols, __FILE__);
+newXS("Nemi::keydown", xsw_keydown, __FILE__);
+newXS("Nemi::term_ignore_keys", xsw_term_ignore_keys, __FILE__);
+newXS("Nemi::term_ignore_chars", xsw_term_ignore_chars, __FILE__);
+newXS("Nemi::term_unignore_keys", xsw_term_unignore_keys, __FILE__);
+newXS("Nemi::term_unignore_chars", xsw_term_unignore_chars, __FILE__);

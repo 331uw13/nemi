@@ -171,16 +171,15 @@ sub main {
     f_append("\n\n");
    
     f_append("SRC = \$(shell find ./src -type f -name *.c)\n");
-    f_append("SRC += xs/xsinit.c\n");
-    f_append("SRC += xs/nemi.c\n");
+    #f_append("SRC += xs/xsinit.c\n");
+    #f_append("SRC += xs/nemi.c\n");
     f_append("OBJS = \$(SRC:.c=.o)\n");
     f_append("\n");
 
     f_append("all: pre-build $target\n\n");
     f_append(
         "pre-build:\n" .
-        "\t\@$perl_prefix perl -MExtUtils::Embed -e xsinit -- -o xs/xsinit.c\n" .
-        "\t\@$perl_prefix xsubpp xs/nemi.xs > xs/nemi.c\n" .
+        "\t\@$perl_prefix perl genxsfuncreg.pl\n" .
         "\n"
     );
 
@@ -198,10 +197,10 @@ sub main {
 
     f_append(
         "clean:\n" .
-        "\trm -v xs/nemi.c\n" .
-        "\trm -v xs/xsinit.c\n" .
         "\trm -v \$(OBJS) \$(TARGET)\n" .
-        "\n"
+        "\trm -v src/register_script_functions.inc\n" .
+        "\n" .
+        ".PHONY: all \$(TARGET) clean\n"
     );
 
     close($FH);

@@ -46,7 +46,7 @@ our $test_text;
 
 sub init_script {
 
-    my $rbuf_max_nodes = 80;
+    my $rbuf_max_nodes = 16;
     $renderbuf = Nemi::new_renderbuf($rbuf_max_nodes);
     
     
@@ -59,7 +59,7 @@ sub init_script {
     Nemi::rb_use_cellcoords($renderbuf); # Cell coordinates. (Row, Column)
     
     #my $test_rect = Nemi::rb_add_rect($renderbuf, 7, 10, 1, 10, 0x30FFA0);
-    #$test_text = Nemi::rb_add_text($renderbuf, 6, $term_rows-2, "Hello from perl!", 0xFF30FF);
+    my $test_text = Nemi::rb_add_text($renderbuf, 6, $term_rows-2, "Hello from perl!", 0xFF30FF);
 
     $vmode = vmode->new();
 }

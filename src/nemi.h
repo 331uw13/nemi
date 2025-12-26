@@ -17,7 +17,6 @@
 #define FLG_IGNORE_CHR_INPUT (1 << 2)
 
 
-
 #define NEMI_TERMINALS_MAX 16
 #define NEMI_KEYINBUF_MAX 8
 #define NEMI_CHARINBUF_MAX 8
@@ -60,6 +59,8 @@ struct nemi {
 
 struct nemi* start_session(const char* config_file);
 void         quit_session(struct nemi* st);
+
+struct nemi* get_state(); // Should be used only in XS wrappers.
 
 void zero_input_buffers(struct nemi* st);
 void push_key_input(struct nemi* st, int key);

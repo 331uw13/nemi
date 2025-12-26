@@ -11,6 +11,7 @@
 #define VMODE_WORD_MAX 64  // TODO Add to config.
 #define VMODE_WORD_SEPARATORS_MAX 16  // TODO: Add to config.
 
+
 struct scrollback_row {
     VTermScreenCell* cells;
     uint32_t         num_cells;

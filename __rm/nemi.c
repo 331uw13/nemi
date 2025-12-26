@@ -14,7 +14,8 @@
 #include "../src/plscript_funcs.h"
 
 
-#line 18 "xs/nemi.c"
+
+#line 19 "xs/nemi.c"
 #ifndef PERL_UNUSED_VAR
 #  define PERL_UNUSED_VAR(var) if (0) var = var
 #endif
@@ -165,7 +166,7 @@ S_croak_xs_usage(const CV *const cv, const char *const params)
 #  define TARGn(nv, do_taint) sv_setnv_mg(TARG, nv)
 #endif
 
-#line 169 "xs/nemi.c"
+#line 170 "xs/nemi.c"
 
 XS_EUPXS(XS_Nemi_new_renderbuf); /* prototype to pass -Wmissing-prototypes */
 XS_EUPXS(XS_Nemi_new_renderbuf)
@@ -177,13 +178,29 @@ XS_EUPXS(XS_Nemi_new_renderbuf)
 	int	size;
 	int	RETVAL;
 	dXSTARG;
-#line 16 "xs/nemi.xs"
+#line 17 "xs/nemi.xs"
         RETVAL = nemipl__new_renderbuf(size);
-#line 183 "xs/nemi.c"
+#line 184 "xs/nemi.c"
 	TARGi((IV)RETVAL, 1);
 	ST(0) = TARG;
     }
     XSRETURN(1);
+}
+
+
+XS_EUPXS(XS_Nemi_rb_hide_node); /* prototype to pass -Wmissing-prototypes */
+XS_EUPXS(XS_Nemi_rb_hide_node)
+{
+    dVAR; dXSARGS;
+    if (items != 0)
+       croak_xs_usage(cv,  "");
+    {
+	int	rb_index;
+	int	rb_node;
+#line 26 "xs/nemi.xs"
+#line 202 "xs/nemi.c"
+    }
+    XSRETURN_EMPTY;
 }
 
 
@@ -202,9 +219,9 @@ XS_EUPXS(XS_Nemi_rb_add_rect)
 	int	color;
 	int	RETVAL;
 	dXSTARG;
-#line 30 "xs/nemi.xs"
+#line 39 "xs/nemi.xs"
         RETVAL = nemipl__rb_add_rect(rb_index, x, y, w, h, color);
-#line 208 "xs/nemi.c"
+#line 225 "xs/nemi.c"
 	TARGi((IV)RETVAL, 1);
 	ST(0) = TARG;
     }
@@ -226,9 +243,9 @@ XS_EUPXS(XS_Nemi_rb_update_rect)
 	int	w;
 	int	h;
 	int	color;
-#line 45 "xs/nemi.xs"
+#line 54 "xs/nemi.xs"
         nemipl__rb_update_rect(rb_index, rb_mesh_index, x, y, w, h, color);
-#line 232 "xs/nemi.c"
+#line 249 "xs/nemi.c"
     }
     XSRETURN_EMPTY;
 }
@@ -246,16 +263,16 @@ XS_EUPXS(XS_Nemi_rb_add_text)
 	int	y;
 	SV*	str;
 	int	color;
-#line 57 "xs/nemi.xs"
+#line 66 "xs/nemi.xs"
         char* text;
         STRLEN text_len;
-#line 253 "xs/nemi.c"
+#line 270 "xs/nemi.c"
 	int	RETVAL;
 	dXSTARG;
-#line 60 "xs/nemi.xs"
+#line 69 "xs/nemi.xs"
         text = SvPV(str, text_len);
         RETVAL = nemipl__rb_add_text(rb_index, x, y, text, text_len, color);
-#line 259 "xs/nemi.c"
+#line 276 "xs/nemi.c"
 	TARGi((IV)RETVAL, 1);
 	ST(0) = TARG;
     }
@@ -276,14 +293,14 @@ XS_EUPXS(XS_Nemi_rb_update_text)
 	int	y;
 	SV*	str;
 	int	color;
-#line 75 "xs/nemi.xs"
+#line 84 "xs/nemi.xs"
         char* text;
         STRLEN text_len;
-#line 283 "xs/nemi.c"
-#line 78 "xs/nemi.xs"
+#line 300 "xs/nemi.c"
+#line 87 "xs/nemi.xs"
         text = SvPV(str, text_len);
         nemipl__rb_update_text(rb_index, rb_node_index, x, y, text, text_len, color);
-#line 287 "xs/nemi.c"
+#line 304 "xs/nemi.c"
     }
     XSRETURN_EMPTY;
 }
@@ -297,9 +314,9 @@ XS_EUPXS(XS_Nemi_term_scroll_y)
        croak_xs_usage(cv,  "");
     {
 	int	offset;
-#line 87 "xs/nemi.xs"
+#line 96 "xs/nemi.xs"
         nemipl__term_scroll_y(offset);
-#line 303 "xs/nemi.c"
+#line 320 "xs/nemi.c"
     }
     XSRETURN_EMPTY;
 }
@@ -313,9 +330,9 @@ XS_EUPXS(XS_Nemi_rb_use_cellcoords)
        croak_xs_usage(cv,  "");
     {
 	int	rb_index;
-#line 94 "xs/nemi.xs"
+#line 103 "xs/nemi.xs"
         nemipl__rb_use_cellcoords(rb_index);
-#line 319 "xs/nemi.c"
+#line 336 "xs/nemi.c"
     }
     XSRETURN_EMPTY;
 }
@@ -329,9 +346,9 @@ XS_EUPXS(XS_Nemi_rb_use_arbcoords)
        croak_xs_usage(cv,  "");
     {
 	int	rb_index;
-#line 101 "xs/nemi.xs"
+#line 110 "xs/nemi.xs"
         nemipl__rb_use_arbcoords(rb_index);
-#line 335 "xs/nemi.c"
+#line 352 "xs/nemi.c"
     }
     XSRETURN_EMPTY;
 }
@@ -344,9 +361,9 @@ XS_EUPXS(XS_Nemi_term_ignore_keys)
     if (items != 0)
        croak_xs_usage(cv,  "");
     {
-#line 106 "xs/nemi.xs"
+#line 115 "xs/nemi.xs"
         nemipl__term_ignore_keys();
-#line 350 "xs/nemi.c"
+#line 367 "xs/nemi.c"
     }
     XSRETURN_EMPTY;
 }
@@ -359,9 +376,9 @@ XS_EUPXS(XS_Nemi_term_ignore_chars)
     if (items != 0)
        croak_xs_usage(cv,  "");
     {
-#line 112 "xs/nemi.xs"
+#line 121 "xs/nemi.xs"
         nemipl__term_ignore_chars();
-#line 365 "xs/nemi.c"
+#line 382 "xs/nemi.c"
     }
     XSRETURN_EMPTY;
 }
@@ -374,9 +391,9 @@ XS_EUPXS(XS_Nemi_term_unignore_keys)
     if (items != 0)
        croak_xs_usage(cv,  "");
     {
-#line 118 "xs/nemi.xs"
+#line 127 "xs/nemi.xs"
         nemipl__term_unignore_keys();
-#line 380 "xs/nemi.c"
+#line 397 "xs/nemi.c"
     }
     XSRETURN_EMPTY;
 }
@@ -389,9 +406,9 @@ XS_EUPXS(XS_Nemi_term_unignore_chars)
     if (items != 0)
        croak_xs_usage(cv,  "");
     {
-#line 124 "xs/nemi.xs"
+#line 133 "xs/nemi.xs"
         nemipl__term_unignore_chars();
-#line 395 "xs/nemi.c"
+#line 412 "xs/nemi.c"
     }
     XSRETURN_EMPTY;
 }
@@ -406,9 +423,9 @@ XS_EUPXS(XS_Nemi_term_get_rows)
     {
 	int	RETVAL;
 	dXSTARG;
-#line 131 "xs/nemi.xs"
+#line 140 "xs/nemi.xs"
         RETVAL = nemipl__term_get_rows();
-#line 412 "xs/nemi.c"
+#line 429 "xs/nemi.c"
 	TARGi((IV)RETVAL, 1);
 	ST(0) = TARG;
     }
@@ -425,9 +442,9 @@ XS_EUPXS(XS_Nemi_term_get_cols)
     {
 	int	RETVAL;
 	dXSTARG;
-#line 139 "xs/nemi.xs"
+#line 148 "xs/nemi.xs"
         RETVAL = nemipl__term_get_cols();
-#line 431 "xs/nemi.c"
+#line 448 "xs/nemi.c"
 	TARGi((IV)RETVAL, 1);
 	ST(0) = TARG;
     }
@@ -463,6 +480,7 @@ XS_EXTERNAL(boot_Nemi)
 #endif
 
         newXS_deffile("Nemi::new_renderbuf", XS_Nemi_new_renderbuf);
+        newXS_deffile("Nemi::rb_hide_node", XS_Nemi_rb_hide_node);
         newXS_deffile("Nemi::rb_add_rect", XS_Nemi_rb_add_rect);
         newXS_deffile("Nemi::rb_update_rect", XS_Nemi_rb_update_rect);
         newXS_deffile("Nemi::rb_add_text", XS_Nemi_rb_add_text);

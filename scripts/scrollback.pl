@@ -13,7 +13,7 @@ use strict;
 
 #!REGISTER_EVENT
 sub event_key_input {
-    print("key = $_[0], mods = $_[1]\n");
+    #    print("key = $_[0], mods = $_[1]\n");
 }
 
 sub init_script {

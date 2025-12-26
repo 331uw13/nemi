@@ -41,6 +41,8 @@ struct rb_node {
 
     struct rb_node* prev;
     struct rb_node* next;
+
+    bool hidden;
 };
 
 struct render_buffer {
