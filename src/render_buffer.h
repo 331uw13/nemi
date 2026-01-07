@@ -48,7 +48,6 @@ struct rb_node {
     struct rb_node* next;
             
     enum rb_node_layer layer;
-
     bool hidden;
 };
 
@@ -56,7 +55,9 @@ struct render_buffer {
     struct rb_node*     nodes;
     uint32_t            num_nodes;
     uint32_t            num_nodes_max;
-
+    struct rb_node*     node_link_head;
+    struct rb_node*     node_link_tail;
+    
     enum rb_coord_mode  coordinate_mode;
 };
 

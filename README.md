@@ -12,8 +12,6 @@ just add it into the `nemi.ini' [scripts] section,
 and it should be automatically loaded.
 
 `nemi.ini' is the configuration file for the program.
-
-
 ```
 
 

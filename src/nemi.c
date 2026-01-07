@@ -164,7 +164,7 @@ void render_rbbuffer_nodes(struct nemi* st, enum rb_node_layer layer) {
             continue;
         }
 
-        struct rb_node* rnode = &rb->nodes[0];
+        struct rb_node* rnode = rb->node_link_head;
         
         while(rnode) {
             if(rnode->hidden || (rnode->layer != layer)) {
@@ -216,6 +216,7 @@ void begin_frame(struct nemi* st) {
     render_rbbuffer_nodes(st, RBNODE_LAYER_FIRST);
 }
 
+
 void end_frame(struct nemi* st) {
 
     if(st->cfg.show_frametime) {
@@ -235,10 +236,9 @@ void end_frame(struct nemi* st) {
     st->last_char_in = 0;
     st->last_key_in = 0;
     glfwSwapBuffers(st->lfctx->glfw_win);
+    
     glfwPollEvents();
-   
     usleep(10 * 1000);
-
 
     st->frame_time = glfwGetTime() - st->frame_time_begin;
 }
@@ -355,7 +355,7 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
 
     st->last_key_in = key;
     st->last_keymod_in = mods;
-    
+   
 
     trigger_event_for_scripts(st, REG_EVENT_KEY_INPUT,
             "ii",
@@ -463,6 +463,8 @@ int new_renderbuf(struct nemi* st, int num_nodes_max) {
         rb->nodes = calloc(num_nodes_max, sizeof *rb->nodes);
         rb->num_nodes_max = num_nodes_max;
         rb->num_nodes     = 0;
+        rb->node_link_head = NULL;
+        rb->node_link_tail = NULL;
         logprintf(LOG_INFO, "Created new render buffer with %i nodes.", num_nodes_max);
 
         ret_index = i;
@@ -499,13 +501,4 @@ void create_msg(struct nemi* st, const char* msg, ...) {
     logprintf(LOG_INFO, buffer);
     va_end(args);
 }
-
-void reload_config(struct nemi* st) {
-    printf("Reaaaaaaaaaaaaaaaaaaaaaaaaaload\n");
-
-
-
-}
-
-
 

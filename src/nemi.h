@@ -13,9 +13,9 @@
 #include "string.h"
 
 #define FLG_FONT_LOADED (1 << 0)
-
 #define FLG_IGNORE_KEY_INPUT (1 << 1)
 #define FLG_IGNORE_CHR_INPUT (1 << 2)
+#define FLG_RELOAD_CONFIG    (1 << 3)
 
 #define NEMI_TERMINALS_MAX 16
 #define NEMI_KEYINBUF_MAX 8
@@ -64,6 +64,7 @@ struct nemi {
 
 struct nemi* start_session(const char* config_file);
 void         quit_session(struct nemi* st);
+void         restart_session(struct nemi* st);
 
 struct nemi* get_state(); // Should be used only in XS wrappers.
 
@@ -99,5 +100,6 @@ int new_renderbuf(struct nemi* st, int num_nodes_max);
 void init_default_config(struct nemi* st);
 
 void reload_config(struct nemi* st);
+void reload_config_now(struct nemi* st);
 
 #endif

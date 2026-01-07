@@ -38,7 +38,7 @@ sub new {
     $cmdl::rb_bgrect_node = Nemi::rb_add_rect($cmdl::rb, 0, 0, 0, 0, $cmdl::bgrect_color);
     $cmdl::rb_cursor_node = Nemi::rb_add_rect($cmdl::rb, 0, 0, 0, 0, $cmdl::cursor_color);
     $cmdl::rb_input_node = Nemi::rb_add_text($cmdl::rb, 0, 0, "", $cmdl::input_color);
-    $cmdl::rb_suggest_node = Nemi::rb_add_text($cmdl::rb, 0, 0, "", $cmdl::);
+    $cmdl::rb_suggest_node = Nemi::rb_add_text($cmdl::rb, 0, 0, "", $cmdl::suggest_color);
 
     print("input_node = $cmdl::rb_input_node\n");
     print("bgrect_node = $cmdl::rb_bgrect_node\n");
@@ -219,7 +219,7 @@ sub event_key_input {
             if(length($cmdl::suggest) > 0) {
                 my @test = split(/\|/, $cmdl::suggest);
 
-                $cmdl::input = @test[0];
+                $cmdl::input = $test[0];
                 $cmdl::input =~ tr/ //ds;
                 $cmdl::cursor = length($cmdl::input);
                 cmdl->update_view();

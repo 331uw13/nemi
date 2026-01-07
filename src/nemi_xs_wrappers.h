@@ -38,6 +38,18 @@ XS(xsw_new_renderbuf) {
     XSRETURN_IV(new_renderbuf(get_state(), num_nodes_max));
 }
 
+
+XS(xsw_rb_remove_node) {
+    dXSARGS;
+    (void)items;
+    int rb_index = SvIV(ST(0));
+    int rb_node_index = SvIV(ST(1));
+
+    struct nemi* st = get_state();
+    struct render_buffer* rb = &st->renderbufs[rb_index];
+    renderbuf_remove_node(st, rb, rb_node_index);
+}
+
 XS(xsw_rb_hide_node) {
     dXSARGS;
     (void)items;
@@ -278,11 +290,6 @@ XS(xsw_create_msg) {
     create_msg(st, str);
 }
 
-XS(xsw_reload_config) {
-    dXSARGS;
-    (void)items;
 
-    reload_config(get_state());
-}
 
 #endif

@@ -172,42 +172,62 @@ void renderbuf_text_node(struct nemi* st,
 }
 
 /*
+static
+void print_node(struct rb_node* node) {
+    printf(" Node \033[34m%p\033[0m, Used = %s\n", node, node->type == RBNODE_UNUSED ? "No" : "Yes");
+    printf(" `- Prev = \033[2;35m%p\033[0m\n", node->prev);
+    printf(" `- Next = \033[2;35m%p\033[0m\n", node->next);
+}
 
+static
+void print_renderbuf_nodes(struct render_buffer* rb) {
+    printf(" %s \n-----------------------------------------------\n", __func__);
+    for(uint32_t i = 0; i < rb->num_nodes_max; i++) {
+        print_node(&rb->nodes[i]);
+    }
 
-        0   1   2   3   4   5   6
- NULL - O - O - O - O - O - O - O - NULL
-
-                ^
-                |
- Remove Index 2 '
-     ( rb->nodes + 2 )
-                     |
-                     v
-
-        0   1        2         3   4   5   6
- NULL - O - O  (NULL-X-NULL)   O - O - O - O - NULL
-            `------------------'
-
+    printf("==============\n");
+    printf("Head = %p\n", rb->node_link_head);
+    printf("Tail = %p\n", rb->node_link_tail);
+    printf("==============\n");
+    printf("----------------------------------------\n");
+}
 */
 
-
-
 void renderbuf_remove_node(struct nemi* st, struct render_buffer* rb, int node_index) {
-    struct rb_node* node = rb->nodes + node_index;
+    if(rb->num_nodes == 0) {
+        logprintf(LOG_ERROR, "Trying to remove render buffer node (node_index = %i) from empty render buffer.",
+                node_index);
+        return;
+    }
+    if(node_index < 0 || (uint32_t)node_index >= rb->num_nodes_max) {
+        logprintf(LOG_ERROR, "Invalid renderbuffer 'node_index' %i cant be removed.", node_index);
+        return;
+    }
 
-    if(!node->prev && !node->next) {
-        logprintf(LOG_WARN, "Trying to remove already removed node (%i)", node_index);
+    struct rb_node* node = &rb->nodes[node_index];
+    if(node->type == RBNODE_UNUSED) {
+        logprintf(LOG_WARN, "Trying to remove already unused renderbuffer node (node_index = %i)", node_index);
         return;
     }
 
     if(node->prev) {
-        node->prev->next = node->next;
+        if(!(node->prev->next = node->next)) {
+            rb->node_link_tail = node->prev;
+        }
+    }
+    if(node->next) {
+        if(!(node->next->prev = node->prev)) {
+            rb->node_link_head = node->next;
+        }
     }
 
-    node->next->prev = node->prev;
+    node->type = RBNODE_UNUSED;
     node->next = NULL;
     node->prev = NULL;
-    node->type = RBNODE_UNUSED;
+
+    rb->num_nodes--;
+    //print_renderbuf_nodes(rb);
 }
 
 static
@@ -217,50 +237,52 @@ bool is_node_active(struct rb_node* node) {
 
 
 static
-void print_node(struct rb_node* node) {
-    printf("Node %p\n", node);
-    printf("   - Prev = %p\n", node->prev);
-    printf("   - Next = %p\n", node->next);
-}
-
-static
 struct rb_node* renderbuf_add_node(struct render_buffer* rb, int* index_out) {
-    int this_index = 0;
+    int this_index = -1;
 
-    if(rb->num_nodes+1 < rb->num_nodes_max) {
-        this_index = rb->num_nodes;
-    }
-    else {
-        // List may be full
-        // but we can try to find empty nodes
-        // in case of fragmentation happened.
-
-        for(size_t i = 0; i < rb->num_nodes_max; i++) {
-            if(!is_node_active(&rb->nodes[i])) {
-                this_index = i;
-                goto found_free_node;
-            }
+    for(size_t i = 0; i < rb->num_nodes_max; i++) {
+        if(rb->nodes[i].type == RBNODE_UNUSED) {
+            this_index = i;
+            break;
         }
+    }
 
-        return NULL; // The list is really full.
+    if(this_index < 0) {
+        return NULL; // No free node was found.
+    }
+    
+    struct rb_node* node = &rb->nodes[this_index];
+    
+
+    for(int64_t i = this_index+1; i < rb->num_nodes_max; i++) {
+        struct rb_node* next_node = &rb->nodes[i];
+        if(next_node->type != RBNODE_UNUSED) {
+            node->next = next_node;
+            node->next->prev = node;
+            break;
+        }
+    }
+
+    for(int64_t i = this_index-1; i >= 0; i--) {
+        struct rb_node* prev_node = &rb->nodes[i];
+        if(prev_node->type != RBNODE_UNUSED) {
+            node->prev = prev_node;
+            node->prev->next = node;
+            break;
+        }
     }
 
 
-found_free_node:
-
-    struct rb_node* node = rb->nodes + this_index;
-        
-    if(rb->num_nodes > 0) {
-        node->prev = rb->nodes + (rb->num_nodes - 1);
-        node->prev->next = node;
+    if(node->prev == NULL) {
+        rb->node_link_head = node;
+    }
+    if(node->next == NULL) {
+        rb->node_link_tail = node;
     }
 
+    rb->num_nodes++;
     *index_out = this_index;
-
-    if(rb->num_nodes+1 < rb->num_nodes_max) {
-        rb->num_nodes++;
-    }
-
+    //node->type = RBNODE_UNUSED;
     return node;
 }
 
@@ -272,11 +294,14 @@ int renderbuf_add_rect(struct nemi* st,
     struct rb_node* node = renderbuf_add_node(rb, &ret_index);
     if(!node) {
         logprintf(LOG_ERROR, "Render buffer is full.");
+        return -1;
     }
 
+    
     renderbuf_rect_node(st, rb, node, x, y, w, h, color);
     
     logprintf(LOG_INFO, "Created rect rbnode %i", ret_index);
+    //print_renderbuf_nodes(rb);
     return ret_index;
 }
 

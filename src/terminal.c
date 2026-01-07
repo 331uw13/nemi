@@ -132,6 +132,9 @@ struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, const char*
 
     terminal_init_palette(st, term);
 
+    // Clear terminal because sometimes background appears black when its not supposed to
+    // on the first line.
+    write_term(term, TERM_WRITE_VTERM, "\033[2J\033[H\033[0m");
     logprintf(LOG_INFO, "Created terminal (%ix%i)", term->rows, term->cols);
     return term;
 }

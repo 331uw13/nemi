@@ -188,15 +188,6 @@ int font_config_handler
 
 
 bool nemi_read_config(struct nemi* st, const char* filepath) {
-    size_t filepath_len = strlen(filepath);
-    memset(st->cfg.filepath, 0, sizeof(st->cfg.filepath));
-    if(filepath_len >= sizeof(st->cfg.filepath)-1) {
-        fprintf(stderr, "Too long config filepath. Reloading will not work.\n");
-    }
-    else {
-        memcpy(st->cfg.filepath, filepath, filepath_len);
-    }
-
     struct config_values v = {
         .st = st,
         .log = { 0 }
