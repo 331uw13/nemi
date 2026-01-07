@@ -62,7 +62,7 @@ struct nemi {
 };
 
 
-struct nemi* start_session(const char* config_file);
+struct nemi* start_session(const char* configs_dir);
 void         quit_session(struct nemi* st);
 void         restart_session(struct nemi* st);
 

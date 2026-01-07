@@ -86,17 +86,19 @@ sub update_view {
     my $x = 1;
     my $y = Nemi::term_get_rows() - 1;
 
+    # Input text.
     my $prefix = "> ";
     Nemi::rb_update_text($cmdl::rb, $cmdl::rb_input_node, 
         $x, $y, 
         $prefix . $cmdl::input, $cmdl::input_color
     );
 
-
+    # Background rect.
     Nemi::rb_update_rect($cmdl::rb, $cmdl::rb_bgrect_node, 
         0, $y,
         Nemi::term_get_cols(), 1, $cmdl::bgrect_color);
 
+    # Cursor rect.
     Nemi::rb_update_rect($cmdl::rb, $cmdl::rb_cursor_node,
         $x + $cmdl::cursor + length($prefix),
         $y,

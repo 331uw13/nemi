@@ -19,7 +19,7 @@ struct nemi* get_state() {
     return g_nemi_state;
 }
 
-struct nemi* start_session(const char* config_file) {
+struct nemi* start_session(const char* configs_dir) {
     struct nemi* st = malloc(sizeof *st);
 
     st->frame_time = 0.001;
@@ -31,20 +31,22 @@ struct nemi* start_session(const char* config_file) {
     zero_input_buffers(st);
     init_default_config(st);
 
-    struct nemi_font_config font_cfg;
-    nemi_read_font_config(st, config_file, &font_cfg);
+    if(!nemi_read_configs(st, configs_dir)) {
+        logprintf(LOG_ERROR, "Failed to read configs from '%s'", configs_dir);
+        return NULL;
+    }
 
-    if(!leaf_load_font(&st->font, font_cfg.font_filepath)) {
+    if(!leaf_load_font(&st->font, st->cfg.font.filepath)) {
         quit_session(st);
         return NULL;
     }
     
     st->flags |= FLG_FONT_LOADED;
 
-    st->font.center_char_to_cell = font_cfg.font_center_char_to_cell;
+    st->font.center_char_to_cell = st->cfg.font.center_char_to_cell;
     st->font.spacing = 0.2f;
+    leaf_set_font_space_width(&st->font, st->font.max_bitmap_width / 2.0f);
     leaf_set_font_scale(&st->font, 0.9);
-    leaf_set_font_space_width(&st->font, st->font.max_bitmap_width / 2);
 
 
     leaf_set_font_color(&st->font, (struct color_t) { 255, 200, 150 });
@@ -61,7 +63,7 @@ struct nemi* start_session(const char* config_file) {
     
 
     st->win_cols = st->lfctx->win_width / st->font.char_width;
-    st->win_rows = st->lfctx->win_height / (st->font.char_height + st->cfg.line_padding);
+    st->win_rows = st->lfctx->win_height / (st->font.char_height + st->cfg.main.line_padding);
     st->win_cols -= 1;
     st->win_rows -= 1;
 
@@ -91,7 +93,11 @@ struct nemi* start_session(const char* config_file) {
     //plscript_funcs_set_context(st);
     g_nemi_state = st;
 
+    if(!nemi_load_scripts(st, configs_dir)) {
+        logprintf(LOG_ERROR, "Failed to load all scripts.");
+    }
 
+    /*
     if(!nemi_read_config(st, config_file)) {
         fprintf(stderr, "Error occurred while reading config file.\n");
         free(st);
@@ -101,9 +107,8 @@ struct nemi* start_session(const char* config_file) {
     if(st->cfg.hide_mouse) {
         glfwSetInputMode(st->lfctx->glfw_win, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
     }
-
-
-    glfwSwapInterval(st->cfg.vsync ? 0 : 1);
+    */
+    //glfwSwapInterval(st->cfg.vsync ? 0 : 1);
 
 
     return st;
@@ -219,7 +224,7 @@ void begin_frame(struct nemi* st) {
 
 void end_frame(struct nemi* st) {
 
-    if(st->cfg.show_frametime) {
+    if(st->cfg.main.show_frametime) {
         float old_font_scale = st->font.scale;
         leaf_set_font_scale(&st->font, 0.7f);
         leaf_draw_text_fmt(&st->font, 
@@ -248,9 +253,9 @@ bool key_down(struct nemi* st, int key) {
 }
 
 void init_default_config(struct nemi* st) {
-    st->cfg.padding_x = 10;
-    st->cfg.padding_y = 10;
-    st->cfg.line_padding = 3;
+    st->cfg.main.padding_x = 10;
+    st->cfg.main.padding_y = 10;
+    st->cfg.main.line_padding = 3;
     
     int d_v = 180;
     int b_v = 255;
@@ -414,7 +419,7 @@ void glfw_window_resize_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
 
     st->win_cols = width / st->font.char_width;
-    st->win_rows = height / (st->font.char_height + st->cfg.line_padding);
+    st->win_rows = height / (st->font.char_height + st->cfg.main.line_padding);
 
     st->win_cols -= 1;
     st->win_rows -= 1;
@@ -444,11 +449,11 @@ void push_char_input(struct nemi* st, char ch) {
 }
 
 int coltox(struct nemi* st, int col) {
-    return col * st->font.char_width + st->cfg.padding_x;
+    return col * st->font.char_width + st->cfg.main.padding_x;
 }
 
 int rowtoy(struct nemi* st, int row) {
-    return row * (st->font.char_height + st->cfg.line_padding) + st->cfg.padding_y;
+    return row * (st->font.char_height + st->cfg.main.line_padding) + st->cfg.main.padding_y;
 }
 
 int new_renderbuf(struct nemi* st, int num_nodes_max) {

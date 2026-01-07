@@ -15,7 +15,9 @@ int main(int argc, char** argv) {
     (void)argc;
     (void)argv;
 
-    struct nemi* st = start_session("nemi.ini");
+
+    const char* configs_dir = "./configs";
+    struct nemi* st = start_session(configs_dir);
     if(!st) {
         return 1;
     }

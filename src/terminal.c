@@ -108,7 +108,7 @@ struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, const char*
     term->cols = cols;
 
     term->flags = 0;
-    term->line_height = st->font.char_height + st->cfg.line_padding;
+    term->line_height = st->font.char_height + st->cfg.main.line_padding;
     term->blink_timer = 0;
 
     term->hidden_cells = calloc(term->cols * term->rows, sizeof *term->hidden_cells);
@@ -212,7 +212,7 @@ void render_terminal_cursor(struct nemi* st, struct terminal* term) {
     vterm_state_get_cursorpos(term->vtstate, &vtcurs_pos);
 
     leaf_draw_rect(
-            coltox(st, vtcurs_pos.col) * st->cfg.char_spacing,
+            coltox(st, vtcurs_pos.col) * st->cfg.font.char_spacing,
             rowtoy(st, vtcurs_pos.row + term->sb.offset),
             st->font.char_width,
             st->font.char_height,
@@ -270,7 +270,7 @@ void render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, 
     int char_x = coltox(st, pos.col);
     int char_y = rowtoy(st, pos.row);
 
-    char_x *= st->cfg.char_spacing;
+    char_x *= st->cfg.font.char_spacing;
 
     // Cell background.
 
@@ -311,7 +311,7 @@ void render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, 
         fg_color = leaf_color_lerp(fg_color, bg_color, term->blink_timer);
     }
 
-    st->font.italic = (cell->attrs.italic) ? st->cfg.italic_tilt : 0.0f;
+    st->font.italic = (cell->attrs.italic) ? st->cfg.font.italic_tilt : 0.0f;
 
     leaf_set_font_color(&st->font, fg_color);
     leaf_draw_char(&st->font, char_x, char_y, cell->chars[0]);
@@ -319,9 +319,9 @@ void render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, 
     if(cell->attrs.underline) {
         leaf_draw_rect(
                 char_x,
-                char_y + st->font.char_height + st->cfg.underline_offset,
+                char_y + st->font.char_height + st->cfg.font.underline_offset,
                 st->font.char_width,
-                st->cfg.underline_height,
+                st->cfg.font.underline_height,
                 fg_color);
     }
 }
@@ -376,13 +376,12 @@ void render_terminal(struct nemi* st, struct terminal* term) {
 }
 
 void update_terminal_blink_timer(struct nemi* st, struct terminal* term) {
-    if(st->cfg.soft_blink) {
+    if(st->cfg.main.soft_blink) {
         // https://en.wikipedia.org/wiki/Triangle_wave
-        //
         // Here triangle wave amplitude is 1.0 and lowest point is 0.0
-        float tri_wave = 0.5+(1.0/M_PI)*asin(sin(glfwGetTime() * st->cfg.blink_speed));
+        float tri_wave = 0.5+(1.0/M_PI)*asin(sin(glfwGetTime() * st->cfg.main.blink_speed));
 
-        term->blink_timer = pow(tri_wave, st->cfg.soft_blink_pow);
+        term->blink_timer = pow(tri_wave, st->cfg.main.soft_blink_pow);
     }
     else {
 

@@ -38,7 +38,40 @@ enum nemi_config_colors {
 
 struct nemi;
 
+
 struct nemi_config {
+    
+    struct {
+        char filepath [512];
+        bool center_char_to_cell;
+        float char_spacing;
+        float italic_tilt;
+        float underline_height;
+        float underline_offset;
+    }
+    font;
+
+    struct {
+        int padding_x;
+        int padding_y;
+        int line_padding;
+        bool vsync;
+        bool soft_blink;
+        float soft_blink_pow;
+        float blink_speed;
+        bool show_frametime;
+        bool hide_mouse;
+    }
+    main;
+
+    // Scripts are loaded when their config is read.
+    // Log settings are passed to log when they are read.
+
+    bool scripts_loaded; // For now scripts cant be re-loaded, 
+                         // but will work on that in the future..
+    
+    struct color_t colors [NEMI_COLOR_COUNT];
+    /*
     int padding_x;
     int padding_y;
     int line_padding;
@@ -53,16 +86,21 @@ struct nemi_config {
     float blink_speed;
     float char_spacing;
     struct color_t colors [NEMI_COLOR_COUNT];
+    */
 };
 
+/*
 struct nemi_font_config {
     char   font_filepath [256];
     bool   font_center_char_to_cell;
 };
+*/
 
 
-bool nemi_read_config(struct nemi* st, const char* filepath);
-bool nemi_read_font_config(struct nemi* st, const char* filepath, struct nemi_font_config* font_cfg);
+bool nemi_read_configs(struct nemi* st, const char* configs_dir);
+bool nemi_load_scripts(struct nemi* st, const char* configs_dir);
+
+//bool nemi_read_font_config(struct nemi* st, const char* filepath, struct nemi_font_config* font_cfg);
 
 
 

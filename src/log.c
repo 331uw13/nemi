@@ -51,7 +51,7 @@ void log_init(struct log_settings settn) {
     log.msgbuf_len = 0;
     log.calleebuf_len = 0;
 
-
+    logprintf(LOG_INFO, "Log started.");
 }
 
 void log_close() {
