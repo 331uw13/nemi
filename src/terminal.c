@@ -376,16 +376,14 @@ void render_terminal(struct nemi* st, struct terminal* term) {
 }
 
 void update_terminal_blink_timer(struct nemi* st, struct terminal* term) {
-    if(st->cfg.main.soft_blink) {
-        // https://en.wikipedia.org/wiki/Triangle_wave
-        // Here triangle wave amplitude is 1.0 and lowest point is 0.0
-        float tri_wave = 0.5+(1.0/M_PI)*asin(sin(glfwGetTime() * st->cfg.main.blink_speed));
+    // https://en.wikipedia.org/wiki/Triangle_wave
+    // Here triangle wave amplitude is 1.0 and lowest point is 0.0
+    float tri_wave = 0.5+(1.0/M_PI)*asin(sin(glfwGetTime() * st->cfg.main.blink_speed));
 
-        term->blink_timer = pow(tri_wave, st->cfg.main.soft_blink_pow);
-    }
-    else {
-
-
+    term->blink_timer = pow(tri_wave, st->cfg.main.soft_blink_pow);
+   
+    if(!st->cfg.main.soft_blink) {
+        term->blink_timer = floor(term->blink_timer*2);
     }
 }
 
@@ -422,22 +420,6 @@ void terminal_set_scroll(struct terminal* term, int scroll) {
     term->sb.offset = clampi(term->sb.offset, 0, term->sb.num_rows);
 }
 
-
-/*
-// TODO: 
-// This function takes in count the scrollback buffer
-static
-bool terminal_get_char(struct terminal* term, char* ch, VTermPos pos) {
-    VTermScreenCell cell;
-    if(!vterm_screen_get_cell(term->vtscrn, (VTermPos){ pos.row, pos.col }, &cell)) {
-        return false;
-    }
-
-    *ch = cell.chars[0];
-
-    return true;
-}
-*/
 
 void terminal_handle_char_event(struct nemi* st, struct terminal* term) {
     if(st->flags & FLG_IGNORE_CHR_INPUT) {
@@ -599,4 +581,24 @@ void terminal_init_palette(struct nemi* st, struct terminal* term) {
     set_term_color(st, term, 15, NEMI_BRIGHT_COLOR_WHITE);
 }
 
+char terminal_get_char(struct terminal* term, int column, int row) {
+    // TODO: This doesnt take in count the scrollback buffer..
+    VTermScreenCell cell;
+    if(!vterm_screen_get_cell(term->vtscrn,  (VTermPos){ row, column }, &cell)) {
+        return -1;
+    }
+
+    return cell.chars[0];
+}
+
+int terminal_get_cursor_x(struct terminal* term) {
+    VTermPos vtcurs_pos = (VTermPos){ 0, 0 };
+    vterm_state_get_cursorpos(term->vtstate, &vtcurs_pos);
+    return vtcurs_pos.col;
+}
+int terminal_get_cursor_y(struct terminal* term) {
+    VTermPos vtcurs_pos = (VTermPos){ 0, 0 };
+    vterm_state_get_cursorpos(term->vtstate, &vtcurs_pos);
+    return vtcurs_pos.row;
+}
 

@@ -19,7 +19,7 @@ struct( 'cmdl', {
     avail_extfuncs => '@'
 });
 
-sub new {
+sub init {
     $cmdl::enabled = 0;
     $cmdl::cursor = 0;
     $cmdl::input = "";
@@ -39,10 +39,6 @@ sub new {
     $cmdl::rb_cursor_node = Nemi::rb_add_rect($cmdl::rb, 0, 0, 0, 0, $cmdl::cursor_color);
     $cmdl::rb_input_node = Nemi::rb_add_text($cmdl::rb, 0, 0, "", $cmdl::input_color);
     $cmdl::rb_suggest_node = Nemi::rb_add_text($cmdl::rb, 0, 0, "", $cmdl::suggest_color);
-
-    print("input_node = $cmdl::rb_input_node\n");
-    print("bgrect_node = $cmdl::rb_bgrect_node\n");
-    print("cursor_node = $cmdl::rb_cursor_node\n");
 
     Nemi::rb_hide_node($cmdl::rb, $cmdl::rb_input_node);
     Nemi::rb_hide_node($cmdl::rb, $cmdl::rb_bgrect_node);
@@ -251,7 +247,7 @@ sub event_char_input {
 
 
 sub init_script {
-    $cmdl = cmdl->new();
+    $cmdl = cmdl->init();
 
 
     # Get available external functions for auto complete.

@@ -1,6 +1,6 @@
 # Scripting documentation.
 
-> Here i will be referencing "Terminal emulator" as the actually compiled code (the C code side)
+> i will be referencing "Terminal emulator" as the actually compiled code (the C code side)
 
 ## Events
 
@@ -22,7 +22,7 @@ sub event_key_input {
 sub init_script() {
     print("My script was loaded!\n");
 
-    # ... Global variables must be initialized here ...
+    # Global variables should be initialized here...
 }
 ```
 
@@ -50,7 +50,7 @@ and https://www.glfw.org/docs/latest/group__mods.html for key modifiers.
 Function                     Arguments
 ----------------------------------------------------
 event_key_input ............ 0: key, 1: key modifier
-event_chat_input ........... 0: character
+event_char_input ........... 0: character
 event_win_resized .......... 0: new window width, 1: new window height
 event_term_buffer_changed .. 0: If the current buffer is altbuffer it is 1 otherwise 0.
 
@@ -75,7 +75,10 @@ Nemi::term_unignore_keys   < No arguments >
 // Rendered terminal emulator's cells can be hidden.
 Nemi::term_hide_cells      (col, row, width, height)
 Nemi::term_show_cells      (col, row, width, height)
-
+Nemi::term_scroll_y        (offset)
+Nemi::term_get_char        (column, row)
+Nemi::term_get_cursor_x    < No arguments >
+Nemi::term_get_cursor_y    < No arguments >
 
 ////  Rendering  ////
 
@@ -90,12 +93,13 @@ and they return their 'node_index'
 
 
 Nemi::new_renderbuf        (Max number of nodes)  // Returns rb_index.
+Nemi::rb_remove_node       (rb_index, node_index)
 Nemi::rb_add_rect          (rb_index, x, y, w, h, hex_color)
 Nemi::rb_add_text          (rb_index, x, y, text, hex_color)
 Nemi::rb_update_rect       (rb_index, node_index, x, y, w, h, hex_color)
 Nemi::rb_update_text       (rb_index, node_index, x, y, text, hex_color)
-Nemi::rb_hide_node         (rb_index, node_index); // Disable node rendering.
-Nemi::rb_show_node         (rb_index, node_index);
+Nemi::rb_hide_node         (rb_index, node_index) // Disable node rendering.
+Nemi::rb_show_node         (rb_index, node_index)
 Nemi::rb_use_cellcoords    (rb_index)   // Map X and Y coordinates to Column and Row.
 Nemi::rb_use_arbcoords     (rb_index)   // No coordinate mapping, Normal X and Y.
 
@@ -105,7 +109,6 @@ Nemi::rb_use_arbcoords     (rb_index)   // No coordinate mapping, Normal X and Y
 // Layer changing works for everything else.
 Nemi::rb_node_layer_first  (rb_index, node_index);
 Nemi::rb_node_layer_last   (rb_index, node_index);
-
 
 ////  Misc  ////
 

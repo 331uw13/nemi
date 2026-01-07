@@ -1,5 +1,8 @@
 // GENERATED CODE. Changes here will be lost when project is compiled.
 // Modify 'nemi_xs_wrappers.h'.
+newXS("Nemi::term_get_char", xsw_term_get_char, __FILE__);
+newXS("Nemi::term_get_cursor_x", xsw_term_get_cursor_x, __FILE__);
+newXS("Nemi::term_get_cursor_y", xsw_term_get_cursor_y, __FILE__);
 newXS("Nemi::new_renderbuf", xsw_new_renderbuf, __FILE__);
 newXS("Nemi::rb_remove_node", xsw_rb_remove_node, __FILE__);
 newXS("Nemi::rb_hide_node", xsw_rb_hide_node, __FILE__);

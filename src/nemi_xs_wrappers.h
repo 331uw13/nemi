@@ -31,6 +31,30 @@
 }
 */
 
+XS(xsw_term_get_char) {
+    dXSARGS;
+    (void)items;
+    int column = SvIV(ST(0));
+    int row    = SvIV(ST(1));
+    struct nemi* st = get_state();
+
+    XSRETURN_IV(terminal_get_char(st->terminal, column, row));
+}
+
+XS(xsw_term_get_cursor_x) {
+    dXSARGS;
+    (void)items;
+    struct nemi* st = get_state();
+    XSRETURN_IV(terminal_get_cursor_x(st->terminal));
+}
+
+XS(xsw_term_get_cursor_y) {
+    dXSARGS;
+    (void)items;
+    struct nemi* st = get_state();
+    XSRETURN_IV(terminal_get_cursor_y(st->terminal));
+}
+
 XS(xsw_new_renderbuf) {
     dXSARGS;
     (void)items;
