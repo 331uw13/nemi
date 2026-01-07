@@ -26,11 +26,11 @@ sub init_script() {
 }
 ```
 
-You can name your script what ever you want. To load the script you have to add it into the
-`nemi.ini` `[scripts]` section.
+You can name your script what ever you want. To load the script you have to add it into 
+`configs/scripts.ini` file.
  Example:
 ```
-[scripts]
+[SCRIPTS]
 my_script = ./scripts/my_script.pl
 ^
  `-- The name here doesnt matter.
@@ -72,9 +72,8 @@ Nemi::term_ignore_keys     < No arguments >    // Terminals will ignore key inpu
 Nemi::term_unignore_chars  < No arguments >
 Nemi::term_unignore_keys   < No arguments >
 
-// Rendered terminal emulator's cells can be hidden.
-Nemi::term_hide_cells      (col, row, width, height)
-Nemi::term_show_cells      (col, row, width, height)
+Nemi::term_hide_cells      (col, row, width, height) // Parts of the rendered cells can be
+Nemi::term_show_cells      (col, row, width, height) // hidden to "make room for your own stuff"
 Nemi::term_scroll_y        (offset)
 Nemi::term_get_char        (column, row)
 Nemi::term_get_cursor_x    < No arguments >
