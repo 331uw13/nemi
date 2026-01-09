@@ -27,6 +27,8 @@ struct nemi* start_session(const char* configs_dir) {
     st->flags = 0;
     st->lfctx = leaf_open("Nemi - Terminal Emulator", 900, 700);
     st->num_terminals = 0;
+    st->term_ignore_char_input_counter = 0;
+    st->term_ignore_key_input_counter = 0;
 
     zero_input_buffers(st);
     init_default_config(st);
@@ -220,7 +222,6 @@ void begin_frame(struct nemi* st) {
     glClear(GL_COLOR_BUFFER_BIT);
     render_rbbuffer_nodes(st, RBNODE_LAYER_FIRST);
 }
-
 
 void end_frame(struct nemi* st) {
 

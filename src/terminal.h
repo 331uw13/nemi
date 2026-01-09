@@ -73,5 +73,9 @@ void terminal_init_palette        (struct nemi* st, struct terminal* term);
 char terminal_get_char            (struct terminal* term, int column, int row);
 int  terminal_get_cursor_x        (struct terminal* term);
 int  terminal_get_cursor_y        (struct terminal* term);
+void terminal_set_cell_custom_bg  (struct terminal* term, VTermPos pos, int hex_rgb_color);
+void terminal_set_cell_custom_fg  (struct terminal* term, VTermPos pos, int hex_rgb_color);
+void terminal_clear_cell_custom_bg (struct terminal* term, VTermPos pos);
+void terminal_clear_cell_custom_fg (struct terminal* term, VTermPos pos);
 
 #endif

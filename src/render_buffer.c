@@ -1,8 +1,9 @@
 
 #include <stdio.h>
+
 #include "render_buffer.h"
 #include "nemi.h"
-
+#include "common.h"
 
     /*
 static
@@ -84,17 +85,13 @@ float m_normalize_Y(struct nemi* st, float y) {
     return (y / (float)st->lfctx->win_height) * 2.0 - 1.0f; 
 }
 
-#define HEX2RED_CHANNEL(num) ((num & 0xFF0000) >> 16)
-#define HEX2GRN_CHANNEL(num) ((num & 0x00FF00) >> 8)
-#define HEX2BLU_CHANNEL(num)  (num & 0x0000FF)
-
 static
 void renderbuf_rect_node(struct nemi* st, 
         struct render_buffer* rb,
         struct rb_node* node,
         int x, int y, int w, int h, int color) {
     node->type = RBNODE_MESH;
-    node->layer = RBNODE_LAYER_FIRST;
+    node->layer = RBNODE_LAYER_LAST;
 
     if(rb->coordinate_mode == RBCOORDMODE_CELL) {
         x = coltox(st, x);

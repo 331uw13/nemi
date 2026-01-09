@@ -31,6 +31,45 @@
 }
 */
 
+
+XS(xsw_term_set_cell_custom_fg) {
+    dXSARGS;
+    (void)items;
+    int column = SvIV(ST(0));
+    int row    = SvIV(ST(1));
+    int hex_rgb_color = SvIV(ST(2));
+    struct nemi* st = get_state();
+    terminal_set_cell_custom_fg(st->terminal, (VTermPos){ row, column }, hex_rgb_color);
+}
+
+XS(xsw_term_set_cell_custom_bg) {
+    dXSARGS;
+    (void)items;
+    int column = SvIV(ST(0));
+    int row    = SvIV(ST(1));
+    int hex_rgb_color = SvIV(ST(2));
+    struct nemi* st = get_state();
+    terminal_set_cell_custom_bg(st->terminal, (VTermPos){ row, column }, hex_rgb_color);
+}
+
+XS(xsw_term_clear_cell_custom_bg) {
+    dXSARGS;
+    (void)items;
+    int column = SvIV(ST(0));
+    int row    = SvIV(ST(1));
+    struct nemi* st = get_state();
+    terminal_clear_cell_custom_bg(st->terminal, (VTermPos){ row, column });
+}
+
+XS(xsw_term_clear_cell_custom_fg) {
+    dXSARGS;
+    (void)items;
+    int column = SvIV(ST(0));
+    int row    = SvIV(ST(1));
+    struct nemi* st = get_state();
+    terminal_clear_cell_custom_fg(st->terminal, (VTermPos){ row, column });
+}
+
 XS(xsw_term_get_char) {
     dXSARGS;
     (void)items;
@@ -272,7 +311,7 @@ XS(xsw_term_ignore_keys) {
     (void)items;
 
     struct nemi* st = get_state();
-    st->flags |= FLG_IGNORE_KEY_INPUT;
+    st->term_ignore_key_input_counter++;
     XSRETURN_EMPTY;
 }
 
@@ -281,7 +320,7 @@ XS(xsw_term_ignore_chars) {
     (void)items;
     
     struct nemi* st = get_state();
-    st->flags |= FLG_IGNORE_CHR_INPUT;
+    st->term_ignore_char_input_counter++;
     XSRETURN_EMPTY;
 }
 
@@ -290,7 +329,10 @@ XS(xsw_term_unignore_keys) {
     (void)items;
     
     struct nemi* st = get_state();
-    st->flags &= ~FLG_IGNORE_KEY_INPUT;
+    st->term_ignore_key_input_counter--;
+    if(st->term_ignore_key_input_counter < 0) {
+        st->term_ignore_key_input_counter = 0;
+    }
     XSRETURN_EMPTY;
 }
 
@@ -299,7 +341,10 @@ XS(xsw_term_unignore_chars) {
     (void)items;
     
     struct nemi* st = get_state();
-    st->flags &= ~FLG_IGNORE_CHR_INPUT;
+    st->term_ignore_char_input_counter--;
+    if(st->term_ignore_char_input_counter < 0) {
+        st->term_ignore_char_input_counter = 0;
+    }
     XSRETURN_EMPTY;
 }
 

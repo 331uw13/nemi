@@ -600,8 +600,12 @@ typedef enum {
 int vterm_screen_get_attrs_extent(const VTermScreen *screen, VTermRect *extent, VTermPos pos, VTermAttrMask attrs);
 
 int vterm_screen_get_cell(const VTermScreen *screen, VTermPos pos, VTermScreenCell *cell);
-
 int vterm_screen_is_eol(const VTermScreen *screen, VTermPos pos);
+
+void vterm_screen_set_cell_custom_bg(const VTermScreen* screen, VTermPos pos, VTermColor color);
+void vterm_screen_set_cell_custom_fg(const VTermScreen* screen, VTermPos pos, VTermColor color);
+void vterm_screen_clear_cell_custom_bg(const VTermScreen* screen, VTermPos pos);
+void vterm_screen_clear_cell_custom_fg(const VTermScreen* screen, VTermPos pos);
 
 /**
  * Same as vterm_state_convert_color_to_rgb(), but takes a `screen` instead of a `state`

@@ -20,7 +20,7 @@ sub main {
 
     appendf(
         "// GENERATED CODE. Changes here will be lost when project is compiled.\n" .
-        "// Modify 'nemi_xs_wrappers.h'.\n"
+        "// Modify 'nemi_xs_wrappers.h' instead. Then run 'perl genxsfuncreg.pl'.\n"
     );
 
     while(my $line = <$file_in>) {

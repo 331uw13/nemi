@@ -15,7 +15,9 @@
 typedef struct
 {
   /* After the bitfield */
-  VTermColor   fg, bg;
+  VTermColor   fg, bg, custom_bg, custom_fg;
+  bool has_custom_bg;
+  bool has_custom_fg;
 
   unsigned int bold      : 1;
   unsigned int underline : 2;
@@ -91,7 +93,6 @@ static inline ScreenCell *getcell(const VTermScreen *screen, int row, int col)
     return NULL;
   return screen->buffer + (screen->cols * row) + col;
 }
-
 static ScreenCell *alloc_buffer(VTermScreen *screen, int rows, int cols)
 {
   ScreenCell *new_buffer = vterm_allocator_malloc(screen->vt, sizeof(ScreenCell) * rows * cols);
@@ -187,6 +188,8 @@ static int putglyph(VTermGlyphInfo *info, VTermPos pos, void *user)
   for(i = 0; i < VTERM_MAX_CHARS_PER_CELL && info->chars[i]; i++) {
     cell->chars[i] = info->chars[i];
     cell->pen = screen->pen;
+    cell->pen.has_custom_bg = false;
+    cell->pen.has_custom_fg = false;
   }
   if(i < VTERM_MAX_CHARS_PER_CELL)
     cell->chars[i] = 0;
@@ -974,6 +977,37 @@ size_t vterm_screen_get_text(const VTermScreen *screen, char *str, size_t len, c
   return _get_chars(screen, 1, str, len, rect);
 }
 
+void vterm_screen_set_cell_custom_bg(const VTermScreen* screen, VTermPos pos, VTermColor color) {
+  ScreenCell *intcell = getcell(screen, pos.row, pos.col);
+  if(!intcell)
+    return;
+
+  intcell->pen.has_custom_bg = true;
+  intcell->pen.custom_bg = color;
+}
+
+void vterm_screen_set_cell_custom_fg(const VTermScreen* screen, VTermPos pos, VTermColor color) {
+  ScreenCell *intcell = getcell(screen, pos.row, pos.col);
+  if(!intcell)
+    return;
+
+  intcell->pen.has_custom_fg = true;
+  intcell->pen.custom_fg = color;
+}
+
+void vterm_screen_clear_cell_custom_bg(const VTermScreen* screen, VTermPos pos) {
+  ScreenCell *intcell = getcell(screen, pos.row, pos.col);
+  if(!intcell)
+    return;
+  intcell->pen.has_custom_bg = false;
+}
+void vterm_screen_clear_cell_custom_fg(const VTermScreen* screen, VTermPos pos) {
+  ScreenCell *intcell = getcell(screen, pos.row, pos.col);
+  if(!intcell)
+    return;
+  intcell->pen.has_custom_fg = false;
+}
+
 /* Copy internal to external representation of a screen cell */
 int vterm_screen_get_cell(const VTermScreen *screen, VTermPos pos, VTermScreenCell *cell)
 {
@@ -1001,8 +1035,8 @@ int vterm_screen_get_cell(const VTermScreen *screen, VTermPos pos, VTermScreenCe
   cell->attrs.dwl = intcell->pen.dwl;
   cell->attrs.dhl = intcell->pen.dhl;
 
-  cell->fg = intcell->pen.fg;
-  cell->bg = intcell->pen.bg;
+  cell->fg = intcell->pen.has_custom_fg ? intcell->pen.custom_fg : intcell->pen.fg;
+  cell->bg = intcell->pen.has_custom_bg ? intcell->pen.custom_bg : intcell->pen.bg;
 
   if(pos.col < (screen->cols - 1) &&
      getcell(screen, pos.row, pos.col + 1)->chars[0] == (uint32_t)-1)

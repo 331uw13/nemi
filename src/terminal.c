@@ -422,21 +422,21 @@ void terminal_set_scroll(struct terminal* term, int scroll) {
 
 
 void terminal_handle_char_event(struct nemi* st, struct terminal* term) {
-    if(st->flags & FLG_IGNORE_CHR_INPUT) {
+    if(st->term_ignore_char_input_counter > 0) {
         return;
     }
 
     if(term == st->messages) {
         return; 
     }
-    
+   
     write_term(term, TERM_WRITE_PTY, &st->last_char_in);
     terminal_set_scroll(term, 0);
 }
 
 
 void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
-    if(st->flags & FLG_IGNORE_KEY_INPUT) {
+    if(st->term_ignore_key_input_counter > 0) {
         return;
     }
  
@@ -585,7 +585,7 @@ char terminal_get_char(struct terminal* term, int column, int row) {
     // TODO: This doesnt take in count the scrollback buffer..
     VTermScreenCell cell;
     if(!vterm_screen_get_cell(term->vtscrn,  (VTermPos){ row, column }, &cell)) {
-        return -1;
+        return 0;
     }
 
     return cell.chars[0];
@@ -602,3 +602,32 @@ int terminal_get_cursor_y(struct terminal* term) {
     return vtcurs_pos.row;
 }
 
+void terminal_set_cell_custom_bg(struct terminal* term, VTermPos pos, int hex_rgb_color) {
+    vterm_screen_set_cell_custom_bg(term->vtscrn, 
+            pos,
+            (VTermColor) {
+                .type = VTERM_COLOR_RGB,
+                .rgb.red = HEX2RED_CHANNEL(hex_rgb_color),
+                .rgb.green = HEX2GRN_CHANNEL(hex_rgb_color),
+                .rgb.blue = HEX2BLU_CHANNEL(hex_rgb_color)
+            });
+}
+
+void terminal_set_cell_custom_fg(struct terminal* term, VTermPos pos, int hex_rgb_color) {
+    vterm_screen_set_cell_custom_fg(term->vtscrn, 
+            pos,
+            (VTermColor) {
+                .type = VTERM_COLOR_RGB,
+                .rgb.red = HEX2RED_CHANNEL(hex_rgb_color),
+                .rgb.green = HEX2GRN_CHANNEL(hex_rgb_color),
+                .rgb.blue = HEX2BLU_CHANNEL(hex_rgb_color)
+            });
+}
+
+void terminal_clear_cell_custom_bg(struct terminal* term, VTermPos pos) {
+    vterm_screen_clear_cell_custom_bg(term->vtscrn, pos);
+}
+
+void terminal_clear_cell_custom_fg(struct terminal* term, VTermPos pos) {
+    vterm_screen_clear_cell_custom_fg(term->vtscrn, pos);
+}

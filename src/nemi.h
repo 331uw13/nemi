@@ -13,9 +13,9 @@
 #include "string.h"
 
 #define FLG_FONT_LOADED (1 << 0)
-#define FLG_IGNORE_KEY_INPUT (1 << 1)
-#define FLG_IGNORE_CHR_INPUT (1 << 2)
-#define FLG_RELOAD_CONFIG    (1 << 3)
+//#define FLG_IGNORE_KEY_INPUT (1 << 1)
+//#define FLG_IGNORE_CHR_INPUT (1 << 2)
+//#define FLG_RELOAD_CONFIG    (1 << 3)
 
 #define NEMI_TERMINALS_MAX 16
 #define NEMI_KEYINBUF_MAX 8
@@ -59,6 +59,15 @@ struct nemi {
 
     double frame_time;
     double frame_time_begin;
+
+    // When scripts want to make user input
+    // to the terminal ignored we will keep track of
+    // how many scripts ignored it
+    // because if another script ignores input and another unignores it
+    // it will not work as expected.
+    // TODO: Try to create 'focus' for scripts.
+    int term_ignore_char_input_counter;
+    int term_ignore_key_input_counter;
 };
 
 
@@ -66,7 +75,7 @@ struct nemi* start_session(const char* configs_dir);
 void         quit_session(struct nemi* st);
 void         restart_session(struct nemi* st);
 
-struct nemi* get_state(); // Should be used only in XS wrappers.
+struct nemi* get_state(); 
 
 void zero_input_buffers(struct nemi* st);
 void push_key_input(struct nemi* st, int key);
