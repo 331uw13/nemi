@@ -11,6 +11,11 @@ sub event_key_input {
     print("Key = $_[0], modifiers = $_[1]\n");
 }
 
+#!REGISTER_EVENT
+sub event_help_message {
+    Nemi::create_msg("Hello! this is my_script help message.");
+}
+
 sub init_script() {
     print("My script was loaded!\n");  # Prints to stdout
 
