@@ -14,6 +14,7 @@ struct script_event_name {
 };
 static
 const struct script_event_name SCRIPT_EVENTS[] = {
+    { "event_help_message", REG_EVENT_HELP_MSG },
     { "event_key_input", REG_EVENT_KEY_INPUT },
     { "event_char_input", REG_EVENT_CHAR_INPUT },
     { "event_win_resized", REG_EVENT_WIN_RESIZED },
@@ -119,7 +120,7 @@ void get_script_reg_events(struct perl_script* script, const char* script_filepa
     fclose(f);
 }
 
-bool load_perl_script(struct nemi* st, const char* filepath) {
+bool load_perl_script(struct nemi* st, const char* filepath, const char* name) {
     if(!filepath) {
         return false;
     }
@@ -152,8 +153,7 @@ bool load_perl_script(struct nemi* st, const char* filepath) {
 
 
     script->is_loaded = true;
-
-
+    script->name = strdup(name);
     return true;
 }
 
@@ -166,22 +166,30 @@ void unload_perl_script(struct perl_script* script) {
     PERL_SET_CONTEXT(script->perl_interp);
     perl_destruct(script->perl_interp);
     perl_free(script->perl_interp);
+    freeif(script->name);
 }
 
 void plscript_call(struct perl_script* script, const char* func) {
+    void* old_context = PL_current_context; // Save old context if we are calling functions from scripts.
+
     PerlInterpreter* my_perl = script->perl_interp;
     PERL_SET_CONTEXT(script->perl_interp);
 
     char* args[] = { NULL };
-
-    call_argv(func, G_DISCARD | G_NOARGS, args);
+    call_argv(func, G_DISCARD, args);
+    
+    PERL_SET_CONTEXT(old_context);
 }
 
 void plscript_call_args(struct perl_script* script, const char* func, char** args) {
+    void* old_context = PL_current_context;
+    
     PerlInterpreter* my_perl = script->perl_interp;
     PERL_SET_CONTEXT(script->perl_interp);
 
     call_argv(func, G_DISCARD, args); 
+    
+    PERL_SET_CONTEXT(old_context);
 }
 
 

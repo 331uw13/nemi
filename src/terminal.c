@@ -81,8 +81,6 @@ void init_scrollback_buffer(struct terminal* term) {
         row->cells = malloc(row->num_cells_alloc * sizeof *row->cells);
         row->num_cells = 0;
     }
-
-    logprintf(LOG_INFO, "Initialized scrollback buffer (%i rows)", SCROLLBACK_LIMIT);
 }
 
 struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, const char* shell) {
@@ -391,7 +389,7 @@ void write_term(struct terminal* term, enum term_write_target target, char* fmt,
     va_list args;
     va_start(args, fmt);
 
-    char buffer[320] = { 0 };
+    char buffer[1024 * 4] = { 0 };
     ssize_t len = vsnprintf(buffer, sizeof(buffer)-1, fmt, args);
     if(len > 0) {
         if(target == TERM_WRITE_PTY) {
@@ -631,3 +629,50 @@ void terminal_clear_cell_custom_bg(struct terminal* term, VTermPos pos) {
 void terminal_clear_cell_custom_fg(struct terminal* term, VTermPos pos) {
     vterm_screen_clear_cell_custom_fg(term->vtscrn, pos);
 }
+
+
+
+void swap_int(int* a, int* b) {
+    int tmp = *a;
+    *a = *b;
+    *b = tmp;
+}
+
+void terminal_copy_to_clipboard(struct nemi* st, struct terminal* term, 
+        int start_col, int start_row, int end_col, int end_row) {
+    struct string_t buffer = string_create(0);
+    end_row++;
+
+    if(start_row > end_row) {
+        swap_int(&start_row, &end_row);  
+        swap_int(&start_col, &end_col);
+        start_row--;
+        end_row++;
+    }
+
+    for(int y = start_row; y < end_row; y++) {
+        bool last_row = (y+1 >= end_row);
+        int ln_x_stop = last_row ? end_col : term->cols;
+        for(int x = start_col; x < ln_x_stop; x++) {
+        
+            char ch = terminal_get_char(term, x, y);
+            if(ch == 0) {
+                continue;
+            }
+
+            string_pushbyte(&buffer, ch);
+        }
+        string_pushbyte(&buffer, '\n');
+        start_col = 0;
+    }
+
+    string_nullterm(&buffer);
+    glfwSetClipboardString(st->lfctx->glfw_win, buffer.bytes);
+    /*
+    printf("\033[90m=============================\033[0m\n");
+    printf("\033[32m%s\033[0m\n", buffer.bytes);
+    printf("\033[2;90m=============================\033[0m\n");
+    */
+    free_string(&buffer);
+}
+

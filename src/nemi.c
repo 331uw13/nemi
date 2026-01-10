@@ -42,7 +42,8 @@ struct nemi* start_session(const char* configs_dir) {
         quit_session(st);
         return NULL;
     }
-    
+   
+
     st->flags |= FLG_FONT_LOADED;
 
     st->font.center_char_to_cell = st->cfg.font.center_char_to_cell;
@@ -75,7 +76,7 @@ struct nemi* start_session(const char* configs_dir) {
     st->terminal_prev = st->terminal;
     
     write_term(st->messages, TERM_WRITE_VTERM, 
-            "\033[2J\033[H\033[0m(start of messages. press ctrl+space to go back)\n\r");
+            "\033[2J\033[H\033[0m\033[90m(start of messages. press ctrl+space to go back)\033[0m\n\r");
 
     for(size_t i = 0; i < ARRAY_LEN(st->scripts); i++) {
         st->scripts[i] = (struct perl_script) {
@@ -258,9 +259,9 @@ void init_default_config(struct nemi* st) {
     st->cfg.main.padding_y = 10;
     st->cfg.main.line_padding = 3;
     
-    int d_v = 180;
-    int b_v = 255;
-    int l_v = 30;
+    int d_v = 180;  // Dim max.
+    int b_v = 255;  // Bright max.
+    int l_v = 30;   // Low value color component.
 
     st->cfg.colors[NEMI_COLOR_FG] = (struct color_t){ 200, 180, 160 };
     st->cfg.colors[NEMI_COLOR_BG] = (struct color_t){ 12, 13, 15 };
@@ -273,7 +274,7 @@ void init_default_config(struct nemi* st) {
     st->cfg.colors[NEMI_COLOR_CYAN]    = (struct color_t){ l_v, d_v, d_v };
     st->cfg.colors[NEMI_COLOR_WHITE]   = (struct color_t){ d_v, d_v, d_v };
 
-    st->cfg.colors[NEMI_BRIGHT_COLOR_BLACK]   = (struct color_t){ 10, 10, 10 };
+    st->cfg.colors[NEMI_BRIGHT_COLOR_BLACK]   = (struct color_t){ 70, 70, 70 };
     st->cfg.colors[NEMI_BRIGHT_COLOR_RED]     = (struct color_t){ b_v, l_v, l_v };
     st->cfg.colors[NEMI_BRIGHT_COLOR_GREEN]   = (struct color_t){ l_v, b_v, l_v };
     st->cfg.colors[NEMI_BRIGHT_COLOR_YELLOW]  = (struct color_t){ b_v, b_v, l_v };
@@ -497,7 +498,7 @@ void create_msg(struct nemi* st, const char* msg, ...) {
     va_list args;
     va_start(args, msg);
 
-    char buffer[512] = { 0 };
+    char buffer[1024 * 4] = { 0 };
     vsnprintf(buffer, sizeof(buffer)-1, msg, args);
 
     write_term(st->messages, TERM_WRITE_VTERM, buffer);
@@ -507,4 +508,36 @@ void create_msg(struct nemi* st, const char* msg, ...) {
     logprintf(LOG_INFO, buffer);
     va_end(args);
 }
+
+
+void nemi_help(struct nemi* st, const char* what) {
+
+    // Check if the string is equal to any script names
+    // the user may be asking information about script.
+    
+    for(int i = 0; i < NEMI_SCRIPTS_MAX; i++) {
+        struct perl_script* script = &st->scripts[i];
+        if(!script->is_loaded) {
+            continue;
+        }
+
+        if(STR_MATCH(what, script->name)) {
+            if(script->reg_events & REG_EVENT_HELP_MSG) {
+                plscript_call(script, "event_help_message");
+                return;
+            }
+            else {
+                create_msg(st, "Help input \"%s\" matched with script name but it doesnt have help message available.", what);
+            }
+            
+            //return;
+        }
+    }
+
+
+    create_msg(st, "Sorry, didnt know how to help. Input: \"%s\"", what);
+}
+
+
+
 

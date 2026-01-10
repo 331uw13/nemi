@@ -19,3 +19,11 @@ sub init_script {
 }
 
 
+#!REGISTER_EVENT
+sub event_help_message {
+    Nemi::create_msg(
+        "=== scrollback.pl help ===\n\r".
+        " (TODO)"
+    );
+}
+

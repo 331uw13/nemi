@@ -1,5 +1,6 @@
 # Nemi - Terminal Emulator
 
+
 ## About the project
 ```
 You can create and modify perl scripts to easily customize
@@ -14,6 +15,13 @@ and it should be automatically loaded.
 `nemi.ini' is the configuration file for the program.
 ```
 
+## Info about working with scripts:
+https://github.com/331uw13/nemi/tree/main/scripts
+
+## Compiling the project
+```
+$ perl configure.pl && make
+```
 
 ## Compatibility with older perl verions
 ```
@@ -29,11 +37,4 @@ You can try to use perlbrew to use recent version.
 ```
 
 
-## Compiling the project
-```
-$ perl configure.pl && make
-```
-
-Read documentation for working with scripts:
-https://github.com/331uw13/nemi/tree/main/scripts
 

@@ -35,8 +35,6 @@ sub init {
     Nemi::rb_hide_node($vmode::rb, $vmode::rb_cursor_node);
 }
 
-
-
 package main;
 use warnings;
 use strict;
@@ -266,7 +264,8 @@ sub event_key_input {
     my $key_j = 74;
     my $key_k = 75;
     my $key_l = 76;
-    
+    my $key_c = 67;
+
     if($key_pressed == $key_n and $key_mods == $mod_ctrl) {
         toggle_vmode();
     }
@@ -305,6 +304,14 @@ sub event_key_input {
             toggle_select_mode(); 
             $do_update = 1;
         }
+        if($vmode::select_mode and $key_pressed == $key_c) {
+            Nemi::term_copy_to_clipboard(
+                $vmode::select_start_x,
+                $vmode::select_start_y,
+                $vmode::cursor_x,
+                $vmode::cursor_y
+            );
+        }
 
         if($do_update) {
             update_view();
@@ -325,4 +332,12 @@ sub init_script {
     $vmode = vmode->init();
 }
 
+
+#!REGISTER_EVENT
+sub event_help_message {
+    Nemi::create_msg(
+        "=== vmode.pl help ===\n\r".
+        " (TODO)"
+    );
+}
 

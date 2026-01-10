@@ -71,7 +71,6 @@ Nemi::term_ignore_chars    < No arguments >    // Terminals will ignore characte
 Nemi::term_ignore_keys     < No arguments >    // Terminals will ignore key inputs.
 Nemi::term_unignore_chars  < No arguments >
 Nemi::term_unignore_keys   < No arguments >
-
 Nemi::term_hide_cells      (col, row, width, height) // Parts of the rendered cells can be
 Nemi::term_show_cells      (col, row, width, height) // hidden to make room for your own stuff
 Nemi::term_scroll_y        (offset)
@@ -82,6 +81,8 @@ Nemi::term_set_cell_custom_fg (column, row, hex_rgb_color)
 Nemi::term_set_cell_custom_bg (column, row, hex_rgb_color)
 Nemi::term_clear_cell_custom_fg (column, row)
 Nemi::term_clear_cell_custom_bg (column, row)
+Nemi::term_copy_to_clipboard    (start_column, start_row, end_column, end_row) 
+
 
 ////  Rendering  ////
 

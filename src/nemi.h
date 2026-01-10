@@ -111,4 +111,7 @@ void init_default_config(struct nemi* st);
 void reload_config(struct nemi* st);
 void reload_config_now(struct nemi* st);
 
+
+void nemi_help(struct nemi* st, const char* what);
+
 #endif

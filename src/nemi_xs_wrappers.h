@@ -31,6 +31,25 @@
 }
 */
 
+XS(xsw_help) {
+    dXSARGS;
+    (void)items;
+    STRLEN len;
+    char*  str = SvPV(ST(0), len);
+    struct nemi* st = get_state();
+    nemi_help(st, str);
+}
+
+XS(xsw_term_copy_to_clipboard) {
+    dXSARGS;
+    (void)items;
+    int start_col = SvIV(ST(0));
+    int start_row = SvIV(ST(1));
+    int end_col = SvIV(ST(2));
+    int end_row = SvIV(ST(3));
+    struct nemi* st = get_state();
+    terminal_copy_to_clipboard(st, st->terminal, start_col, start_row, end_col, end_row);
+}
 
 XS(xsw_term_set_cell_custom_fg) {
     dXSARGS;
@@ -100,7 +119,6 @@ XS(xsw_new_renderbuf) {
     int num_nodes_max = SvIV(ST(0));
     XSRETURN_IV(new_renderbuf(get_state(), num_nodes_max));
 }
-
 
 XS(xsw_rb_remove_node) {
     dXSARGS;

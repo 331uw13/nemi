@@ -162,9 +162,10 @@ sub execute {
     if(defined $v) {
         Nemi::create_msg("$v");
     }
-
+    else {
+        Nemi::create_msg("\033[31mInvalid command '$cmdl::input'.\n\rTry running 'Nemi::help(\"commandline\")'\033[0m");
+    }
 }
-
 
 #!REGISTER_EVENT
 sub event_key_input {
@@ -260,4 +261,22 @@ sub init_script {
     }
 }
 
+#!REGISTER_EVENT
+sub event_help_message {
+    Nemi::create_msg(
+        "=== commandline.pl help ===\n\r".
+        "---------------------------\n\r".
+        " You can evaluate perl expressions,\n\r".
+        " the output is going to be written here.\n\r".
+        " for example you can try to write 2 * 1024 to the command line.\n\r".
+        "\n".
+        " You can also call all functions to the C code side\n\r".
+        " but this way some of them may behave unexpectedly.\n\r".
+        " Its better to write a script if you need to add specific behaviour.\n\r".
+        " For script development you can follow instructions from:\n\r".
+        "   https://github.com/331uw13/nemi/tree/main/scripts\n\r".
+        "   or read the README.md from the repo.\n\r".
+        "\n"
+    );
+}
 

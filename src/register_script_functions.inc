@@ -1,5 +1,7 @@
 // GENERATED CODE. Changes here will be lost when project is compiled.
 // Modify 'nemi_xs_wrappers.h' instead. Then run 'perl genxsfuncreg.pl'.
+newXS("Nemi::help", xsw_help, __FILE__);
+newXS("Nemi::term_copy_to_clipboard", xsw_term_copy_to_clipboard, __FILE__);
 newXS("Nemi::term_set_cell_custom_fg", xsw_term_set_cell_custom_fg, __FILE__);
 newXS("Nemi::term_set_cell_custom_bg", xsw_term_set_cell_custom_bg, __FILE__);
 newXS("Nemi::term_clear_cell_custom_bg", xsw_term_clear_cell_custom_bg, __FILE__);

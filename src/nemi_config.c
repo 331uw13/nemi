@@ -140,7 +140,7 @@ int config_handler__scripts_ini
     const char* value
 ){
     struct nemi* st = (struct nemi*)userptr;
-    load_perl_script(st, value);
+    load_perl_script(st, value, name);
 
     return 1; // Continue reading.
 }
