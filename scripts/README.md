@@ -1,13 +1,5 @@
 # Scripting documentation.
 
-> i will be referencing "Terminal emulator" as the actually compiled code (the C code side)
-
-## Events
-
-There are some events that are called from the terminal emulator.
-and they must be registered because otherwise there would be alot
-of calls to functions which may not exist in the script.
-
 
 ### Simple "Hello world" example.
 ```perl
@@ -37,10 +29,13 @@ my_script = ./scripts/my_script.pl
 ```
 
 Above perl code is going to tell the terminal emulator to call `event_key_input` for the script. 
+The reason why '#!REGISTER_EVENT' exists is because that way we can keep track of
+what events the script actually wants so it doesnt need to implement all event functions just to not use them at all.
+
+
 Everytime a key is pressed, second argument is key modifier: Ctrl, Shift or Alt... or combination of them.
 You can read https://www.glfw.org/docs/latest/group__keys.html for key codes
 and https://www.glfw.org/docs/latest/group__mods.html for key modifiers.
-
 
 
 ## Available events.
