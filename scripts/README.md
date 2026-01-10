@@ -12,7 +12,7 @@ sub event_key_input {
 }
 
 sub init_script() {
-    print("My script was loaded!\n");
+    print("My script was loaded!\n");  # Prints to stdout
 
     # Global variables should be initialized here...
 }
