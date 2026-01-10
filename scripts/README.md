@@ -33,11 +33,6 @@ The reason why `#!REGISTER_EVENT` exists is because that way we can keep track o
 what events the script actually wants so it doesnt need to implement all event functions just to not use them at all.
 
 
-Everytime a key is pressed, second argument is key modifier: Ctrl, Shift or Alt... or combination of them.
-You can read https://www.glfw.org/docs/latest/group__keys.html for key codes
-and https://www.glfw.org/docs/latest/group__mods.html for key modifiers.
-
-
 ## Available events.
 
 ```
