@@ -25,11 +25,11 @@ You can name your script what ever you want. To load the script you have to add 
 [SCRIPTS]
 my_script = ./scripts/my_script.pl
 ^
- `-- The name here doesnt matter.
+ `-- This is the script's name so calling Nemi::help("my_script") makes more sense :)
 ```
 
 Above perl code is going to tell the terminal emulator to call `event_key_input` for the script. 
-The reason why '#!REGISTER_EVENT' exists is because that way we can keep track of
+The reason why `#!REGISTER_EVENT` exists is because that way we can keep track of
 what events the script actually wants so it doesnt need to implement all event functions just to not use them at all.
 
 
