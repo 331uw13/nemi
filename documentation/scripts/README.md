@@ -32,7 +32,7 @@ our $script_name;
 
 #!REGISTER_EVENT
 sub event_keybind_press {
-    create_msg("$script_name got keybind event $_[0]");
+    Nemi::create_msg("$script_name got keybind event $_[0]");
 }
 
 sub init_script() {
@@ -40,6 +40,13 @@ sub init_script() {
     Nemi::add_keybind($script_name, "example_name", "lctrl + a");
     Nemi::add_keybind($script_name, "list_files", "lshift + lctrl + l");
 }
+
+# Notes:
+#  keybinds expect US layout but you can
+#  lookup which key corresponds to your keyboard.
+#
+# There are currently few bugs with parsing the keybind's keys,
+# try to swap the order if you encounter problems. I will fix the bug later.
 ```
 
 
