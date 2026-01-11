@@ -1,14 +1,11 @@
 # Nemi - Terminal Emulator
-
-
 ## About the project
-```
-You can create and modify perl scripts to easily customize
-the terminal emulator's behaviour
-and to add any kind of new features.
+
+You can create and modify perl scripts to customize the terminal emulator's behaviour
+or add any kind of new features.
 
 >>> scripting support in progress! <<<
-```
+
 
 ## Documentation
 
@@ -17,13 +14,13 @@ and to add any kind of new features.
 
 ## Compiling the project
 ```
-$ perl configure.pl && make
+$ perl configure.pl && make -j4
 ```
 
 ## Compatibility with older perl verions
 ```
 If you are having problems with compiling the
-project and are using older version of perl than 5.42.0.
+project and are using older version of perl than 5.42.0
 You can try to use perlbrew to use recent version.
     
     perlbrew init
@@ -33,5 +30,12 @@ You can try to use perlbrew to use recent version.
     $ perl configure.pl -using_perlbrew
 ```
 
+## Contribute
+All kinds of ideas are welcome! Create pull request or open an issue and we can discuss about it.
 
 
+-----------------------
+
+### My contacts:
+* Matrix.org: `@eeiuwie:matrix.org`
+* Discord: `_331uw13`
