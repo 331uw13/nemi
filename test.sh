@@ -7,5 +7,5 @@ echo -e "\033[2;34m Blue dim text \033[0m"
 echo -e "\033[3;35m Italic text text \033[0m"
 echo -e "\033[4;35m Underline text \033[0m"
 echo -e "\033[5;32m blink?\033[0m"
-echo -e "\033[42mTest\033[0m"
+echo -e "\033[41mTest\033[0m"
 
