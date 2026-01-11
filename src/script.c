@@ -7,6 +7,8 @@
 #include "common.h"
 #include "string.h"
 #include "nemi_xs_wrappers.h"
+#include "thirdparty/stb_ds.h"
+
 
 struct script_event_name {
     const char* name;
@@ -18,7 +20,8 @@ const struct script_event_name SCRIPT_EVENTS[] = {
     { "event_key_input", REG_EVENT_KEY_INPUT },
     { "event_char_input", REG_EVENT_CHAR_INPUT },
     { "event_win_resized", REG_EVENT_WIN_RESIZED },
-    { "event_term_buffer_changed", REG_EVENT_TERM_BUFFER_CHANGED }
+    { "event_term_buffer_changed", REG_EVENT_TERM_BUFFER_CHANGED },
+    { "event_keybind_press", REG_EVENT_KEYBIND_PRESS }
 };
 
 
@@ -26,6 +29,7 @@ const char* plscript_get_event_name(int event_num) {
     return SCRIPT_EVENTS[__builtin_ctz(event_num)].name;
 }
 
+/*
 static
 struct perl_script* nemi_find_unloaded_script(struct nemi* st) {
     struct perl_script* ptr = NULL;
@@ -38,6 +42,7 @@ struct perl_script* nemi_find_unloaded_script(struct nemi* st) {
 
     return ptr;
 }
+*/
 
 
 
@@ -121,6 +126,11 @@ void get_script_reg_events(struct perl_script* script, const char* script_filepa
 }
 
 bool load_perl_script(struct nemi* st, const char* filepath, const char* name) {
+    if(st->num_scripts+1 >= NEMI_SCRIPTS_MAX) {
+        logprintf(LOG_ERROR, "Already loaded maximum amount of scripts.");
+        return false;
+    }
+
     if(!filepath) {
         return false;
     }
@@ -130,12 +140,8 @@ bool load_perl_script(struct nemi* st, const char* filepath, const char* name) {
         return false;
     }
 
-    struct perl_script* script = nemi_find_unloaded_script(st);
-    if(!script) {
-        logprintf(LOG_ERROR, "No space to load new script, all slots have been taken.");
-        return false;
-    }
-
+    struct perl_script* script = &st->scripts[st->num_scripts];
+    st->num_scripts++;
 
     script->perl_interp = perl_alloc();
     PERL_SET_CONTEXT(script->perl_interp);
@@ -146,14 +152,16 @@ bool load_perl_script(struct nemi* st, const char* filepath, const char* name) {
     
     get_script_reg_events(script, filepath);
 
-    logprintf(LOG_INFO, "Loaded script \"%s\"", filepath);
-
-    register_functions(script);
-    plscript_call(script, "init_script");    
+    logprintf(LOG_INFO, "Loaded script \"%s\" %s", name, filepath);
 
 
+    script->keybind_map = NULL;
     script->is_loaded = true;
     script->name = strdup(name);
+
+    register_functions(script);
+    plscript_call(script, "init_script");
+
     return true;
 }
 
@@ -161,6 +169,18 @@ bool load_perl_script(struct nemi* st, const char* filepath, const char* name) {
 void unload_perl_script(struct perl_script* script) {
     if(!script->is_loaded) {
         return;
+    }
+
+    if(script->keybind_map) {
+        ptrdiff_t keybind_map_len = hmlen(script->keybind_map);
+        for(ptrdiff_t i = 0; i < keybind_map_len; i++) {
+            struct script_keybind* kb = &script->keybind_map[i];
+            if(kb) {
+                freeif(kb->value->keys_str);
+                freeif(kb->value->event_name);
+                free(kb->value);
+            }
+        }
     }
 
     PERL_SET_CONTEXT(script->perl_interp);

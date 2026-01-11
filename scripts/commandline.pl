@@ -251,6 +251,8 @@ sub init_script {
     $cmdl = cmdl->init();
 
 
+    #($keybinds, "toggle_vmode", "ctrl + shift + a");
+
     # Get available external functions for auto complete.
     foreach my $entry ( keys %Nemi:: ) {
         no strict 'refs';

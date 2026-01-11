@@ -2,10 +2,12 @@
 #include <stdio.h>
 #include <string.h>
 
-
 #include "nemi.h"
 #include "nemi_config.h"
 #include "common.h"
+#include "thirdparty/stb_ds.h"
+
+
 
 static struct nemi* g_nemi_state = NULL;
 
@@ -25,6 +27,7 @@ struct nemi* start_session(const char* configs_dir) {
     st->frame_time = 0.001;
     st->frame_time_begin = 0.0;
     st->flags = 0;
+    st->num_scripts = 0;
     st->lfctx = leaf_open("Nemi - Terminal Emulator", 900, 700);
     st->num_terminals = 0;
     st->term_ignore_char_input_counter = 0;
@@ -95,6 +98,7 @@ struct nemi* start_session(const char* configs_dir) {
 
     //plscript_funcs_set_context(st);
     g_nemi_state = st;
+
 
     if(!nemi_load_scripts(st, configs_dir)) {
         logprintf(LOG_ERROR, "Failed to load all scripts.");
@@ -331,7 +335,7 @@ void trigger_event_for_scripts(struct nemi* st, int event_num,
 
     const char* event_name = plscript_get_event_name(event_num);
 
-    for(size_t i = 0; i < NEMI_SCRIPTS_MAX; i++) {
+    for(size_t i = 0; i < st->num_scripts; i++) {
         struct perl_script* script = &st->scripts[i];
         if(!script->is_loaded) {
             continue;
@@ -389,7 +393,17 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
 
         }    
     }
+
     terminal_handle_key_event(st, st->terminal);
+    
+    for(size_t i = 0; i < st->num_scripts; i++) {
+        struct perl_script* script = &st->scripts[i];
+        if(!script->is_loaded) {
+            continue;
+        }
+
+        handle_script_keybind_event(st, script);
+    }
 }
 
 void glfw_char_callback(GLFWwindow* window, uint32_t codepoint) {
@@ -510,12 +524,13 @@ void create_msg(struct nemi* st, const char* msg, ...) {
 }
 
 
+
 void nemi_help(struct nemi* st, const char* what) {
 
     // Check if the string is equal to any script names
     // the user may be asking information about script.
     
-    for(int i = 0; i < NEMI_SCRIPTS_MAX; i++) {
+    for(int i = 0; i < st->num_scripts; i++) {
         struct perl_script* script = &st->scripts[i];
         if(!script->is_loaded) {
             continue;
@@ -539,5 +554,45 @@ void nemi_help(struct nemi* st, const char* what) {
 }
 
 
+void nemi_message_script_keybinds(struct nemi* st, const char* script_name) {
+    struct perl_script* script = NULL;
+    for(size_t i = 0; i < st->num_scripts; i++) {
+        if(st->scripts[i].is_loaded) {
+            if(STR_MATCH(script_name, st->scripts[i].name)) {
+                script = &st->scripts[i];
+                break;
+            }
+        }
+    }
+
+    if(script == NULL) {
+        create_msg(st, "\033[31mNo script named \"%s\"\033[0m", script_name);
+        return;
+    }
+
+    if(!(script->reg_events & REG_EVENT_KEYBIND_PRESS)) {
+        create_msg(st, "\033[33mScript \"%s\" has not registered keybind press event.\033[0m",
+                script_name);
+        return;
+    }
+
+    ptrdiff_t keybind_map_len = hmlen(script->keybind_map);
+    if(keybind_map_len == 0) {
+        create_msg(st, "\033[33mScript \"%s\" doesnt have any keybinds.\033[0m", script_name);
+        return;
+    }
+
+    create_msg(st, "\033[92m%s \033[0m\033[32mkeybinds:\033[0m", script_name);
+    
+
+    struct string_t tmpkey_str = string_create(0);
+    for(ptrdiff_t i = 0; i < keybind_map_len; i++) {
+        struct script_keybind* kb = &script->keybind_map[i];
+    
+        create_msg(st, " %-26s %s", kb->value->event_name, kb->value->keys_str);
+    }
+
+    free_string(&tmpkey_str);
+}
 
 

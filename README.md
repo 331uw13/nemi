@@ -6,13 +6,8 @@
 You can create and modify perl scripts to easily customize
 the terminal emulator's behaviour
 and to add any kind of new features.
+
 >>> scripting support in progress! <<<
-
-To load new perl script,
-just add it into the `nemi.ini' [scripts] section,
-and it should be automatically loaded.
-
-`nemi.ini' is the configuration file for the program.
 ```
 
 ## Info about working with scripts:

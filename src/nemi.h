@@ -8,6 +8,7 @@
 #include "nemi_config.h"
 #include "terminal.h"
 #include "script.h"
+#include "script_keybinds.h"
 #include "render_buffer.h"
 #include "log.h"
 #include "string.h"
@@ -23,6 +24,8 @@
 #define NEMI_SCRIPTS_MAX 32
 #define NEMI_RENDERBUFS_MAX 32
 #define NEMI_MSG_LINES_MAX 64
+#define NEMI_SCRIPTS_KEYBIND_KEYS_MAX 16
+
 
 
 struct nemi {
@@ -49,8 +52,9 @@ struct nemi {
     int  key_inputs  [NEMI_KEYINBUF_MAX];
     char char_inputs [NEMI_CHARINBUF_MAX];
 
-    struct perl_script   scripts [NEMI_SCRIPTS_MAX];
-    
+    struct perl_script      scripts [NEMI_SCRIPTS_MAX];
+    size_t                  num_scripts;
+
     struct render_buffer renderbufs [NEMI_RENDERBUFS_MAX];
     uint32_t             num_renderbufs;
 
@@ -108,10 +112,11 @@ int rowtoy(struct nemi* st, int row);
 int new_renderbuf(struct nemi* st, int num_nodes_max);
 void init_default_config(struct nemi* st);
 
-void reload_config(struct nemi* st);
-void reload_config_now(struct nemi* st);
+//void reload_config(struct nemi* st);
+//void reload_config_now(struct nemi* st);
 
 
 void nemi_help(struct nemi* st, const char* what);
+void nemi_message_script_keybinds(struct nemi* st, const char* script_name);
 
 #endif

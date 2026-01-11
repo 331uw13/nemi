@@ -13,7 +13,7 @@ sub event_key_input {
 
 #!REGISTER_EVENT
 sub event_help_message {
-    Nemi::create_msg("Hello! this is my_script help message.");
+    Nemi::create_msg("Hello! this is my script's help message.");
 }
 
 sub init_script() {

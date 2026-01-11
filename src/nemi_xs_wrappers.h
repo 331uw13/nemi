@@ -31,6 +31,36 @@
 }
 */
 
+
+XS(xsw_add_keybind) {
+    dXSARGS;
+    (void)items;
+    STRLEN script_name_len;
+    char* script_name = SvPV(ST(0), script_name_len);
+ 
+    STRLEN event_name_len;
+    char* event_name = SvPV(ST(1), event_name_len);
+   
+    STRLEN keybind_str_len;
+    char* keybind_str = SvPV(ST(2), keybind_str_len);
+
+    struct nemi* st = get_state();
+    add_script_keybind(st, 
+            script_name,
+            event_name,
+            keybind_str,
+            keybind_str_len);
+}
+
+XS(xsw_script_keybinds) { 
+    dXSARGS;
+    (void)items;
+    STRLEN len;
+    char*  script_name = SvPV(ST(0), len);
+    struct nemi* st = get_state();
+    nemi_message_script_keybinds(st, script_name);
+}
+
 XS(xsw_help) {
     dXSARGS;
     (void)items;

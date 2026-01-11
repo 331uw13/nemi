@@ -1,29 +1,34 @@
-#
-# Nemi doesnt control the scrollback buffer offset from C code.
-# but we can control it from perl script very easily.
-# This script allows for user to control the scrollback buffer
-# offset with keys.
-# This was done to allow modifying the scrolling behaviour with ease.
-#
-
-
 use warnings;
 use strict;
+
+our $script_name;
 
 
 #!REGISTER_EVENT
 sub event_key_input {
 }
 
+#!REGISTER_EVENT
+sub event_keybind_press {
+    print("$script_name: event_keybind_press(): '$_[0]'\n");
+}
+
 sub init_script {
+    $script_name = "scrollback";
+    Nemi::add_keybind($script_name, "do_something", "lctrl + a");
+    Nemi::add_keybind($script_name, "scroll_up", "lctrl + i");
+    Nemi::add_keybind($script_name, "scroll_down", "lctrl + k");
 }
 
 
 #!REGISTER_EVENT
 sub event_help_message {
     Nemi::create_msg(
-        "=== scrollback.pl help ===\n\r".
-        " (TODO)"
+        "=== $script_name.pl help ===\n\r".
+        " Allows user to scroll the terminal buffer\n\r".
+        " with keybinds.\n\r".
+        " Run 'Nemi::script_keybinds(\"$script_name\")' in command line\n\r".
+        " to see keybinds.\n\r"
     );
 }
 
