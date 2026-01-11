@@ -41,6 +41,5 @@ All kinds of ideas are welcome! Create pull request or open an issue and we can 
 * Discord: `_331uw13`
 
 ![img](https://github.com/331uw13/nemi/blob/main/screenshots/0.png?raw=true)
-![img](https://github.com/331uw13/nemi/blob/main/screenshots/1.png?raw=true)
 ![img](https://github.com/331uw13/nemi/blob/main/screenshots/2.png?raw=true)
 
