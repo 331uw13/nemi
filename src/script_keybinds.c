@@ -109,22 +109,6 @@ const struct keymap_elem KEY_MAP[] = {
     { .str = "f12", .glfw_key = GLFW_KEY_F12 }
 };
 
-
-#define KEYMAP_MODS_BEGIN GLFW_KEY_LEFT_SHIFT
-#define KEYMAP_MODS_END   GLFW_KEY_RIGHT_CONTROL
-
-#define KEYMAP_KEYS_BEGIN GLFW_KEY_SPACE
-#define KEYMAP_KEYS_END   GLFW_KEY_F12
-
-
-const char* get_key_str(int glfw_key) {
-
-
-    return "<Unknown>";
-}
-
-
-
 #define FNV_OFFSET 14695981039346656037UL
 #define FNV_PRIME 1099511628211UL
 
@@ -134,7 +118,7 @@ uint64_t hash_keys(int* keys) {
     int* k = keys;
     while(k && *k > 0) {
         hash ^= (uint64_t)(*k & 0x000000FF);
-        hash *= FNV_PRIME;
+        hash *= FNV_PRIME - 3;
         k++;
     }
     return hash;
@@ -282,7 +266,6 @@ void handle_script_keybind_event(struct nemi* st, struct perl_script* script) {
     if(kb == NULL) {
         return;
     }
-
 
     char* event_fn_args[] = {
         kb->value->event_name,

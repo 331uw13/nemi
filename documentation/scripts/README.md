@@ -23,9 +23,28 @@ sub init_script() {
 }
 ```
 
+### Keybinds example.
+```perl
+use strict;
+use warnings;
+
+our $script_name;
+
+#!REGISTER_EVENT
+sub event_keybind_press {
+    create_msg("$script_name got keybind event $_[0]");
+}
+
+sub init_script() {
+    $script_name = "keybind_example";
+    Nemi::add_keybind($script_name, "example_name", "lctrl + a");
+    Nemi::add_keybind($script_name, "list_files", "lshift + lctrl + l");
+}
+```
+
+
 You can name your script what ever you want. To load the script you have to add it into 
-`configs/scripts.ini` file.
- Example:
+`configs/scripts.ini` file. Example:
 ```
 [SCRIPTS]
 my_script = ./scripts/my_script.pl
@@ -41,17 +60,14 @@ what events the script actually wants so it doesnt need to implement all event f
 ## Available events.
 
 ```
-
 Function                     Arguments
 ----------------------------------------------------
-event_key_input ............ 0: key, 1: key modifier
-event_char_input ........... 0: character
-event_win_resized .......... 0: new window width, 1: new window height
+event_help_message ......... < No arguments >        // When this event is called user wants a help message for the script.
+event_key_input ............ 0: Key, 1: Key modifier
+event_char_input ........... 0: Character
+event_win_resized .......... 0: New window width, 1: New window height
 event_term_buffer_changed .. 0: If the current buffer is altbuffer it is 1 otherwise 0.
-
-
-... More will be added later ...
-
+event_keybind_press ........ 0: Keybind event name.
 ```
 
 

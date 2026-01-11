@@ -17,7 +17,7 @@ sub init_script {
     $script_name = "scrollback";
     Nemi::add_keybind($script_name, "do_something", "lctrl + a");
     Nemi::add_keybind($script_name, "scroll_up", "lctrl + i");
-    Nemi::add_keybind($script_name, "scroll_down", "lctrl + k");
+    Nemi::add_keybind($script_name, "scroll_down", "lshift + lctrl + k");
 }
 
 

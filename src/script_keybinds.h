@@ -16,7 +16,6 @@ void add_script_keybind
 );
 
 void handle_script_keybind_event(struct nemi* st, struct perl_script* script);
-const char* get_key_str(int glfw_key);
 
 
 #endif
