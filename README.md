@@ -11,7 +11,7 @@ and to add any kind of new features.
 ```
 
 ## Info about working with scripts:
-https://github.com/331uw13/nemi/tree/main/scripts
+https://github.com/331uw13/nemi/tree/main/documentation/scripts
 
 ## Compiling the project
 ```
