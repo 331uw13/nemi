@@ -10,8 +10,10 @@ and to add any kind of new features.
 >>> scripting support in progress! <<<
 ```
 
-## Info about working with scripts:
-https://github.com/331uw13/nemi/tree/main/documentation/scripts
+## Documentation
+
+* Working with scripts: https://github.com/331uw13/nemi/tree/main/documentation/scripts
+* Development: https://github.com/331uw13/nemi/tree/main/documentation/development
 
 ## Compiling the project
 ```
