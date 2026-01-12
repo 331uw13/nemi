@@ -1,5 +1,6 @@
 .gitrepo-update.ini
 *.o
 *.a
+*.so
 nemi
 Makefile
