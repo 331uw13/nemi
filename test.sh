@@ -8,4 +8,4 @@ echo -e "\033[3;35m Italic text text \033[0m"
 echo -e "\033[4;35m Underline text \033[0m"
 echo -e "\033[5;32m blink?\033[0m"
 echo -e "\033[41mTest\033[0m"
-
+echo -e "\x1b[38;2;255;100;0mTRUECOLOR\x1b[0m\n"

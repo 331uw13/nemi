@@ -94,15 +94,7 @@ int config_handler__font_ini
     struct nemi_config* cfg = (struct nemi_config*)userptr;
 
     if(STR_MATCH(name, "filepath")) {
-        size_t filepath_len = strlen(value);
-        if(filepath_len >= sizeof(cfg->font.filepath)-1) {
-            logprintf(LOG_ERROR, "Font filepath length is too long. Maximum = %li",
-                    sizeof(cfg->font.filepath)-1);
-            return 0;
-        }
-
-        memset(cfg->font.filepath, 0, sizeof(cfg->font.filepath));
-        memmove(cfg->font.filepath, value, filepath_len);
+        cfg->font.filepath = strdup(value);
     }
     else
     if(STR_MATCH(name, "center_char_to_cell")) {
@@ -190,6 +182,18 @@ int config_handler__nemi_ini
     if(STR_MATCH(name, "hide_mouse")) {
         cfg->main.hide_mouse = strtobool(value);
     }
+    else
+    if(STR_MATCH(name, "source_dir")) {
+        cfg->main.source_dir = strdup(value);
+    }
+    else
+    if(STR_MATCH(name, "recompile_num_cores")) {
+        cfg->main.recompile_num_cores = strdup(value);
+    }
+    else
+    if(STR_MATCH(name, "favourite_texteditor")) {
+        cfg->main.favourite_texteditor = strdup(value);
+    }
     else {
         logprintf(LOG_ERROR, "No config entry named '%s' for %s", name, section);
     }
@@ -242,7 +246,6 @@ bool nemi_read_configs(struct nemi* st, const char* configs_dir) {
         return false;
     }
 
-
     if(!read_config(config_handler__nemi_ini, &st->cfg, configs_dir, "nemi.ini")) {
         return false;
     }
@@ -251,18 +254,20 @@ bool nemi_read_configs(struct nemi* st, const char* configs_dir) {
         return false;
     }
 
-    /*
-    if(!read_config(config_handler__scripts_ini, st, configs_dir, "scripts.ini")) {
-        return false;
-    }
-    */
-
     return true;
 }
 
 bool nemi_load_scripts(struct nemi* st, const char* configs_dir) {
     return read_config(config_handler__scripts_ini, st, configs_dir, "scripts.ini");
 }
+
+void free_configs(struct nemi* st) {
+    freeif(st->cfg.main.source_dir);
+    freeif(st->cfg.main.recompile_num_cores);
+    freeif(st->cfg.main.favourite_texteditor);
+    freeif(st->cfg.font.filepath);
+}
+
 /*
 enum config_read_pass {
     READ_LOG_SETTINGS,

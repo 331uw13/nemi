@@ -1,22 +1,27 @@
 use warnings;
 use strict;
+use feature qw(switch);
 
 our $script_name;
 
 
-#!REGISTER_EVENT
-sub event_key_input {
-}
 
 #!REGISTER_EVENT
 sub event_keybind_press {
-    print("$script_name: event_keybind_press(): '$_[0]'\n");
+    my $event_name = $_[0];
+    given($event_name) {
+        when("scroll_up") {
+            Nemi::term_scroll_y(1);
+        }
+        when("scroll_down") {
+            Nemi::term_scroll_y(-1);
+        }
+    }
 }
 
 sub init_script {
     $script_name = "scrollback";
-    Nemi::add_keybind($script_name, "do_something", "lctrl + a");
-    Nemi::add_keybind($script_name, "scroll_up", "lctrl + i");
+    Nemi::add_keybind($script_name, "scroll_up", "lshift + lctrl + i");
     Nemi::add_keybind($script_name, "scroll_down", "lshift + lctrl + k");
 }
 

@@ -14,9 +14,9 @@
 #include "string.h"
 
 #define FLG_FONT_LOADED (1 << 0)
-//#define FLG_IGNORE_KEY_INPUT (1 << 1)
-//#define FLG_IGNORE_CHR_INPUT (1 << 2)
-//#define FLG_RELOAD_CONFIG    (1 << 3)
+#define FLG_RECOMPILING_SUPPORTED (1 << 1)  // The loader must support hotreloading too.
+#define FLG_LOADER_SHOULD_RECOMPILE (1 << 2) // If 'nemi_recompile_src' is called this flag is set
+                                             // and its the loaders responsibility to recompile.
 
 #define NEMI_TERMINALS_MAX 16
 #define NEMI_KEYINBUF_MAX 8
@@ -48,18 +48,15 @@ struct nemi {
     int  last_key_in;
     char last_char_in;
     int  last_keymod_in;
-    
-    int  key_inputs  [NEMI_KEYINBUF_MAX];
-    char char_inputs [NEMI_CHARINBUF_MAX];
+   
+    int  key_inputs  [NEMI_KEYINBUF_MAX];  // TODO: Idk if these are actually needed anyway...
+    char char_inputs [NEMI_CHARINBUF_MAX]; // ^
 
-    struct perl_script      scripts [NEMI_SCRIPTS_MAX];
-    size_t                  num_scripts;
+    struct perl_script   scripts [NEMI_SCRIPTS_MAX];
+    size_t               num_scripts;
 
     struct render_buffer renderbufs [NEMI_RENDERBUFS_MAX];
     uint32_t             num_renderbufs;
-
-    //struct string_t      messages [NEMI_MSG_LINES_MAX];
-    //size_t               num_messages;
 
     double frame_time;
     double frame_time_begin;
@@ -69,6 +66,7 @@ struct nemi {
     // how many scripts ignored it
     // because if another script ignores input and another unignores it
     // it will not work as expected.
+    // FIXME: The counters get confused very rarely and locks the input forever.
     // TODO: Try to create 'focus' for scripts.
     int term_ignore_char_input_counter;
     int term_ignore_key_input_counter;
@@ -92,10 +90,12 @@ void create_msg(struct nemi* st, const char* msg, ...);
 void switch_terminal(struct nemi* st, uint32_t index);
 void switch_terminal_ptr(struct nemi* st, struct terminal* term);
 
-void begin_frame(struct nemi* st);
-void end_frame(struct nemi* st);
+//void begin_frame(struct nemi* st);
+//void end_frame(struct nemi* st);
+void update_frame(struct nemi* st);
 
 bool key_down(struct nemi* st, int key);
+
 
 // 'event_num' corresponds to REG_EVENT... defined in "script.h"
 // 'arg_types' should be array of characters matching the variable type's
@@ -118,5 +118,9 @@ void init_default_config(struct nemi* st);
 
 void nemi_help(struct nemi* st, const char* what);
 void nemi_message_script_keybinds(struct nemi* st, const char* script_name);
+
+void nemi_recompile_src(struct nemi* st);
+
+
 
 #endif

@@ -117,7 +117,7 @@ uint64_t hash_keys(int* keys) {
     uint64_t hash = FNV_OFFSET;
     int* k = keys;
     while(k && *k > 0) {
-        hash ^= (uint64_t)(*k & 0x000000FF);
+        hash ^= (uint64_t)(uint8_t)(*k);
         hash *= FNV_PRIME - 3;
         k++;
     }
@@ -129,7 +129,7 @@ uint64_t hash_keys(int* keys) {
 static
 bool parse_keys_from_str(int* keys, const char* keys_str, size_t keys_str_len) {
     
-    const size_t key_str_max_len = 8;
+    const size_t key_str_max_len = 24;
     char   args [NEMI_SCRIPTS_KEYBIND_KEYS_MAX][key_str_max_len];
     size_t num_args = 0;
     size_t curr_arg_len = 0;
@@ -177,7 +177,7 @@ bool parse_keys_from_str(int* keys, const char* keys_str, size_t keys_str_len) {
     for(size_t i = 0; i < num_args; i++) {
         const char* kstr = args[i];
 
-        printf("%s -> ", kstr);
+        //printf("%s -> ", kstr);
         bool found_key = false;
 
         for(size_t j = 0; j < ARRAY_LEN(KEY_MAP); j++) {
@@ -186,7 +186,7 @@ bool parse_keys_from_str(int* keys, const char* keys_str, size_t keys_str_len) {
                 keys[num_keys] = key->glfw_key;
                 num_keys++;
                 found_key = true;
-                printf("%i", key->glfw_key);
+                //printf("%i", key->glfw_key);
                 break;
             }
         }
@@ -197,7 +197,7 @@ bool parse_keys_from_str(int* keys, const char* keys_str, size_t keys_str_len) {
             return false;
         }
 
-        printf("\n");
+        //printf("\n");
     }
 
     keys[num_keys] = -1;

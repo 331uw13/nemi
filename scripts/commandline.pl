@@ -153,68 +153,64 @@ use strict;
 use feature qw(switch);
 
 our $cmdl; 
-
+our $script_name;
 
 sub execute {        
     print("Command input: '$cmdl::input'\n");    
 
-    my $v = eval($cmdl::input);
-    if(defined $v) {
-        Nemi::create_msg("$v");
+    my $retval = eval($cmdl::input);
+    if($@) {
+        chomp($@);
+        Nemi::create_msg("\033[31mFailed to run command '$cmdl::input'\033[0m");
+        Nemi::create_msg("\033[31m$@\033[0m");
+        return;
     }
-    else {
-        Nemi::create_msg("\033[31mInvalid command '$cmdl::input'.\n\rTry running 'Nemi::help(\"commandline\")'\033[0m");
+
+    if(!($cmdl::input =~ m/^(Nemi::)/s)) {
+        Nemi::create_msg("$retval");
     }
 }
 
 #!REGISTER_EVENT
-sub event_key_input {
-    # https://www.glfw.org/docs/latest/group__keys.html
-    # https://www.glfw.org/docs/latest/group__mods.html
-    my $mod_ctrl = 0x0002;
-    my $key_dot = 46;
-    my $key_enter = 257;
-    my $key_backspace = 259;
-    my $key_left = 263;
-    my $key_right = 262;
-    my $key_tab = 258;
-
-    # '.' and Control.
-    if($_[0] == $key_dot and $_[1] == $mod_ctrl) {
+sub event_keybind_press {
+    my $event_name = $_[0];
+    
+    if($event_name eq "toggle") {
         cmdl->toggle_enabled();
+        return;
     }
+
     if(!$cmdl::enabled) {
         return;
     }
-   
 
-    given($_[0]) {
-        when($key_enter) {
+    given($event_name) {
+        when("execute_command") {
             execute();
             $cmdl::input = "";
             $cmdl::cursor = 0;
             cmdl->update_view();
         }
-        when($key_backspace) {
+        when("erase_char") {
             if($cmdl::cursor > 0) {
                 substr($cmdl::input, $cmdl::cursor-1, 1, '');
                 $cmdl::cursor--;
                 cmdl->update_view();
             }
         }
-        when($key_left) {
+        when("move_cursor_left") {
             if($cmdl::cursor > 0) {
                 $cmdl::cursor--;
                 cmdl->update_view();
             }
         }
-        when($key_right) {
+        when("move_cursor_right") {
             if($cmdl::cursor+1 <= length($cmdl::input)) {
                 $cmdl::cursor++;
                 cmdl->update_view();
             }
         }
-        when($key_tab) {
+        when("auto_complete") {
             if(length($cmdl::suggest) > 0) {
                 my @test = split(/\|/, $cmdl::suggest);
 
@@ -232,7 +228,6 @@ sub event_win_resized {
     cmdl->update_view();
 }
 
-
 #!REGISTER_EVENT
 sub event_char_input {
     if(!$cmdl::enabled) {
@@ -248,10 +243,15 @@ sub event_char_input {
 
 
 sub init_script {
+    $script_name = "commandline";
     $cmdl = cmdl->init();
 
-
-    #($keybinds, "toggle_vmode", "ctrl + shift + a");
+    Nemi::add_keybind($script_name, "toggle", "lctrl + 0");
+    Nemi::add_keybind($script_name, "erase_char", "backspace");
+    Nemi::add_keybind($script_name, "move_cursor_left", "left");
+    Nemi::add_keybind($script_name, "move_cursor_right", "right");
+    Nemi::add_keybind($script_name, "auto_complete", "tab");
+    Nemi::add_keybind($script_name, "execute_command", "enter");
 
     # Get available external functions for auto complete.
     foreach my $entry ( keys %Nemi:: ) {
@@ -272,7 +272,7 @@ sub event_help_message {
         " the output is going to be written here.\n\r".
         " for example you can try to write 2 * 1024 to the command line.\n\r".
         "\n".
-        " You can also call all functions to the C code side\n\r".
+        " You can also call functions to C code side\n\r".
         " but this way some of them may behave unexpectedly.\n\r".
         " Its better to write a script if you need to add specific behaviour.\n\r".
         " For script development you can follow instructions from:\n\r".

@@ -171,28 +171,26 @@ void read_terminal(struct nemi* st, struct terminal* term) {
     pfd.events = POLLIN;
     nfds_t num_fds = 1;
 
-    char tmp_buffer[1024*2] = { 0 };
+    char tmp_buffer[256] = { 0 };
 
     const int timeout_ms = 10;
-
+    ssize_t last_rd_len = sizeof(tmp_buffer);
 
     while(true) {
         int retv = poll(&pfd, num_fds, timeout_ms);
         if(retv <= 0) {
             break;
-          
         }
         
-        memset(tmp_buffer, 0, sizeof(tmp_buffer));
-        ssize_t rd = read(term->master_fd, tmp_buffer, sizeof(tmp_buffer)-1);
-        if(rd <= 0) {
+        memset(tmp_buffer, 0, last_rd_len);
+        ssize_t rd_len = read(term->master_fd, tmp_buffer, sizeof(tmp_buffer)-1);
+        if(rd_len <= 0) {
             break;
         }
-
-        for(ssize_t i = 0; i < rd; i++) {
-            vterm_input_write(term->vt, &tmp_buffer[i], 1);
-            vterm_screen_flush_damage(term->vtscrn);
-        }
+            
+        vterm_input_write(term->vt, tmp_buffer, rd_len);
+        vterm_screen_flush_damage(term->vtscrn);
+        last_rd_len = rd_len;
     }
 
 
@@ -237,7 +235,6 @@ bool* get_hidden_cell_status(struct terminal* term, int col, int row) {
 }
 
 void terminal_hide_cells(struct terminal* term, bool hidden, int col, int row, int width, int height) {
-    
     for(int y = 0; y < height; y++) {
         for(int x = 0; x < width; x++) {
             bool* status = get_hidden_cell_status(term, x + col, y + row);
@@ -391,6 +388,7 @@ void write_term(struct terminal* term, enum term_write_target target, char* fmt,
 
     char buffer[1024 * 4] = { 0 };
     ssize_t len = vsnprintf(buffer, sizeof(buffer)-1, fmt, args);
+
     if(len > 0) {
         if(target == TERM_WRITE_PTY) {
             write(term->master_fd, buffer, len);
@@ -427,8 +425,15 @@ void terminal_handle_char_event(struct nemi* st, struct terminal* term) {
     if(term == st->messages) {
         return; 
     }
-   
-    write_term(term, TERM_WRITE_PTY, &st->last_char_in);
+  
+    char to_write[] = {
+        st->last_char_in,
+        0
+    };
+
+
+
+    write_term(term, TERM_WRITE_PTY, to_write);
     terminal_set_scroll(term, 0);
 }
 
@@ -456,9 +461,23 @@ void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
             key = st->last_key_in & 0x1F;
         }
 
-        if(key != -1) { 
+        if(key != -1) {
             write(term->master_fd, &key, 1);
         }
+
+        return;
+    }
+    else
+    if((st->last_key_in == GLFW_KEY_LEFT
+    || st->last_key_in == GLFW_KEY_RIGHT)
+    && (st->last_keymod_in == GLFW_MOD_SHIFT)) {
+        if(st->last_key_in == GLFW_KEY_RIGHT) {
+            write(term->master_fd, "\x1b[1;5C", 6);
+        }
+        if(st->last_key_in == GLFW_KEY_LEFT) {
+            write(term->master_fd, "\x1b[1;5D", 6);
+        }
+        return;
     }
 
     switch(st->last_key_in) {
@@ -496,6 +515,7 @@ void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
             write_term(term, TERM_WRITE_PTY, "\x1b[D");
             break;
     }
+
 }
 
 void terminal_handle_resize_event(struct nemi* st, struct terminal* term) {

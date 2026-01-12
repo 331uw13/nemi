@@ -1,5 +1,6 @@
 // GENERATED CODE. Changes here will be lost when project is compiled.
 // Modify 'nemi_xs_wrappers.h' instead. Then run 'perl genxsfuncreg.pl'.
+newXS("Nemi::recompile", xsw_recompile, __FILE__);
 newXS("Nemi::add_keybind", xsw_add_keybind, __FILE__);
 newXS("Nemi::script_keybinds", xsw_script_keybinds, __FILE__);
 newXS("Nemi::help", xsw_help, __FILE__);

@@ -38,7 +38,9 @@ sub init {
 package main;
 use warnings;
 use strict;
+use feature qw(switch);
 
+our $script_name;
 our $vmode;
 
 sub min {
@@ -122,33 +124,7 @@ sub show_selected_cells {
             }
             $start_x = 0;
         }
-
-        #while(1) {
-        #    $x++;
-        #    if($x >= $term_cols) {
-        #        $y++;
-        #        $x = 0;
-        #    }
-        #    select_cell($is_shown, $x, $y);
-        #
-        #    if($x == $end_x and $y == $end_y) {
-        #        last;
-        #    }
-        #}
     }
-
-    #for(my $y = $start_y; $y < $end_y; $y++) {
-    #    for(my $x = $start_x; $x < $end_x; $x++) {
-    #        if($_[0]) {
-    #            Nemi::term_set_cell_custom_bg($x, $y, $vmode::select_color_bg); 
-    #            Nemi::term_set_cell_custom_fg($x, $y, $vmode::select_color_fg); 
-    #        }
-    #        else {
-    #            Nemi::term_clear_cell_custom_bg($x, $y); 
-    #            Nemi::term_clear_cell_custom_fg($x, $y); 
-    #        }
-    #    }
-    #}
 }
 
 
@@ -244,92 +220,84 @@ sub get_word_jump {
 }
 
 
-
-
 #!REGISTER_EVENT
-sub event_key_input {
-    # https://www.glfw.org/docs/latest/group__keys.html
-    # https://www.glfw.org/docs/latest/group__mods.html
-    my $key_pressed = $_[0];
-    my $key_mods = $_[1];
-    my $mod_ctrl = 0x0002;
-    my $mod_shift = 0x0001;
-    my $key_n = 78;
-    my $key_right = 262;
-    my $key_left = 263;
-    my $key_down = 264;
-    my $key_up = 265;
-    my $key_s = 83;
-    my $key_i = 73;
-    my $key_j = 74;
-    my $key_k = 75;
-    my $key_l = 76;
-    my $key_c = 67;
-
-    if($key_pressed == $key_n and $key_mods == $mod_ctrl) {
+sub event_keybind_press {
+    my $event_name = $_[0];
+    if($event_name eq "toggle") {
         toggle_vmode();
+        return;
     }
+
+    if(!$vmode::enabled) {
+        return;
+    }
+
+    my $do_update = 0;
     
-    if($vmode::enabled) {
-        my $do_update = 0;
-        if(Nemi::keydown($key_right) || Nemi::keydown($key_l)) {
-            if($key_mods == $mod_shift) {
-                move_cursor(get_word_jump($vmode::cursor_x, Nemi::term_get_cols()), 0);
-            }
-            else {
-                move_cursor(1, 0);
-            }
-            $do_update = 1;
-        }
-        if(Nemi::keydown($key_left) || Nemi::keydown($key_j)) {
-            if($key_mods == $mod_shift) {
-                move_cursor(get_word_jump($vmode::cursor_x, 0), 0);
-            }
-            else {
-                move_cursor(-1, 0);
-            }
-            $do_update = 1;
-        }
-        if(Nemi::keydown($key_up) || Nemi::keydown($key_i)) {
+    given($event_name) {
+        when("move_cursor_up") {
             move_cursor(0, -1);
             $do_update = 1;
-        } 
-        if(Nemi::keydown($key_down) || Nemi::keydown($key_k)) {
+        }
+        when("move_cursor_down") {
             move_cursor(0, 1);
             $do_update = 1;
         }
-
-
-        if($key_pressed == $key_s) {
+        when("move_cursor_left") {
+            move_cursor(-1, 0);
+            $do_update = 1;
+        }
+        when("move_cursor_right") {
+            move_cursor(1, 0);
+            $do_update = 1;
+        }
+        when("word_jump_right") {
+            move_cursor(get_word_jump($vmode::cursor_x, Nemi::term_get_cols()), 0);
+            $do_update = 1;
+        }
+        when("word_jump_left") {
+            move_cursor(get_word_jump($vmode::cursor_x, 0), 0);
+            $do_update = 1;
+        }
+        when("toggle_select_mode") {
             toggle_select_mode(); 
             $do_update = 1;
         }
-        if($vmode::select_mode and $key_pressed == $key_c) {
-            Nemi::term_copy_to_clipboard(
-                $vmode::select_start_x,
-                $vmode::select_start_y,
-                $vmode::cursor_x,
-                $vmode::cursor_y
-            );
+        when("copy_selected") {
+            if($vmode::select_mode) {
+                Nemi::term_copy_to_clipboard(
+                    $vmode::select_start_x,
+                    $vmode::select_start_y,
+                    $vmode::cursor_x,
+                    $vmode::cursor_y
+                );
+            }
         }
+    }
 
-        if($do_update) {
-            update_view();
-        }
-    } 
-
-    #if($_[0] == $key_n and $_[1] == $mod_ctrl) {
-    #    my $term_columns = Nemi::term_get_cols();
-    #    for(my $i = 0; $i < $term_columns; $i++) {
-    #        my $char = chr(Nemi::term_get_char($i, 0));
-    #        print("$char");
-    #    }
-    #    print("\n");
-    #}
+    if($do_update) {
+        update_view();
+    }
 }
 
 sub init_script {
+    $script_name = "vmode";
     $vmode = vmode->init();
+
+    Nemi::add_keybind($script_name, "toggle", "lctrl + k");
+    Nemi::add_keybind($script_name, "move_cursor_up", "up");
+    Nemi::add_keybind($script_name, "move_cursor_up", "i");
+    Nemi::add_keybind($script_name, "move_cursor_down", "down");
+    Nemi::add_keybind($script_name, "move_cursor_down", "k");
+    Nemi::add_keybind($script_name, "move_cursor_left", "left");
+    Nemi::add_keybind($script_name, "move_cursor_left", "j");
+    Nemi::add_keybind($script_name, "move_cursor_right", "right");
+    Nemi::add_keybind($script_name, "move_cursor_right", "l");
+    Nemi::add_keybind($script_name, "word_jump_left", "lshift + j");
+    Nemi::add_keybind($script_name, "word_jump_right", "lshift + l");
+    Nemi::add_keybind($script_name, "toggle_select_mode", "s");
+    Nemi::add_keybind($script_name, "copy_selected", "c");
+
 }
 
 
@@ -337,7 +305,10 @@ sub init_script {
 sub event_help_message {
     Nemi::create_msg(
         "=== vmode.pl help ===\n\r".
-        " (TODO)"
+        " VMode or \"Visual mode\" creates another cursor\n\r" .
+        " which the user can move around to any cell position on screen.\n\r" .
+        " You can also select and copy text.\n\r" .
+        " ... More features will be added later :)\n"
     );
 }
 

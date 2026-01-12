@@ -122,7 +122,7 @@ struct nemi* start_session(const char* configs_dir) {
 }
 
 void quit_session(struct nemi* st) {
-    if((st->flags & FLG_FONT_LOADED)) {
+    if(st->flags & FLG_FONT_LOADED) {
         leaf_unload_font(&st->font);
     }
 
@@ -130,9 +130,14 @@ void quit_session(struct nemi* st) {
         close_terminal(&st->terminals[i]);
     }
 
+    glfwSetWindowUserPointer  (st->lfctx->glfw_win, NULL);
+    glfwSetKeyCallback        (st->lfctx->glfw_win, NULL);
+    glfwSetCharCallback       (st->lfctx->glfw_win, NULL);
+    glfwSetScrollCallback     (st->lfctx->glfw_win, NULL);
+    glfwSetWindowSizeCallback (st->lfctx->glfw_win, NULL);
+
     leaf_free_renderer(st->lfctx);
     leaf_quit(st->lfctx);
-
 
     for(size_t i = 0; i < ARRAY_LEN(st->scripts); i++) {
         unload_perl_script(&st->scripts[i]);
@@ -217,6 +222,7 @@ void render_rbbuffer_nodes(struct nemi* st, enum rb_node_layer layer) {
     }
 }
 
+static
 void begin_frame(struct nemi* st) {
     st->frame_time_begin = glfwGetTime();
     glClearColor(
@@ -228,6 +234,8 @@ void begin_frame(struct nemi* st) {
     render_rbbuffer_nodes(st, RBNODE_LAYER_FIRST);
 }
 
+
+static
 void end_frame(struct nemi* st) {
 
     if(st->cfg.main.show_frametime) {
@@ -249,9 +257,19 @@ void end_frame(struct nemi* st) {
     glfwSwapBuffers(st->lfctx->glfw_win);
     
     glfwPollEvents();
-    usleep(10 * 1000);
+    usleep(1000);
 
     st->frame_time = glfwGetTime() - st->frame_time_begin;
+}
+
+void update_frame(struct nemi* st) {
+    begin_frame(st);
+
+    read_terminal(st, st->terminal);
+    render_terminal(st, st->terminal);
+    update_terminal_blink_timer(st, st->terminal);
+
+    end_frame(st);
 }
 
 bool key_down(struct nemi* st, int key) {
@@ -357,17 +375,19 @@ void trigger_event_for_scripts(struct nemi* st, int event_num,
 void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     (void)scancode;
 
+        
+    
     if(action != GLFW_PRESS && action != GLFW_REPEAT) {
         return;
     }
 
+    
     struct nemi* st = (struct nemi*)glfwGetWindowUserPointer(window);
     push_key_input(st, key);
 
     st->last_key_in = key;
     st->last_keymod_in = mods;
-   
-
+  
     trigger_event_for_scripts(st, REG_EVENT_KEY_INPUT,
             "ii",
             key, 
@@ -408,8 +428,8 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
 
 void glfw_char_callback(GLFWwindow* window, uint32_t codepoint) {
     struct nemi* st = (struct nemi*)glfwGetWindowUserPointer(window);
-
     if(codepoint >= 0x20 && codepoint <= 0x7E) {
+
         trigger_event_for_scripts(st, REG_EVENT_CHAR_INPUT,
             "i",
             codepoint);
@@ -595,4 +615,19 @@ void nemi_message_script_keybinds(struct nemi* st, const char* script_name) {
     free_string(&tmpkey_str);
 }
 
+void nemi_recompile_src(struct nemi* st) {
+    if(st->cfg.main.source_dir == NULL
+    || (strlen(st->cfg.main.source_dir) == 0)) {
+        create_msg(st, "\033[31mRecompiling is disabled from configuration file.\033[0m");
+        return;
+    }
+
+    if(!(st->flags & FLG_RECOMPILING_SUPPORTED)) {
+        create_msg(st, "\033[31mRecompiling is not supported by current loader\n\r"
+                       "or 'FLG_RECOMPILING_SUPPORTED' was not set by the loader.\033[0m");
+        return;
+    }
+
+    st->flags |= FLG_LOADER_SHOULD_RECOMPILE;
+}
 

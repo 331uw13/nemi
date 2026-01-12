@@ -42,7 +42,7 @@ struct nemi;
 struct nemi_config {
     
     struct {
-        char filepath [512];
+        char* filepath;
         bool center_char_to_cell;
         float char_spacing;
         float italic_tilt;
@@ -61,6 +61,9 @@ struct nemi_config {
         float blink_speed;
         bool show_frametime;
         bool hide_mouse;
+        char* source_dir;
+        char* recompile_num_cores;
+        char* favourite_texteditor;
     }
     main;
 
@@ -99,6 +102,7 @@ struct nemi_font_config {
 
 bool nemi_read_configs(struct nemi* st, const char* configs_dir);
 bool nemi_load_scripts(struct nemi* st, const char* configs_dir);
+void free_configs(struct nemi* st);
 
 //bool nemi_read_font_config(struct nemi* st, const char* filepath, struct nemi_font_config* font_cfg);
 

@@ -31,6 +31,13 @@
 }
 */
 
+XS(xsw_recompile) {
+    dXSARGS;
+    (void)items;
+    struct nemi* st = get_state();
+    nemi_recompile_src(st);
+    XSRETURN_EMPTY;
+}
 
 XS(xsw_add_keybind) {
     dXSARGS;

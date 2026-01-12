@@ -1,4 +1,4 @@
-FLAGS = -O2 -Wall -Wextra
+FLAGS = -O2 -Wall -Wextra -fPIC
 CC = gcc
 
 

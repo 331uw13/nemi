@@ -153,7 +153,8 @@ sub main {
     my $compiler = "gcc";
 
     my $target = "nemi";
-    f_append("TARGET = $target\n");
+    f_append("LIB_TARGET = lib$target.so\n");
+    f_append("LOADER_TARGET = $target\n");
 
     f_append("CC = $compiler\n");
     f_append("CCFLAGS = \\\n");
@@ -170,13 +171,11 @@ sub main {
     }
     f_append("\n\n");
    
-    f_append("SRC = \$(shell find ./src -type f -name *.c)\n");
-    #f_append("SRC += xs/xsinit.c\n");
-    #f_append("SRC += xs/nemi.c\n");
+    f_append("SRC = \$(shell find ./src -type f -name '*.c')\n");
     f_append("OBJS = \$(SRC:.c=.o)\n");
     f_append("\n");
 
-    f_append("all: pre-build $target\n\n");
+    f_append("all: pre-build \$(LIB_TARGET) \$(LOADER_TARGET)\n\n");
     f_append(
         "pre-build:\n" .
         "\t\@$perl_prefix perl genxsfuncreg.pl\n" .
@@ -184,27 +183,43 @@ sub main {
     );
 
     f_append(
+        "# Compile library.\n" .
         "%.o: %.c\n" .
+        "\t\$(CC) \$(CCFLAGS) -fPIC -c \$< -o \$@\n" .
+        "\n"
+    );
+
+    f_append(
+        "# Link library.\n" .
+        "\$(LIB_TARGET): \$(OBJS)\n" .
+        "\t\$(CC) \$(OBJS) \$(LDFLAGS) -shared -o \$@\n" .
+        "\n"
+    );
+
+    f_append(
+        "# Compile loader.\n" .
+        "loader.o: loader.c\n" .
         "\t\$(CC) \$(CCFLAGS) -c \$< -o \$@\n" .
         "\n"
     );
 
     f_append(
-        "\$(TARGET): \$(OBJS)\n" .
-        "\t\$(CC) \$(OBJS) \$(LDFLAGS) -o \$@\n".
+        "# Link loader.\n" .
+        "\$(LOADER_TARGET): loader.o \$(LIB_TARGET)\n" .
+        "\t\$(CC) loader.o src/string.o \$(LDFLAGS) -o \$@\n" .
         "\n"
     );
 
     f_append(
         "clean:\n" .
-        "\trm -v \$(OBJS) \$(TARGET)\n" .
+        "\trm -v \$(OBJS) \$(LIB_TARGET) \$(LOADER_TARGET) loader.o\n" .
         "\trm -v src/register_script_functions.inc\n" .
         "\n" .
-        ".PHONY: all \$(TARGET) clean\n"
+        ".PHONY: all clean\n"
     );
 
     close($FH);
-
+    print("\n\033[1;32mMakefile was created.\033[0m\n");
 }
 
 main();
