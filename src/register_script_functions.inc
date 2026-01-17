@@ -1,0 +1,37 @@
+// GENERATED CODE. Changes here will be lost when project is compiled.
+// Modify 'nemi_xs_wrappers.h' instead. Then run 'perl genxsfuncreg.pl'.
+newXS("Nemi::recompile", xsw_recompile, __FILE__);
+newXS("Nemi::add_keybind", xsw_add_keybind, __FILE__);
+newXS("Nemi::script_keybinds", xsw_script_keybinds, __FILE__);
+newXS("Nemi::help", xsw_help, __FILE__);
+newXS("Nemi::term_copy_to_clipboard", xsw_term_copy_to_clipboard, __FILE__);
+newXS("Nemi::term_set_cell_custom_fg", xsw_term_set_cell_custom_fg, __FILE__);
+newXS("Nemi::term_set_cell_custom_bg", xsw_term_set_cell_custom_bg, __FILE__);
+newXS("Nemi::term_clear_cell_custom_bg", xsw_term_clear_cell_custom_bg, __FILE__);
+newXS("Nemi::term_clear_cell_custom_fg", xsw_term_clear_cell_custom_fg, __FILE__);
+newXS("Nemi::term_get_char", xsw_term_get_char, __FILE__);
+newXS("Nemi::term_get_cursor_x", xsw_term_get_cursor_x, __FILE__);
+newXS("Nemi::term_get_cursor_y", xsw_term_get_cursor_y, __FILE__);
+newXS("Nemi::new_renderbuf", xsw_new_renderbuf, __FILE__);
+newXS("Nemi::rb_remove_node", xsw_rb_remove_node, __FILE__);
+newXS("Nemi::rb_hide_node", xsw_rb_hide_node, __FILE__);
+newXS("Nemi::rb_show_node", xsw_rb_show_node, __FILE__);
+newXS("Nemi::rb_add_rect", xsw_rb_add_rect, __FILE__);
+newXS("Nemi::rb_update_rect", xsw_rb_update_rect, __FILE__);
+newXS("Nemi::rb_add_text", xsw_rb_add_text, __FILE__);
+newXS("Nemi::rb_update_text", xsw_rb_update_text, __FILE__);
+newXS("Nemi::rb_node_layer_first", xsw_rb_node_layer_first, __FILE__);
+newXS("Nemi::rb_node_layer_last", xsw_rb_node_layer_last, __FILE__);
+newXS("Nemi::term_hide_cells", xsw_term_hide_cells, __FILE__);
+newXS("Nemi::term_show_cells", xsw_term_show_cells, __FILE__);
+newXS("Nemi::rb_use_cellcoords", xsw_rb_use_cellcoords, __FILE__);
+newXS("Nemi::rb_use_arbcoords", xsw_rb_use_arbcoords, __FILE__);
+newXS("Nemi::term_scroll_y", xsw_term_scroll_y, __FILE__);
+newXS("Nemi::term_get_rows", xsw_term_get_rows, __FILE__);
+newXS("Nemi::term_get_cols", xsw_term_get_cols, __FILE__);
+newXS("Nemi::keydown", xsw_keydown, __FILE__);
+newXS("Nemi::term_ignore_keys", xsw_term_ignore_keys, __FILE__);
+newXS("Nemi::term_ignore_chars", xsw_term_ignore_chars, __FILE__);
+newXS("Nemi::term_unignore_keys", xsw_term_unignore_keys, __FILE__);
+newXS("Nemi::term_unignore_chars", xsw_term_unignore_chars, __FILE__);
+newXS("Nemi::create_msg", xsw_create_msg, __FILE__);

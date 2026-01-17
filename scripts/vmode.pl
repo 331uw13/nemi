@@ -10,11 +10,14 @@ struct( 'vmode', {
     select_start_x => '$',
     select_start_y => '$',
     select_mode => 0,
+    block_select => 0,
     rb => '$', # Render buffer.
     rb_cursor_node => '$',
+    rb_infotext_node => '$',
     cursor_color => '$',
     select_color_bg => '$',
     select_color_fg => '$',
+    word_on_cursor => '$',
     word_separators => '@'
 });
 
@@ -27,11 +30,13 @@ sub init {
     $vmode::rb = Nemi::new_renderbuf(8);
     Nemi::rb_use_cellcoords($vmode::rb);
     $vmode::rb_cursor_node = Nemi::rb_add_rect($vmode::rb, 0, 0, 1, 1, $vmode::cursor_color);
+    $vmode::rb_infotext_node = Nemi::rb_add_text($vmode::rb, 0, 0, "", $vmode::cursor_color);
     $vmode::cursor_x = 0;
     $vmode::cursor_y = 0;
     $vmode::select_start_x = 0;
     $vmode::select_start_y = 0;
-    
+    $vmode::word_on_cursor = ""; 
+    Nemi::rb_hide_node($vmode::rb, $vmode::rb_infotext_node);
     Nemi::rb_hide_node($vmode::rb, $vmode::rb_cursor_node);
 }
 
@@ -51,29 +56,6 @@ sub max {
     return $_[0] > $_[1] ? $_[0] : $_[1];
 }
 
-
-# Block select
-#sub show_selected_cells {
-#    my $start_x = min($vmode::cursor_x, $vmode::select_start_x);
-#    my $start_y = min($vmode::cursor_y, $vmode::select_start_y);
-#    my $end_x = max($vmode::cursor_x, $vmode::select_start_x);
-#    my $end_y = max($vmode::cursor_y, $vmode::select_start_y);
-#    $end_y++;
-#
-#    for(my $y = $start_y; $y < $end_y; $y++) {
-#        for(my $x = $start_x; $x < $end_x; $x++) {
-#            if($_[0]) {
-#                Nemi::term_set_cell_custom_bg($x, $y, $vmode::select_color_bg); 
-#                Nemi::term_set_cell_custom_fg($x, $y, $vmode::select_color_fg); 
-#            }
-#            else {
-#                Nemi::term_clear_cell_custom_bg($x, $y); 
-#                Nemi::term_clear_cell_custom_fg($x, $y); 
-#            }
-#        }
-#    }
-#}
-
 sub select_cell {
     my $x = $_[1];
     my $y = $_[2];
@@ -89,12 +71,28 @@ sub select_cell {
 
 sub show_selected_cells {
     my $is_shown = $_[0];
-        
+
+    if($vmode::block_select) {
+        my $start_x = min($vmode::cursor_x, $vmode::select_start_x);
+        my $start_y = min($vmode::cursor_y, $vmode::select_start_y);
+        my $end_x = max($vmode::cursor_x, $vmode::select_start_x);
+        my $end_y = max($vmode::cursor_y, $vmode::select_start_y);
+        $end_y++;
+
+        for(my $y = $start_y; $y < $end_y; $y++) {
+            for(my $x = $start_x; $x < $end_x; $x++) {
+                select_cell($is_shown, $x, $y);
+            }
+        }
+        return;
+    }
+
     my $start_y = min($vmode::cursor_y, $vmode::select_start_y);
     my $end_y = max($vmode::cursor_y, $vmode::select_start_y);
 
 
-    if($start_y == $end_y) { # Single line selected.
+    if($start_y == $end_y) {
+        # Single line selected.
         my $start_x = min($vmode::cursor_x, $vmode::select_start_x);
         my $end_x = max($vmode::cursor_x, $vmode::select_start_x);
 
@@ -102,12 +100,12 @@ sub show_selected_cells {
             select_cell($is_shown, $x, $start_y);
         }
     }
-    else {  # Multiple lines selected.
-
+    else {  
+        # Multiple lines selected.
         $end_y++;
-        my $end_x = $vmode::cursor_x;#min($vmode::cursor_x, $vmode::select_start_x);
-        my $start_x = $vmode::select_start_x;#max($vmode::cursor_x, $vmode::select_start_x);
-
+        my $end_x = $vmode::cursor_x;
+        my $start_x = $vmode::select_start_x;
+        
         if($vmode::cursor_y < $vmode::select_start_y) {
             $start_x = $vmode::cursor_x;
             $end_x = $vmode::select_start_x; 
@@ -142,6 +140,10 @@ sub toggle_select_mode {
     $vmode::select_start_y = $vmode::cursor_y;
 }
 
+sub find_word_on_cursor {
+    
+}
+
 sub move_cursor {
     if($vmode::select_mode) {
         show_selected_cells(0);
@@ -153,32 +155,59 @@ sub move_cursor {
     if($vmode::select_mode) {
         show_selected_cells(1);
     }
+
+    if(!$vmode::select_mode) {
+        find_word_on_cursor();
+    }
 }
 
 sub update_view {
     Nemi::rb_update_rect($vmode::rb, $vmode::rb_cursor_node, $vmode::cursor_x, $vmode::cursor_y, 1, 1, $vmode::cursor_color);
+
+    my $infotext = "[vmode]";
+    if($vmode::select_mode) {
+        $infotext .= $vmode::block_select ? ":block_select" : ":select";
+    }
+
+
+    my $term_cols = Nemi::term_get_cols();
+    Nemi::rb_update_text($vmode::rb, $vmode::rb_infotext_node, 
+        $term_cols - length($infotext)-2, 0, $infotext, $vmode::cursor_color);
 }
 
+
+sub disable_vmode {
+    $vmode::enabled = 0;
+    Nemi::term_unignore_chars();
+    Nemi::term_unignore_keys();
+    Nemi::rb_hide_node($vmode::rb, $vmode::rb_cursor_node);
+    Nemi::rb_hide_node($vmode::rb, $vmode::rb_infotext_node);
+    
+    if($vmode::select_mode) {
+        show_selected_cells(0);
+    }
+    $vmode::select_mode = 0;
+}
+
+sub enable_vmode {
+    $vmode::enabled = 1;
+    Nemi::term_ignore_chars();
+    Nemi::term_ignore_keys();
+    Nemi::rb_show_node($vmode::rb, $vmode::rb_cursor_node);
+    Nemi::rb_show_node($vmode::rb, $vmode::rb_infotext_node);
+    
+    $vmode::cursor_x = Nemi::term_get_cursor_x()+1;
+    $vmode::cursor_y = Nemi::term_get_cursor_y();
+}
 
 sub toggle_vmode {
     $vmode::enabled = !$vmode::enabled;
 
     if($vmode::enabled) {
-        $vmode::cursor_x = Nemi::term_get_cursor_x()+1;
-        $vmode::cursor_y = Nemi::term_get_cursor_y();
-        Nemi::term_ignore_chars();
-        Nemi::term_ignore_keys();
-        Nemi::rb_show_node($vmode::rb, $vmode::rb_cursor_node);
+        enable_vmode();
     }
     else {
-        Nemi::term_unignore_chars();
-        Nemi::term_unignore_keys();
-        Nemi::rb_hide_node($vmode::rb, $vmode::rb_cursor_node);
-    
-        if($vmode::select_mode) {
-            show_selected_cells(0);
-        }
-        $vmode::select_mode = 0;
+        disable_vmode();
     }
             
     update_view();
@@ -269,9 +298,18 @@ sub event_keybind_press {
                     $vmode::select_start_x,
                     $vmode::select_start_y,
                     $vmode::cursor_x,
-                    $vmode::cursor_y
+                    $vmode::cursor_y,
+                    $vmode::block_select ? "block" : "normal"
                 );
             }
+        }
+        when("toggle_block_select") {
+            if($vmode::select_mode) {
+                show_selected_cells(0); # We need to disable the previous mode selection
+                $vmode::block_select = !$vmode::block_select;
+                show_selected_cells(1); 
+            }
+            $do_update = 1;
         }
     }
 
@@ -297,7 +335,7 @@ sub init_script {
     Nemi::add_keybind($script_name, "word_jump_right", "lshift + l");
     Nemi::add_keybind($script_name, "toggle_select_mode", "s");
     Nemi::add_keybind($script_name, "copy_selected", "c");
-
+    Nemi::add_keybind($script_name, "toggle_block_select", "b");
 }
 
 
@@ -308,7 +346,8 @@ sub event_help_message {
         " VMode or \"Visual mode\" creates another cursor\n\r" .
         " which the user can move around to any cell position on screen.\n\r" .
         " You can also select and copy text.\n\r" .
-        " ... More features will be added later :)\n"
+        " View files under cursor.\n\r" .
+        " Run 'Nemi::script_keybinds(\"$script_name\")' to see all features.\n\r"
     );
 }
 

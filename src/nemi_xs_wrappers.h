@@ -84,8 +84,12 @@ XS(xsw_term_copy_to_clipboard) {
     int start_row = SvIV(ST(1));
     int end_col = SvIV(ST(2));
     int end_row = SvIV(ST(3));
+    STRLEN type_len;
+    char* type = SvPV(ST(4), type_len);
     struct nemi* st = get_state();
-    terminal_copy_to_clipboard(st, st->terminal, start_col, start_row, end_col, end_row);
+    terminal_copy_to_clipboard(st, st->terminal, 
+            start_col, start_row,
+            end_col, end_row, type);
 }
 
 XS(xsw_term_set_cell_custom_fg) {

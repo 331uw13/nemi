@@ -425,15 +425,8 @@ void terminal_handle_char_event(struct nemi* st, struct terminal* term) {
     if(term == st->messages) {
         return; 
     }
-  
-    char to_write[] = {
-        st->last_char_in,
-        0
-    };
 
-
-
-    write_term(term, TERM_WRITE_PTY, to_write);
+    write(term->master_fd, &st->last_char_in, 1);
     terminal_set_scroll(term, 0);
 }
 
@@ -463,13 +456,13 @@ void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
 
         if(key != -1) {
             write(term->master_fd, &key, 1);
+            return;
         }
 
-        return;
     }
     else
     if((st->last_key_in == GLFW_KEY_LEFT
-    || st->last_key_in == GLFW_KEY_RIGHT)
+     || st->last_key_in == GLFW_KEY_RIGHT)
     && (st->last_keymod_in == GLFW_MOD_SHIFT)) {
         if(st->last_key_in == GLFW_KEY_RIGHT) {
             write(term->master_fd, "\x1b[1;5C", 6);
@@ -659,40 +652,73 @@ void swap_int(int* a, int* b) {
 }
 
 void terminal_copy_to_clipboard(struct nemi* st, struct terminal* term, 
-        int start_col, int start_row, int end_col, int end_row) {
+        int start_col, int start_row, int end_col, int end_row, const char* type) {
     struct string_t buffer = string_create(0);
     end_row++;
 
-    if(start_row > end_row) {
-        swap_int(&start_row, &end_row);  
-        swap_int(&start_col, &end_col);
-        start_row--;
-        end_row++;
-    }
 
-    for(int y = start_row; y < end_row; y++) {
-        bool last_row = (y+1 >= end_row);
-        int ln_x_stop = last_row ? end_col : term->cols;
-        for(int x = start_col; x < ln_x_stop; x++) {
-        
-            char ch = terminal_get_char(term, x, y);
-            if(ch == 0) {
-                continue;
-            }
-
-            string_pushbyte(&buffer, ch);
+    if(STR_MATCH(type, "normal")) {
+        if(start_row > end_row) {
+            swap_int(&start_row, &end_row);  
+            swap_int(&start_col, &end_col);
+            start_row--;
+            end_row++;
         }
-        string_pushbyte(&buffer, '\n');
-        start_col = 0;
-    }
 
+        for(int y = start_row; y < end_row; y++) {
+            bool last_row = (y+1 >= end_row);
+            int ln_x_stop = last_row ? end_col : term->cols;
+            for(int x = start_col; x < ln_x_stop; x++) {
+            
+                char ch = terminal_get_char(term, x, y);
+                if(ch == 0) {
+                    continue;
+                }
+
+                string_pushbyte(&buffer, ch);
+            }
+            string_pushbyte(&buffer, '\n');
+            start_col = 0;
+        }
+    }
+    else
+    if(STR_MATCH(type, "block")) {
+        int sx = MIN(start_col, end_col);
+        int sy = MIN(start_row, end_row);
+        int ex = MAX(start_col, end_col);
+        int ey = MAX(start_row, end_row);
+
+        if(start_row > end_row) {
+            sy--;
+            ey++;
+        }
+
+        for(int y = sy; y < ey; y++) {
+            for(int x = sx; x < ex; x++) {
+                char ch = terminal_get_char(term, x, y);
+                if(ch == 0) {
+                    continue;
+                }
+
+                string_pushbyte(&buffer, ch);
+            }
+            string_pushbyte(&buffer, '\n');
+        }
+    }
+    else {
+        logprintf(LOG_ERROR, "Unhandled type \"%s\" for copying.", type);
+        return;
+    }
+    
     string_nullterm(&buffer);
     glfwSetClipboardString(st->lfctx->glfw_win, buffer.bytes);
+
     /*
     printf("\033[90m=============================\033[0m\n");
     printf("\033[32m%s\033[0m\n", buffer.bytes);
     printf("\033[2;90m=============================\033[0m\n");
     */
+
     free_string(&buffer);
 }
 

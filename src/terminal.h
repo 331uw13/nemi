@@ -77,8 +77,14 @@ void terminal_set_cell_custom_bg  (struct terminal* term, VTermPos pos, int hex_
 void terminal_set_cell_custom_fg  (struct terminal* term, VTermPos pos, int hex_rgb_color);
 void terminal_clear_cell_custom_bg (struct terminal* term, VTermPos pos);
 void terminal_clear_cell_custom_fg (struct terminal* term, VTermPos pos);
+
+// Available type is "block"(block select)
+// or "normal".
+// The reason why the type is string because perl doesnt have enums
+// and writing only integer as the type is not as readable.
 void terminal_copy_to_clipboard    (struct nemi* st, struct terminal* term, 
-                                    int start_col, int start_row, int end_col, int end_row);
+                                    int start_col, int start_row, int end_col, int end_row,
+                                    const char* type);
 
 
 #endif
