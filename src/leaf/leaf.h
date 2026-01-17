@@ -26,8 +26,11 @@ struct leaf_ctx_t {
     size_t   renderer_vbo_size;
 };
 
+// 'flags' for leaf_open()
+#define LEAF_NO_RESIZE (1 << 0)
 
-struct leaf_ctx_t* leaf_open(const char* title, int width, int height);
+
+struct leaf_ctx_t* leaf_open(const char* title, int width, int height, int flags);
 void               leaf_quit(struct leaf_ctx_t* ctx);
 
 // Normalize coordinates from (0 <-> win_width/height) to (-1.0 <-> +1.0)

@@ -97,10 +97,12 @@ Nemi::term_get_cursor_x    < No arguments >
 Nemi::term_get_cursor_y    < No arguments >
 Nemi::term_set_cell_custom_fg (column, row, hex_rgb_color)
 Nemi::term_set_cell_custom_bg (column, row, hex_rgb_color)
+Nemi::term_set_cell_custom_attrs (column, row, attrs) // 0x2: Underline, 0x4: Italic, 0x8: Blink
 Nemi::term_clear_cell_custom_fg (column, row)
 Nemi::term_clear_cell_custom_bg (column, row)
+Nemi::term_clear_cell_custom_attrs (column, row)
 Nemi::term_copy_to_clipboard    (start_column, start_row, end_column, end_row) 
-
+Nemi::term_get_yscroll_offset < No arguments >
 
 ////  Rendering  ////
 
@@ -132,10 +134,16 @@ Nemi::rb_use_arbcoords     (rb_index)   // No coordinate mapping, Normal X and Y
 Nemi::rb_node_layer_first  (rb_index, node_index);
 Nemi::rb_node_layer_last   (rb_index, node_index);
 
+
+
 ////  Misc  ////
 
 Nemi::keydown              (GLFW Key number)
 Nemi::create_msg           (text)
+Nemi::add_keybind          (script_name, event_name, keybind_str)
+Nemi::recompile            < No arguments >  // Only works if 'source_dir' in config is set, and loader supports it.
+Nemi::script_keybinds      (script_name)     // Write script's keybinds to message terminal.
+Nemi::help                 (str)             // Can be used to get help message for specific thing.
 
 ```
 

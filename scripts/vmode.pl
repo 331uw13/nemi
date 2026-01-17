@@ -18,6 +18,9 @@ struct( 'vmode', {
     select_color_bg => '$',
     select_color_fg => '$',
     word_on_cursor => '$',
+    word_on_cursor_x => '$',
+    word_on_cursor_y => '$',
+    word_on_cursor_attrs => '$',
     word_separators => '@'
 });
 
@@ -27,6 +30,9 @@ sub init {
     $vmode::cursor_color = 0xA03366;
     $vmode::select_color_bg = 0x6D2446;
     $vmode::select_color_fg = 0xDD9FBC;
+    $vmode::word_on_cursor_attrs = 0x2; # Underline
+    $vmode::word_on_cursor_x = 0;
+    $vmode::word_on_cursor_y = 0;
     $vmode::rb = Nemi::new_renderbuf(8);
     Nemi::rb_use_cellcoords($vmode::rb);
     $vmode::rb_cursor_node = Nemi::rb_add_rect($vmode::rb, 0, 0, 1, 1, $vmode::cursor_color);
@@ -59,6 +65,7 @@ sub max {
 sub select_cell {
     my $x = $_[1];
     my $y = $_[2];
+    my $sb_offset = Nemi::term_get_yscroll_offset();
     if($_[0]) {
         Nemi::term_set_cell_custom_bg($x, $y, $vmode::select_color_bg); 
         Nemi::term_set_cell_custom_fg($x, $y, $vmode::select_color_fg); 
@@ -125,22 +132,87 @@ sub show_selected_cells {
     }
 }
 
+sub clear_word_on_cursor_attrs {
+    my $end = $vmode::word_on_cursor_x + length($vmode::word_on_cursor);
+    for(my $x = $vmode::word_on_cursor_x; $x < $end; $x++) {
+        Nemi::term_clear_cell_custom_attrs($x, $vmode::word_on_cursor_y);
+    }
+}
+
+sub set_word_on_cursor_attrs {
+    my $end = $vmode::word_on_cursor_x + length($vmode::word_on_cursor);
+    for(my $x = $vmode::word_on_cursor_x; $x < $end; $x++) {
+        Nemi::term_set_cell_custom_attrs($x, $vmode::word_on_cursor_y, $vmode::word_on_cursor_attrs);
+    }
+}
+
+
+sub find_word_on_cursor {
+    clear_word_on_cursor_attrs();
+    $vmode::word_on_cursor = "";
+    
+    my $line = "";
+    my $term_cols = Nemi::term_get_cols();
+    for(my $i = 0; $i < $term_cols; $i++) {
+        $line .= chr(Nemi::term_get_char($i, $vmode::cursor_y));
+    }
+
+    if(substr($line, $vmode::cursor_x, 1) ~~ $vmode::word_separators) {
+        return;
+    }
+
+    my $line_len = length($line);
+    my $word_start_index = -1;
+    my $word_end_index = -1;
+    for(my $x = $vmode::cursor_x; $x >= 0; $x--) {
+        if((substr($line, $x, 1) ~~ $vmode::word_separators)
+                or $x-1 < 0) {
+            $word_start_index = $x;
+            last;
+        }
+    }
+
+    if($word_start_index < 0) {
+        return;
+    }
+
+    for(my $x = $word_start_index+1; $x < $line_len; $x++) {
+        if((substr($line, $x, 1) ~~ $vmode::word_separators)
+            or $x+1 >= $line_len) {
+            $word_end_index = $x;
+            last;
+        }
+    }
+
+    if($word_end_index < 0) {
+        return;
+    }
+
+    my $word = substr($line, $word_start_index, $word_end_index - $word_start_index);
+    $word =~ s/^\s+|\s+$//g;
+
+    $vmode::word_on_cursor = $word;
+    $vmode::word_on_cursor_x = $word_start_index + ($word_start_index > 0 ? 1 : 0);
+    $vmode::word_on_cursor_y = $vmode::cursor_y;
+    
+    set_word_on_cursor_attrs();
+}
+
 
 sub toggle_select_mode {
     $vmode::select_mode = !$vmode::select_mode;
     if($vmode::select_mode) {
         print("Select mode enabled.\n");
+        clear_word_on_cursor_attrs();
     }
     else {
         print("Select mode disabled.\n");
         show_selected_cells(0);
+        find_word_on_cursor();
     }
 
     $vmode::select_start_x = $vmode::cursor_x;
     $vmode::select_start_y = $vmode::cursor_y;
-}
-
-sub find_word_on_cursor {
     
 }
 
@@ -155,8 +227,7 @@ sub move_cursor {
     if($vmode::select_mode) {
         show_selected_cells(1);
     }
-
-    if(!$vmode::select_mode) {
+    else {
         find_word_on_cursor();
     }
 }
@@ -187,6 +258,7 @@ sub disable_vmode {
         show_selected_cells(0);
     }
     $vmode::select_mode = 0;
+    clear_word_on_cursor_attrs();
 }
 
 sub enable_vmode {

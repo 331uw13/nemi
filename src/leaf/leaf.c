@@ -63,7 +63,7 @@ static const char RENDERER_TEX_FRAGMENT_SHADER_SRC[] = {
 
 
 
-struct leaf_ctx_t* leaf_open(const char* title, int width, int height) {
+struct leaf_ctx_t* leaf_open(const char* title, int width, int height, int flags) {
     struct leaf_ctx_t* ctx = malloc(sizeof *ctx);
     if(!ctx) {
         goto out;
@@ -79,7 +79,9 @@ struct leaf_ctx_t* leaf_open(const char* title, int width, int height) {
     }
 
 
-    //glfwWindowHint(GLFW_RESIZABLE, false); // TODO: Make this optional.
+    if(flags & LEAF_NO_RESIZE) {
+        glfwWindowHint(GLFW_RESIZABLE, false);
+    }
 
     ctx->glfw_win = glfwCreateWindow(width, height, title, NULL, NULL);
     if(!ctx->glfw_win) {
@@ -89,7 +91,10 @@ struct leaf_ctx_t* leaf_open(const char* title, int width, int height) {
         goto out;
     }
 
-    //glfwSetWindowSizeLimits(ctx->glfw_win, width, height, GLFW_DONT_CARE, GLFW_DONT_CARE);
+    if(flags & LEAF_NO_RESIZE) {
+        glfwSetWindowSizeLimits(ctx->glfw_win, width, height, GLFW_DONT_CARE, GLFW_DONT_CARE);
+    }
+
     glfwMakeContextCurrent(ctx->glfw_win);
     
     GLenum glew_err = glewInit();

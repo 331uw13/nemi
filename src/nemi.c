@@ -21,14 +21,14 @@ struct nemi* get_state() {
     return g_nemi_state;
 }
 
-struct nemi* start_session(const char* configs_dir) {
+struct nemi* start_session(const char* configs_dir, int leaf_open_flags) {
     struct nemi* st = malloc(sizeof *st);
 
     st->frame_time = 0.001;
     st->frame_time_begin = 0.0;
     st->flags = 0;
     st->num_scripts = 0;
-    st->lfctx = leaf_open("Nemi - Terminal Emulator", 900, 700);
+    st->lfctx = leaf_open("Nemi - Terminal Emulator", 900, 700, leaf_open_flags);
     st->num_terminals = 0;
     st->term_ignore_char_input_counter = 0;
     st->term_ignore_key_input_counter = 0;
@@ -286,7 +286,7 @@ void init_default_config(struct nemi* st) {
     int l_v = 30;   // Low value color component.
 
     st->cfg.colors[NEMI_COLOR_FG] = (struct color_t){ 200, 180, 160 };
-    st->cfg.colors[NEMI_COLOR_BG] = (struct color_t){ 12, 13, 15 };
+    st->cfg.colors[NEMI_COLOR_BG] = (struct color_t){ 10, 4, 15 };
     st->cfg.colors[NEMI_COLOR_BLACK]   = (struct color_t){ 0, 0, 0 };
     st->cfg.colors[NEMI_COLOR_RED]     = (struct color_t){ d_v, l_v, l_v };
     st->cfg.colors[NEMI_COLOR_GREEN]   = (struct color_t){ l_v, d_v, l_v };
@@ -352,6 +352,9 @@ void trigger_event_for_scripts(struct nemi* st, int event_num,
     }
 
     const char* event_name = plscript_get_event_name(event_num);
+
+
+    double time_start = glfwGetTime();
 
     for(size_t i = 0; i < st->num_scripts; i++) {
         struct perl_script* script = &st->scripts[i];

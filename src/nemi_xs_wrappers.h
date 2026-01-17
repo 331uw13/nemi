@@ -31,6 +31,14 @@
 }
 */
 
+
+XS(xsw_term_get_yscroll_offset) {
+    dXSARGS;
+    (void)items;
+    struct nemi* st = get_state();
+    XSRETURN_IV(st->terminal->sb.offset);
+}
+
 XS(xsw_recompile) {
     dXSARGS;
     (void)items;
@@ -75,6 +83,7 @@ XS(xsw_help) {
     char*  str = SvPV(ST(0), len);
     struct nemi* st = get_state();
     nemi_help(st, str);
+    XSRETURN_EMPTY;
 }
 
 XS(xsw_term_copy_to_clipboard) {
@@ -90,6 +99,7 @@ XS(xsw_term_copy_to_clipboard) {
     terminal_copy_to_clipboard(st, st->terminal, 
             start_col, start_row,
             end_col, end_row, type);
+    XSRETURN_EMPTY;
 }
 
 XS(xsw_term_set_cell_custom_fg) {
@@ -100,6 +110,7 @@ XS(xsw_term_set_cell_custom_fg) {
     int hex_rgb_color = SvIV(ST(2));
     struct nemi* st = get_state();
     terminal_set_cell_custom_fg(st->terminal, (VTermPos){ row, column }, hex_rgb_color);
+    XSRETURN_EMPTY;
 }
 
 XS(xsw_term_set_cell_custom_bg) {
@@ -110,6 +121,18 @@ XS(xsw_term_set_cell_custom_bg) {
     int hex_rgb_color = SvIV(ST(2));
     struct nemi* st = get_state();
     terminal_set_cell_custom_bg(st->terminal, (VTermPos){ row, column }, hex_rgb_color);
+    XSRETURN_EMPTY;
+}
+
+XS(xsw_term_set_cell_custom_attrs) {
+    dXSARGS;
+    (void)items;
+    int column = SvIV(ST(0));
+    int row    = SvIV(ST(1));
+    int attrs = SvIV(ST(2));
+    struct nemi* st = get_state();
+    terminal_set_cell_custom_attrs(st->terminal, (VTermPos){ row, column }, attrs);
+    XSRETURN_EMPTY;
 }
 
 XS(xsw_term_clear_cell_custom_bg) {
@@ -119,6 +142,7 @@ XS(xsw_term_clear_cell_custom_bg) {
     int row    = SvIV(ST(1));
     struct nemi* st = get_state();
     terminal_clear_cell_custom_bg(st->terminal, (VTermPos){ row, column });
+    XSRETURN_EMPTY;
 }
 
 XS(xsw_term_clear_cell_custom_fg) {
@@ -128,6 +152,17 @@ XS(xsw_term_clear_cell_custom_fg) {
     int row    = SvIV(ST(1));
     struct nemi* st = get_state();
     terminal_clear_cell_custom_fg(st->terminal, (VTermPos){ row, column });
+    XSRETURN_EMPTY;
+}
+
+XS(xsw_term_clear_cell_custom_attrs) {
+    dXSARGS;
+    (void)items;
+    int column = SvIV(ST(0));
+    int row    = SvIV(ST(1));
+    struct nemi* st = get_state();
+    terminal_clear_cell_custom_attrs(st->terminal, (VTermPos){ row, column });
+    XSRETURN_EMPTY;
 }
 
 XS(xsw_term_get_char) {
@@ -170,6 +205,7 @@ XS(xsw_rb_remove_node) {
     struct nemi* st = get_state();
     struct render_buffer* rb = &st->renderbufs[rb_index];
     renderbuf_remove_node(st, rb, rb_node_index);
+    XSRETURN_EMPTY;
 }
 
 XS(xsw_rb_hide_node) {
@@ -181,6 +217,7 @@ XS(xsw_rb_hide_node) {
     struct nemi* st = get_state();
     struct render_buffer* rb = &st->renderbufs[rb_index];
     rb->nodes[rb_node_index].hidden = true;
+    XSRETURN_EMPTY;
 }
 
 
@@ -193,6 +230,7 @@ XS(xsw_rb_show_node) {
     struct nemi* st = get_state();
     struct render_buffer* rb = &st->renderbufs[rb_index];
     rb->nodes[rb_node_index].hidden = false;
+    XSRETURN_EMPTY;
 }
 
 XS(xsw_rb_add_rect) {

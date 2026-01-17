@@ -346,11 +346,11 @@ void render_scrollback_buffer(struct nemi* st, struct terminal* term) {
 }
 
 void render_terminal(struct nemi* st, struct terminal* term) {
-
     vterm_get_size(term->vt, &term->rows, &term->cols);
     if(vterm_screen_is_altscreen(term->vtscrn)) {
         term->sb.offset = 0;
     }
+
 
     render_scrollback_buffer(st, term);
 
@@ -635,6 +635,10 @@ void terminal_set_cell_custom_fg(struct terminal* term, VTermPos pos, int hex_rg
             });
 }
 
+void terminal_set_cell_custom_attrs(struct terminal* term, VTermPos pos, int attrs) {
+    vterm_screen_set_cell_custom_attrs(term->vtscrn, pos, attrs);
+}
+
 void terminal_clear_cell_custom_bg(struct terminal* term, VTermPos pos) {
     vterm_screen_clear_cell_custom_bg(term->vtscrn, pos);
 }
@@ -643,7 +647,9 @@ void terminal_clear_cell_custom_fg(struct terminal* term, VTermPos pos) {
     vterm_screen_clear_cell_custom_fg(term->vtscrn, pos);
 }
 
-
+void terminal_clear_cell_custom_attrs(struct terminal* term, VTermPos pos) {
+    vterm_screen_clear_cell_custom_attrs(term->vtscrn, pos);
+}
 
 void swap_int(int* a, int* b) {
     int tmp = *a;

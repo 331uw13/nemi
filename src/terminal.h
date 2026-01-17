@@ -77,6 +77,8 @@ void terminal_set_cell_custom_bg  (struct terminal* term, VTermPos pos, int hex_
 void terminal_set_cell_custom_fg  (struct terminal* term, VTermPos pos, int hex_rgb_color);
 void terminal_clear_cell_custom_bg (struct terminal* term, VTermPos pos);
 void terminal_clear_cell_custom_fg (struct terminal* term, VTermPos pos);
+void terminal_set_cell_custom_attrs  (struct terminal* term, VTermPos pos, int attrs);
+void terminal_clear_cell_custom_attrs(struct terminal* term, VTermPos pos);
 
 // Available type is "block"(block select)
 // or "normal".

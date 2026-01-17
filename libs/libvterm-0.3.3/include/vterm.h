@@ -606,7 +606,8 @@ void vterm_screen_set_cell_custom_bg(const VTermScreen* screen, VTermPos pos, VT
 void vterm_screen_set_cell_custom_fg(const VTermScreen* screen, VTermPos pos, VTermColor color);
 void vterm_screen_clear_cell_custom_bg(const VTermScreen* screen, VTermPos pos);
 void vterm_screen_clear_cell_custom_fg(const VTermScreen* screen, VTermPos pos);
-
+void vterm_screen_set_cell_custom_attrs(const VTermScreen* screen, VTermPos pos, int attrs);
+void vterm_screen_clear_cell_custom_attrs(const VTermScreen* screen, VTermPos pos);
 /**
  * Same as vterm_state_convert_color_to_rgb(), but takes a `screen` instead of a `state`
  * instance.

@@ -18,6 +18,8 @@ typedef struct
   VTermColor   fg, bg, custom_bg, custom_fg;
   bool has_custom_bg;
   bool has_custom_fg;
+  int  custom_attrs; /* This can be combination of multiple 'VTermAttrMask' */
+  bool has_custom_attrs;
 
   unsigned int bold      : 1;
   unsigned int underline : 2;
@@ -188,6 +190,7 @@ static int putglyph(VTermGlyphInfo *info, VTermPos pos, void *user)
   for(i = 0; i < VTERM_MAX_CHARS_PER_CELL && info->chars[i]; i++) {
     cell->chars[i] = info->chars[i];
     cell->pen = screen->pen;
+    cell->pen.has_custom_attrs = false;
     cell->pen.has_custom_bg = false;
     cell->pen.has_custom_fg = false;
   }
@@ -1008,6 +1011,22 @@ void vterm_screen_clear_cell_custom_fg(const VTermScreen* screen, VTermPos pos) 
   intcell->pen.has_custom_fg = false;
 }
 
+void vterm_screen_set_cell_custom_attrs(const VTermScreen* screen, VTermPos pos, int attrs) {
+  ScreenCell *intcell = getcell(screen, pos.row, pos.col);
+  if(!intcell)
+    return;
+  intcell->pen.custom_attrs = attrs;
+  intcell->pen.has_custom_attrs = true;
+}
+
+void vterm_screen_clear_cell_custom_attrs(const VTermScreen* screen, VTermPos pos) {
+  ScreenCell *intcell = getcell(screen, pos.row, pos.col);
+  if(!intcell)
+    return;
+  intcell->pen.custom_attrs = 0;
+  intcell->pen.has_custom_attrs = false;
+}
+
 /* Copy internal to external representation of a screen cell */
 int vterm_screen_get_cell(const VTermScreen *screen, VTermPos pos, VTermScreenCell *cell)
 {
@@ -1031,6 +1050,12 @@ int vterm_screen_get_cell(const VTermScreen *screen, VTermPos pos, VTermScreenCe
   cell->attrs.font      = intcell->pen.font;
   cell->attrs.small     = intcell->pen.small;
   cell->attrs.baseline  = intcell->pen.baseline;
+
+  if(intcell->pen.has_custom_attrs) {
+    if(intcell->pen.custom_attrs & VTERM_ATTR_BLINK_MASK) { cell->attrs.blink = 1; }
+    if(intcell->pen.custom_attrs & VTERM_ATTR_ITALIC_MASK) { cell->attrs.italic = 1; }
+    if(intcell->pen.custom_attrs & VTERM_ATTR_UNDERLINE_MASK) { cell->attrs.underline = VTERM_UNDERLINE_SINGLE; }
+  }
 
   cell->attrs.dwl = intcell->pen.dwl;
   cell->attrs.dhl = intcell->pen.dhl;
