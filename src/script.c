@@ -21,7 +21,8 @@ const struct script_event_name SCRIPT_EVENTS[] = {
     { "event_char_input", REG_EVENT_CHAR_INPUT },
     { "event_win_resized", REG_EVENT_WIN_RESIZED },
     { "event_term_buffer_changed", REG_EVENT_TERM_BUFFER_CHANGED },
-    { "event_keybind_press", REG_EVENT_KEYBIND_PRESS }
+    { "event_keybind_press", REG_EVENT_KEYBIND_PRESS },
+    { "event_render", REG_EVENT_RENDER }
 };
 
 

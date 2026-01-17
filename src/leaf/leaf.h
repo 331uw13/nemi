@@ -47,6 +47,8 @@ void leaf_render_vertices(struct leaf_ctx_t* ctx, float* vertices, size_t vertic
 uint32_t leaf_load_texture(const char* path, int* width, int* height);
 
 
+struct color_t hexrgb_to_color_type(int hexrgb);
+
 float leaf_lerp(float x, float y, float t);
 struct color_t leaf_color_lerp(struct color_t x, struct color_t y, float t);
 

@@ -297,4 +297,11 @@ struct color_t leaf_color_lerp(struct color_t x, struct color_t y, float t) {
     return (struct color_t) { (uint8_t)ir, (uint8_t)ig, (uint8_t)ib };
 }
 
+struct color_t hexrgb_to_color_type(int hexrgb) {
+    return (struct color_t) {
+        (hexrgb & 0xFF0000) >> 16,
+        (hexrgb & 0x00FF00) >> 8,
+        (hexrgb & 0x0000FF)
+    };
+}
 

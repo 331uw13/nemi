@@ -11,24 +11,24 @@ sub event_keybind_press {
     my $event_name = $_[0];
     given($event_name) {
         when("scroll_up") {
-            nemi::term_scroll_y(1);
+            Nemi::term_scroll_y(1);
         }
         when("scroll_down") {
-            nemi::term_scroll_y(-1);
+            Nemi::term_scroll_y(-1);
         }
     }
 }
 
 sub init_script {
     $script_name = "scrollback";
-    nemi::add_keybind($script_name, "scroll_up", "lshift + lctrl + i");
-    nemi::add_keybind($script_name, "scroll_down", "lshift + lctrl + k");
+    Nemi::add_keybind($script_name, "scroll_up", "lshift + lctrl + i");
+    Nemi::add_keybind($script_name, "scroll_down", "lshift + lctrl + k");
 }
 
 
 #!REGISTER_EVENT
 sub event_help_message {
-    nemi::create_msg(
+    Nemi::create_msg(
         "=== $script_name.pl help ===\n\r".
         " Allows user to scroll the terminal buffer\n\r".
         " with keybinds.\n\r".

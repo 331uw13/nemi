@@ -32,6 +32,91 @@
 */
 
 
+XS(xsw_draw_rect) {
+    dXSARGS;
+    (void)items;
+    int x = SvIV(ST(0));
+    int y = SvIV(ST(1));
+    int w = SvIV(ST(2));
+    int h = SvIV(ST(3));
+    int color = SvIV(ST(4));
+    leaf_draw_rect(x, y, w, h, hexrgb_to_color_type(color));
+}
+
+XS(xsw_draw_rect_cells) {
+    dXSARGS;
+    (void)items;
+    int x = SvIV(ST(0));
+    int y = SvIV(ST(1));
+    int w = SvIV(ST(2));
+    int h = SvIV(ST(3));
+    int color = SvIV(ST(4));
+    struct nemi* st = get_state();
+    leaf_draw_rect(
+            coltox(st, x),
+            rowtoy(st, y),
+            w * st->font.char_width,
+            h * st->font.char_height,
+            hexrgb_to_color_type(color));
+}
+
+XS(xsw_draw_text) {
+    dXSARGS;
+    (void)items;
+    int x = SvIV(ST(0));
+    int y = SvIV(ST(1));
+    STRLEN text_len;
+    char* text = SvPV(ST(2), text_len);
+    
+    int color = SvIV(ST(3));
+    
+    struct nemi* st = get_state();
+    struct color_t text_color = hexrgb_to_color_type(color);
+    
+    float old_font_r = st->font.char_color_r;
+    float old_font_g = st->font.char_color_g;
+    float old_font_b = st->font.char_color_b;
+    st->font.char_color_r = (float)text_color.r / 255.0f;
+    st->font.char_color_g = (float)text_color.g / 255.0f;
+    st->font.char_color_b = (float)text_color.b / 255.0f;
+
+    leaf_draw_text(&st->font, x, y, text, text_len);
+
+    st->font.char_color_r = old_font_r;
+    st->font.char_color_g = old_font_g;
+    st->font.char_color_b = old_font_b;
+}
+
+XS(xsw_draw_text_cells) {
+    dXSARGS;
+    (void)items;
+    int x = SvIV(ST(0));
+    int y = SvIV(ST(1));
+    STRLEN text_len;
+    char* text = SvPV(ST(2), text_len);
+    
+    int color = SvIV(ST(3));
+    
+    struct nemi* st = get_state();
+    struct color_t text_color = hexrgb_to_color_type(color);
+    
+    float old_font_r = st->font.char_color_r;
+    float old_font_g = st->font.char_color_g;
+    float old_font_b = st->font.char_color_b;
+    st->font.char_color_r = (float)text_color.r / 255.0f;
+    st->font.char_color_g = (float)text_color.g / 255.0f;
+    st->font.char_color_b = (float)text_color.b / 255.0f;
+
+    leaf_draw_text(&st->font,
+            coltox(st, x),
+            rowtoy(st, y),
+            text, text_len);
+
+    st->font.char_color_r = old_font_r;
+    st->font.char_color_g = old_font_g;
+    st->font.char_color_b = old_font_b;
+}
+
 XS(xsw_term_get_yscroll_offset) {
     dXSARGS;
     (void)items;
@@ -189,139 +274,6 @@ XS(xsw_term_get_cursor_y) {
     XSRETURN_IV(terminal_get_cursor_y(st->terminal));
 }
 
-XS(xsw_new_renderbuf) {
-    dXSARGS;
-    (void)items;
-    int num_nodes_max = SvIV(ST(0));
-    XSRETURN_IV(new_renderbuf(get_state(), num_nodes_max));
-}
-
-XS(xsw_rb_remove_node) {
-    dXSARGS;
-    (void)items;
-    int rb_index = SvIV(ST(0));
-    int rb_node_index = SvIV(ST(1));
-
-    struct nemi* st = get_state();
-    struct render_buffer* rb = &st->renderbufs[rb_index];
-    renderbuf_remove_node(st, rb, rb_node_index);
-    XSRETURN_EMPTY;
-}
-
-XS(xsw_rb_hide_node) {
-    dXSARGS;
-    (void)items;
-    int rb_index = SvIV(ST(0));
-    int rb_node_index = SvIV(ST(1));
-
-    struct nemi* st = get_state();
-    struct render_buffer* rb = &st->renderbufs[rb_index];
-    rb->nodes[rb_node_index].hidden = true;
-    XSRETURN_EMPTY;
-}
-
-
-XS(xsw_rb_show_node) {
-    dXSARGS;
-    (void)items;
-    int rb_index = SvIV(ST(0));
-    int rb_node_index = SvIV(ST(1));
-
-    struct nemi* st = get_state();
-    struct render_buffer* rb = &st->renderbufs[rb_index];
-    rb->nodes[rb_node_index].hidden = false;
-    XSRETURN_EMPTY;
-}
-
-XS(xsw_rb_add_rect) {
-    dXSARGS;
-    (void)items;
-    int rb_index = SvIV(ST(0));
-    int x = SvIV(ST(1));
-    int y = SvIV(ST(2));
-    int w = SvIV(ST(3));
-    int h = SvIV(ST(4));
-    int color = SvIV(ST(5));
-    struct nemi* st = get_state();
-    XSRETURN_IV(renderbuf_add_rect(
-                st,
-                &st->renderbufs[rb_index],
-                x, y, w, h,
-                color));
-}
-
-
-XS(xsw_rb_update_rect) {
-    dXSARGS;
-    (void)items;
-    int rb_index= SvIV(ST(0));
-    int rb_node_index= SvIV(ST(1));
-    int x = SvIV(ST(2));
-    int y = SvIV(ST(3));
-    int w = SvIV(ST(4));
-    int h = SvIV(ST(5));
-    int color = SvIV(ST(6));
-    struct nemi* st = get_state();
-    renderbuf_update_rect(st, &st->renderbufs[rb_index], rb_node_index, x, y, w, h, color);
-    XSRETURN_EMPTY;
-}
-
-XS(xsw_rb_add_text) {
-    dXSARGS;
-    (void)items;
-    int rb_index = SvIV(ST(0));
-    int x = SvIV(ST(1));
-    int y = SvIV(ST(2));
-    STRLEN len;
-    char*  str = SvPV(ST(3), len);
-    int color = SvIV(ST(4));
-
-    struct nemi* st = get_state();
-    XSRETURN_IV(renderbuf_add_text(st, &st->renderbufs[rb_index], x, y, str, len, color));
-}
-
-XS(xsw_rb_update_text) {
-    dXSARGS;
-    (void)items;
-    int rb_index = SvIV(ST(0));
-    int rb_node_index = SvIV(ST(1));
-    int x = SvIV(ST(2));
-    int y = SvIV(ST(3));
-    STRLEN len;
-    char*  str = SvPV(ST(4), len);
-    int color = SvIV(ST(5));
-    
-    struct nemi* st = get_state();
-    renderbuf_update_text(st, &st->renderbufs[rb_index], rb_node_index, x, y, str, len, color);
-    XSRETURN_EMPTY;
-}
-
-XS(xsw_rb_node_layer_first) {
-    dXSARGS;
-    (void)items;
-    int rb_index = SvIV(ST(0));
-    int rb_node_index = SvIV(ST(1));
-    
-    struct nemi* st = get_state();
-    struct render_buffer* rb = &st->renderbufs[rb_index];
-
-    rb->nodes[rb_node_index].layer = RBNODE_LAYER_FIRST;
-    XSRETURN_EMPTY;
-}
-
-XS(xsw_rb_node_layer_last) {
-    dXSARGS;
-    (void)items;
-    int rb_index = SvIV(ST(0));
-    int rb_node_index = SvIV(ST(1));
-    
-    struct nemi* st = get_state();
-    struct render_buffer* rb = &st->renderbufs[rb_index];
-
-    rb->nodes[rb_node_index].layer = RBNODE_LAYER_LAST;
-    XSRETURN_EMPTY;
-}
-
 XS(xsw_term_hide_cells) {
     dXSARGS;
     (void)items;
@@ -345,26 +297,6 @@ XS(xsw_term_show_cells) {
 
     struct nemi* st = get_state();
     terminal_hide_cells(st->terminal, false, x, y, w, h);
-    XSRETURN_EMPTY;
-}
-
-XS(xsw_rb_use_cellcoords) {
-    dXSARGS;
-    (void)items;
-    int rb_index = SvIV(ST(0));
-    
-    struct nemi* st = get_state();
-    st->renderbufs[rb_index].coordinate_mode = RBCOORDMODE_CELL;
-    XSRETURN_EMPTY;
-}
-
-XS(xsw_rb_use_arbcoords) {
-    dXSARGS;
-    (void)items;
-    int rb_index = SvIV(ST(0));
-    
-    struct nemi* st = get_state();
-    st->renderbufs[rb_index].coordinate_mode = RBCOORDMODE_ARBITRARY;
     XSRETURN_EMPTY;
 }
 

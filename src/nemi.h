@@ -9,7 +9,7 @@
 #include "terminal.h"
 #include "script.h"
 #include "script_keybinds.h"
-#include "render_buffer.h"
+//#include "render_buffer.h"
 #include "log.h"
 #include "string.h"
 
@@ -55,8 +55,8 @@ struct nemi {
     struct perl_script   scripts [NEMI_SCRIPTS_MAX];
     size_t               num_scripts;
 
-    struct render_buffer renderbufs [NEMI_RENDERBUFS_MAX];
-    uint32_t             num_renderbufs;
+    //struct render_buffer renderbufs [NEMI_RENDERBUFS_MAX];
+    //uint32_t             num_renderbufs;
 
     double frame_time;
     double frame_time_begin;
@@ -109,7 +109,7 @@ void trigger_event_for_scripts(struct nemi* st, int event_num, const char* arg_t
 int coltox(struct nemi* st, int col);
 int rowtoy(struct nemi* st, int row);
 
-int new_renderbuf(struct nemi* st, int num_nodes_max);
+//int new_renderbuf(struct nemi* st, int num_nodes_max);
 void init_default_config(struct nemi* st);
 
 //void reload_config(struct nemi* st);

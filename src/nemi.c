@@ -88,6 +88,7 @@ struct nemi* start_session(const char* configs_dir, int leaf_open_flags) {
         };
     }
    
+    /*
     for(size_t i = 0; i < ARRAY_LEN(st->renderbufs); i++) {
         st->renderbufs[i] = (struct render_buffer) {
             .nodes = NULL,
@@ -95,6 +96,7 @@ struct nemi* start_session(const char* configs_dir, int leaf_open_flags) {
             .num_nodes = 0
         };
     }
+    */
 
     //plscript_funcs_set_context(st);
     g_nemi_state = st;
@@ -143,9 +145,11 @@ void quit_session(struct nemi* st) {
         unload_perl_script(&st->scripts[i]);
     }
 
+    /*
     for(size_t i = 0; i < ARRAY_LEN(st->renderbufs); i++) {
         freeif(st->renderbufs[i].nodes);
     }
+    */
 
     log_close();
     freeif(st);
@@ -172,6 +176,7 @@ void switch_terminal_ptr(struct nemi* st, struct terminal* term) {
     st->terminal = term;
 }
 
+/*
 static
 void render_rbbuffer_nodes(struct nemi* st, enum rb_node_layer layer) {
 
@@ -221,6 +226,7 @@ void render_rbbuffer_nodes(struct nemi* st, enum rb_node_layer layer) {
         }
     }
 }
+*/
 
 static
 void begin_frame(struct nemi* st) {
@@ -231,7 +237,7 @@ void begin_frame(struct nemi* st) {
             (float)st->cfg.colors[NEMI_COLOR_BG].b / 255.0f,
             1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
-    render_rbbuffer_nodes(st, RBNODE_LAYER_FIRST);
+    //render_rbbuffer_nodes(st, RBNODE_LAYER_FIRST);
 }
 
 
@@ -248,7 +254,13 @@ void end_frame(struct nemi* st) {
     }
    
 
-    render_rbbuffer_nodes(st, RBNODE_LAYER_LAST);
+    for(uint32_t i = 0; i < st->num_scripts; i++) {
+        struct perl_script* script = &st->scripts[i];
+        if(script->reg_events & REG_EVENT_RENDER) {
+            plscript_call(script, "event_render");
+        }
+    }
+    //render_rbbuffer_nodes(st, RBNODE_LAYER_LAST);
     leaf_font_render(st->lfctx, &st->font);
 
 
@@ -495,6 +507,7 @@ int rowtoy(struct nemi* st, int row) {
     return row * (st->font.char_height + st->cfg.main.line_padding) + st->cfg.main.padding_y;
 }
 
+/*
 int new_renderbuf(struct nemi* st, int num_nodes_max) {
     int ret_index = -1;
 
@@ -517,6 +530,7 @@ int new_renderbuf(struct nemi* st, int num_nodes_max) {
 
     return ret_index;
 }
+*/
 
 void font_scale(struct nemi* st, float offset) {
     leaf_set_font_scale(&st->font, st->font.scale + offset);

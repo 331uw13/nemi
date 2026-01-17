@@ -1,58 +1,22 @@
-package vmode;
-use warnings;
 use strict;
-use Class::Struct;
-
-struct( 'vmode', {
-    enabled => '$',
-    cursor_x => '$',
-    cursor_y => '$',
-    select_start_x => '$',
-    select_start_y => '$',
-    select_mode => 0,
-    block_select => 0,
-    rb => '$', # Render buffer.
-    rb_cursor_node => '$',
-    rb_infotext_node => '$',
-    cursor_color => '$',
-    select_color_bg => '$',
-    select_color_fg => '$',
-    word_on_cursor => '$',
-    word_on_cursor_x => '$',
-    word_on_cursor_y => '$',
-    word_on_cursor_attrs => '$',
-    word_separators => '@'
-});
-
-sub init {
-    $vmode::word_separators = ( 0, ' ' );
-    $vmode::enabled = 0;
-    $vmode::cursor_color = 0xA03366;
-    $vmode::select_color_bg = 0x6D2446;
-    $vmode::select_color_fg = 0xDD9FBC;
-    $vmode::word_on_cursor_attrs = 0x2; # Underline
-    $vmode::word_on_cursor_x = 0;
-    $vmode::word_on_cursor_y = 0;
-    $vmode::rb = Nemi::new_renderbuf(8);
-    Nemi::rb_use_cellcoords($vmode::rb);
-    $vmode::rb_cursor_node = Nemi::rb_add_rect($vmode::rb, 0, 0, 1, 1, $vmode::cursor_color);
-    $vmode::rb_infotext_node = Nemi::rb_add_text($vmode::rb, 0, 0, "", $vmode::cursor_color);
-    $vmode::cursor_x = 0;
-    $vmode::cursor_y = 0;
-    $vmode::select_start_x = 0;
-    $vmode::select_start_y = 0;
-    $vmode::word_on_cursor = ""; 
-    Nemi::rb_hide_node($vmode::rb, $vmode::rb_infotext_node);
-    Nemi::rb_hide_node($vmode::rb, $vmode::rb_cursor_node);
-}
-
-package main;
 use warnings;
-use strict;
 use feature qw(switch);
 
 our $script_name;
-our $vmode;
+our $vmode_enabled;
+our @word_separators;
+
+our $cursor_x;
+our $cursor_y;
+our $select_start_x;
+our $select_start_y;
+our $select_mode_enabled;
+our $block_select_enabled;
+
+our $cursor_color;
+our $select_bg_color;
+our $select_fg_color;
+
 
 sub min {
     return $_[0] < $_[1] ? $_[0] : $_[1];
@@ -65,25 +29,24 @@ sub max {
 sub select_cell {
     my $x = $_[1];
     my $y = $_[2];
-    my $sb_offset = Nemi::term_get_yscroll_offset();
     if($_[0]) {
-        Nemi::term_set_cell_custom_bg($x, $y, $vmode::select_color_bg); 
-        Nemi::term_set_cell_custom_fg($x, $y, $vmode::select_color_fg); 
+        nemi::term_set_cell_custom_bg($x, $y, $select_bg_color);
+        nemi::term_set_cell_custom_fg($x, $y, $select_fg_color);
     }
     else {
-        Nemi::term_clear_cell_custom_bg($x, $y); 
-        Nemi::term_clear_cell_custom_fg($x, $y); 
+        nemi::term_clear_cell_custom_bg($x, $y);
+        nemi::term_clear_cell_custom_fg($x, $y);
     }
 }
 
-sub show_selected_cells {
+sub draw_selected_cells {
     my $is_shown = $_[0];
 
-    if($vmode::block_select) {
-        my $start_x = min($vmode::cursor_x, $vmode::select_start_x);
-        my $start_y = min($vmode::cursor_y, $vmode::select_start_y);
-        my $end_x = max($vmode::cursor_x, $vmode::select_start_x);
-        my $end_y = max($vmode::cursor_y, $vmode::select_start_y);
+    if($block_select_enabled) {
+        my $start_x = min($cursor_x, $select_start_x);
+        my $start_y = min($cursor_y, $select_start_y);
+        my $end_x = max($cursor_x, $select_start_x);
+        my $end_y = max($cursor_y, $select_start_y);
         $end_y++;
 
         for(my $y = $start_y; $y < $end_y; $y++) {
@@ -94,33 +57,33 @@ sub show_selected_cells {
         return;
     }
 
-    my $start_y = min($vmode::cursor_y, $vmode::select_start_y);
-    my $end_y = max($vmode::cursor_y, $vmode::select_start_y);
+    my $start_y = min($cursor_y, $select_start_y);
+    my $end_y = max($cursor_y, $select_start_y);
 
 
     if($start_y == $end_y) {
         # Single line selected.
-        my $start_x = min($vmode::cursor_x, $vmode::select_start_x);
-        my $end_x = max($vmode::cursor_x, $vmode::select_start_x);
+        my $start_x = min($cursor_x, $select_start_x);
+        my $end_x = max($cursor_x, $select_start_x);
 
         for(my $x = $start_x; $x < $end_x; $x++) {
             select_cell($is_shown, $x, $start_y);
         }
     }
-    else {  
+    else {
         # Multiple lines selected.
         $end_y++;
-        my $end_x = $vmode::cursor_x;
-        my $start_x = $vmode::select_start_x;
-        
-        if($vmode::cursor_y < $vmode::select_start_y) {
-            $start_x = $vmode::cursor_x;
-            $end_x = $vmode::select_start_x; 
+        my $end_x = $cursor_x;
+        my $start_x = $select_start_x;
+
+        if($cursor_y < $select_start_y) {
+            $start_x = $cursor_x;
+            $end_x = $select_start_x;
         }
 
         my $x = $start_x;
         my $y = $start_y;
-        my $term_cols = Nemi::term_get_cols();
+        my $term_cols = nemi::term_get_cols();
 
         for(my $y = $start_y; $y < $end_y; $y++) {
             my $x_ln_stop = $y+1 >= $end_y ? $end_x : $term_cols;
@@ -132,282 +95,215 @@ sub show_selected_cells {
     }
 }
 
-sub clear_word_on_cursor_attrs {
-    my $end = $vmode::word_on_cursor_x + length($vmode::word_on_cursor);
-    for(my $x = $vmode::word_on_cursor_x; $x < $end; $x++) {
-        Nemi::term_clear_cell_custom_attrs($x, $vmode::word_on_cursor_y);
-    }
-}
-
-sub set_word_on_cursor_attrs {
-    my $end = $vmode::word_on_cursor_x + length($vmode::word_on_cursor);
-    for(my $x = $vmode::word_on_cursor_x; $x < $end; $x++) {
-        Nemi::term_set_cell_custom_attrs($x, $vmode::word_on_cursor_y, $vmode::word_on_cursor_attrs);
-    }
-}
-
-
-sub find_word_on_cursor {
-    clear_word_on_cursor_attrs();
-    $vmode::word_on_cursor = "";
-    
-    my $line = "";
-    my $term_cols = Nemi::term_get_cols();
-    for(my $i = 0; $i < $term_cols; $i++) {
-        $line .= chr(Nemi::term_get_char($i, $vmode::cursor_y));
-    }
-
-    if(substr($line, $vmode::cursor_x, 1) ~~ $vmode::word_separators) {
-        return;
-    }
-
-    my $line_len = length($line);
-    my $word_start_index = -1;
-    my $word_end_index = -1;
-    for(my $x = $vmode::cursor_x; $x >= 0; $x--) {
-        if((substr($line, $x, 1) ~~ $vmode::word_separators)
-                or $x-1 < 0) {
-            $word_start_index = $x;
-            last;
-        }
-    }
-
-    if($word_start_index < 0) {
-        return;
-    }
-
-    for(my $x = $word_start_index+1; $x < $line_len; $x++) {
-        if((substr($line, $x, 1) ~~ $vmode::word_separators)
-            or $x+1 >= $line_len) {
-            $word_end_index = $x;
-            last;
-        }
-    }
-
-    if($word_end_index < 0) {
-        return;
-    }
-
-    my $word = substr($line, $word_start_index, $word_end_index - $word_start_index);
-    $word =~ s/^\s+|\s+$//g;
-
-    $vmode::word_on_cursor = $word;
-    $vmode::word_on_cursor_x = $word_start_index + ($word_start_index > 0 ? 1 : 0);
-    $vmode::word_on_cursor_y = $vmode::cursor_y;
-    
-    set_word_on_cursor_attrs();
-}
-
-
-sub toggle_select_mode {
-    $vmode::select_mode = !$vmode::select_mode;
-    if($vmode::select_mode) {
-        print("Select mode enabled.\n");
-        clear_word_on_cursor_attrs();
-    }
-    else {
-        print("Select mode disabled.\n");
-        show_selected_cells(0);
-        find_word_on_cursor();
-    }
-
-    $vmode::select_start_x = $vmode::cursor_x;
-    $vmode::select_start_y = $vmode::cursor_y;
-    
-}
-
 sub move_cursor {
-    if($vmode::select_mode) {
-        show_selected_cells(0);
+    if($select_mode_enabled) {    
+       draw_selected_cells(0);
     }
-
-    $vmode::cursor_x += int($_[0]);
-    $vmode::cursor_y += int($_[1]);
-
-    if($vmode::select_mode) {
-        show_selected_cells(1);
-    }
-    else {
-        find_word_on_cursor();
-    }
-}
-
-sub update_view {
-    Nemi::rb_update_rect($vmode::rb, $vmode::rb_cursor_node, $vmode::cursor_x, $vmode::cursor_y, 1, 1, $vmode::cursor_color);
-
-    my $infotext = "[vmode]";
-    if($vmode::select_mode) {
-        $infotext .= $vmode::block_select ? ":block_select" : ":select";
-    }
-
-
-    my $term_cols = Nemi::term_get_cols();
-    Nemi::rb_update_text($vmode::rb, $vmode::rb_infotext_node, 
-        $term_cols - length($infotext)-2, 0, $infotext, $vmode::cursor_color);
-}
-
-
-sub disable_vmode {
-    $vmode::enabled = 0;
-    Nemi::term_unignore_chars();
-    Nemi::term_unignore_keys();
-    Nemi::rb_hide_node($vmode::rb, $vmode::rb_cursor_node);
-    Nemi::rb_hide_node($vmode::rb, $vmode::rb_infotext_node);
     
-    if($vmode::select_mode) {
-        show_selected_cells(0);
+    $cursor_x += int($_[0]);
+    $cursor_y += int($_[1]);
+
+    my $cursor_x_max = nemi::term_get_cols() - 1;
+    my $cursor_y_max = nemi::term_get_rows();
+
+    if($cursor_x < 0) { 
+        $cursor_x = 0;
     }
-    $vmode::select_mode = 0;
-    clear_word_on_cursor_attrs();
+    if($cursor_x > $cursor_x_max) {
+        $cursor_x = $cursor_x_max;
+    }
+ 
+    if($cursor_y < 0) { 
+        $cursor_y = 0;
+    }
+    if($cursor_y > $cursor_y_max) {
+        $cursor_y = $cursor_y_max;
+    }   
+
+    if($select_mode_enabled) {    
+       draw_selected_cells(1);
+    }
 }
 
-sub enable_vmode {
-    $vmode::enabled = 1;
-    Nemi::term_ignore_chars();
-    Nemi::term_ignore_keys();
-    Nemi::rb_show_node($vmode::rb, $vmode::rb_cursor_node);
-    Nemi::rb_show_node($vmode::rb, $vmode::rb_infotext_node);
-    
-    $vmode::cursor_x = Nemi::term_get_cursor_x()+1;
-    $vmode::cursor_y = Nemi::term_get_cursor_y();
+
+sub ischr_word_separator {
+    foreach my $ch (@word_separators) {
+        if($_[0] eq $ch) {
+            return 1;
+        }
+    }
+    return 0;
 }
 
-sub toggle_vmode {
-    $vmode::enabled = !$vmode::enabled;
+sub get_word_jump_left {
+    return 0;
+}
 
-    if($vmode::enabled) {
-        enable_vmode();
-    }
-    else {
-        disable_vmode();
-    }
+sub get_word_jump_to_direction {
+    my $direction = $_[0];
+
+    my $term_cols = nemi::term_get_cols();
+    my $x = $cursor_x;
+
+    if(nemi::term_get_char($cursor_x, $cursor_y) eq 0) {
+        while(1) {
+            my $curr_char = nemi::term_get_char($x, $cursor_y);
+            if($curr_char ne 0) {
+                last;
+            }
             
-    update_view();
-}
+            $x += $direction;
+            if(($x <= 0) or ($x >= $term_cols)) {
+                last;
+            }
+        }
 
-
-sub get_word_jump {
-    my $start_x = $_[0];
-    my $end_x = $_[1];
-
-    if($start_x == $end_x) {
-        return 0;
+        return $x - $cursor_x;
     }
-    my $direction = $start_x > $end_x ? -1 : +1;
-    my $x = $start_x;
 
     while(1) {
-        my $char      = Nemi::term_get_char($x, $vmode::cursor_y);
-        my $next_char = Nemi::term_get_char($x + $direction, $vmode::cursor_y);
-        if($char eq 0 and $next_char eq 0) {
+        my $curr_char = nemi::term_get_char($x, $cursor_y);
+        my $next_char = nemi::term_get_char($x + $direction, $cursor_y);
+
+        if($curr_char eq 0 and $next_char eq 0) {
             last;
         }
-        
+
+        if(ischr_word_separator($curr_char) and !ischr_word_separator($next_char)) {
+            return $x - $cursor_x + $direction;
+        }
         $x += $direction;
-
-        if(chr($char) ~~ $vmode::word_separators and not chr($next_char) ~~ $vmode::word_separators) {
-            last;
-        }
-
-        if($direction < 0 and $x <= $end_x) {
-            last;
-        }
-        if($direction > 0 and $x >= $end_x) {
-            last;
-        }
     }
 
-    return $x - $start_x;
+    return $x - $cursor_x;
 }
 
+#!REGISTER_EVENT
+sub event_render {
+    if(!$vmode_enabled) {
+        return;
+    }
+
+    nemi::draw_rect_cells($cursor_x, $cursor_y, 1, 1, $cursor_color);
+
+    my $info_text = "";
+
+    if($select_mode_enabled) {
+        $info_text .= $block_select_enabled ? "(b-select)" : "(select)";
+    }
+
+    $info_text .= " [vmode]";
+
+
+    my $info_text_x = nemi::term_get_cols() - length($info_text)-1;
+    my $info_text_y = 0;
+    nemi::draw_text_cells($info_text_x, $info_text_y, $info_text, $cursor_color);
+
+}
 
 #!REGISTER_EVENT
 sub event_keybind_press {
     my $event_name = $_[0];
+
     if($event_name eq "toggle") {
-        toggle_vmode();
+        if(($vmode_enabled = !$vmode_enabled)) {
+            nemi::term_ignore_chars();
+            nemi::term_ignore_keys();
+            $cursor_x = nemi::term_get_cursor_x() + 1;
+            $cursor_y = nemi::term_get_cursor_y();
+            $select_mode_enabled = 0;
+            $block_select_enabled = 0;
+        }
+        else {
+            nemi::term_unignore_chars();
+            nemi::term_unignore_keys();
+            draw_selected_cells(0);
+        }
         return;
     }
 
-    if(!$vmode::enabled) {
+    if(!$vmode_enabled) {
         return;
     }
 
-    my $do_update = 0;
-    
     given($event_name) {
         when("move_cursor_up") {
             move_cursor(0, -1);
-            $do_update = 1;
         }
         when("move_cursor_down") {
             move_cursor(0, 1);
-            $do_update = 1;
         }
         when("move_cursor_left") {
             move_cursor(-1, 0);
-            $do_update = 1;
         }
         when("move_cursor_right") {
             move_cursor(1, 0);
-            $do_update = 1;
         }
         when("word_jump_right") {
-            move_cursor(get_word_jump($vmode::cursor_x, Nemi::term_get_cols()), 0);
-            $do_update = 1;
+            move_cursor(get_word_jump_to_direction(+1), 0);
         }
         when("word_jump_left") {
-            move_cursor(get_word_jump($vmode::cursor_x, 0), 0);
-            $do_update = 1;
+            move_cursor(get_word_jump_to_direction(-1), 0);
         }
         when("toggle_select_mode") {
-            toggle_select_mode(); 
-            $do_update = 1;
-        }
+            if(($select_mode_enabled = !$select_mode_enabled)) {
+                $select_start_x = $cursor_x;
+                $select_start_y = $cursor_y;
+            }
+            else {
+                draw_selected_cells(0);
+            }
+        } 
         when("copy_selected") {
-            if($vmode::select_mode) {
-                Nemi::term_copy_to_clipboard(
-                    $vmode::select_start_x,
-                    $vmode::select_start_y,
-                    $vmode::cursor_x,
-                    $vmode::cursor_y,
-                    $vmode::block_select ? "block" : "normal"
+            if($select_mode_enabled) {
+                nemi::term_copy_to_clipboard(
+                    $select_start_x,
+                    $select_start_y,
+                    $cursor_x,
+                    $cursor_y,
+                    $block_select_enabled ? "block" : "normal"
                 );
             }
         }
         when("toggle_block_select") {
-            if($vmode::select_mode) {
-                show_selected_cells(0); # We need to disable the previous mode selection
-                $vmode::block_select = !$vmode::block_select;
-                show_selected_cells(1); 
+            if($select_mode_enabled) {
+                draw_selected_cells(0);
+                $block_select_enabled = !$block_select_enabled;
+                draw_selected_cells(1);
             }
-            $do_update = 1;
         }
     }
 
-    if($do_update) {
-        update_view();
-    }
 }
+
 
 sub init_script {
     $script_name = "vmode";
-    $vmode = vmode->init();
+    $cursor_x = 0;
+    $cursor_y = 0;
+    $select_start_x = 0;
+    $select_start_y = 0;
 
-    Nemi::add_keybind($script_name, "toggle", "lctrl + k");
-    Nemi::add_keybind($script_name, "move_cursor_up", "up");
-    Nemi::add_keybind($script_name, "move_cursor_up", "i");
-    Nemi::add_keybind($script_name, "move_cursor_down", "down");
-    Nemi::add_keybind($script_name, "move_cursor_down", "k");
-    Nemi::add_keybind($script_name, "move_cursor_left", "left");
-    Nemi::add_keybind($script_name, "move_cursor_left", "j");
-    Nemi::add_keybind($script_name, "move_cursor_right", "right");
-    Nemi::add_keybind($script_name, "move_cursor_right", "l");
-    Nemi::add_keybind($script_name, "word_jump_left", "lshift + j");
-    Nemi::add_keybind($script_name, "word_jump_right", "lshift + l");
-    Nemi::add_keybind($script_name, "toggle_select_mode", "s");
-    Nemi::add_keybind($script_name, "copy_selected", "c");
-    Nemi::add_keybind($script_name, "toggle_block_select", "b");
+    $cursor_color = 0xA03366;
+    $select_bg_color = 0x6D2446;
+    $select_fg_color = 0xDD9FBC;
+
+    @word_separators = ( 0x0, 0x20 );
+
+    nemi::add_keybind($script_name, "toggle", "lctrl + k");
+    nemi::add_keybind($script_name, "move_cursor_up", "up");
+    nemi::add_keybind($script_name, "move_cursor_up", "i");
+    nemi::add_keybind($script_name, "move_cursor_down", "down");
+    nemi::add_keybind($script_name, "move_cursor_down", "k");
+    nemi::add_keybind($script_name, "move_cursor_left", "left");
+    nemi::add_keybind($script_name, "move_cursor_left", "j");
+    nemi::add_keybind($script_name, "move_cursor_right", "right");
+    nemi::add_keybind($script_name, "move_cursor_right", "l");
+    nemi::add_keybind($script_name, "word_jump_left", "lshift + j");
+    nemi::add_keybind($script_name, "word_jump_right", "lshift + l");
+    nemi::add_keybind($script_name, "toggle_select_mode", "s");
+    nemi::add_keybind($script_name, "copy_selected", "c");
+    nemi::add_keybind($script_name, "toggle_block_select", "b");
 }
 
 
@@ -422,4 +318,5 @@ sub event_help_message {
         " Run 'Nemi::script_keybinds(\"$script_name\")' to see all features.\n\r"
     );
 }
+
 

@@ -32,7 +32,7 @@ sub main {
             my $xs_fn_name = substr($match, 1, length($match)-2);
             my $fn_name    = substr($xs_fn_name, 4); 
 
-            appendf("newXS(\"Nemi::$fn_name\", $xs_fn_name, __FILE__);\n");
+            appendf("newXS(\"nemi::$fn_name\", $xs_fn_name, __FILE__);\n");
         }
     }
 

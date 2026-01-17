@@ -15,7 +15,7 @@
 #define REG_EVENT_WIN_RESIZED          (1 << 3)
 #define REG_EVENT_TERM_BUFFER_CHANGED  (1 << 4)
 #define REG_EVENT_KEYBIND_PRESS        (1 << 5)
-
+#define REG_EVENT_RENDER               (1 << 6)
 
 
 struct script_keybind_value {
