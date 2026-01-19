@@ -5,8 +5,8 @@
 #include <dlfcn.h>
 
 
-#include "src/nemi.h"
-#include "src/string.h"
+#include "../src/nemi.h"
+#include "../src/string.h"
 
 
 struct nemi*(*nemi_start_session)(const char*, int);
@@ -20,12 +20,17 @@ static bool do_hotreload = false;
 
 bool load_libnemi() {
     libnemi = dlopen("./libnemi.so", RTLD_NOW);
+    if(libnemi == NULL) {
+        fprintf(stderr, "%s: dlopen(): %s\n", __func__, dlerror());
+        return false;
+    }
+
     nemi_start_session = dlsym(libnemi, "start_session");
     nemi_quit_session = dlsym(libnemi, "quit_session");
     nemi_update_frame = dlsym(libnemi, "update_frame");
     nemi_create_msg   = dlsym(libnemi, "create_msg");
     nemi_write_term   = dlsym(libnemi, "write_term");
-    // TODO: Add error checking.
+    // TODO: Add more error checking.
 
     return true;
 }

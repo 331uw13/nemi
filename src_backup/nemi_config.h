@@ -100,8 +100,8 @@ struct nemi_font_config {
 */
 
 
-bool nemi_read_configs(struct nemi* st, char* configs_dir);
-bool nemi_load_scripts(struct nemi* st, char* configs_dir);
+bool nemi_read_configs(struct nemi* st, const char* configs_dir);
+bool nemi_load_scripts(struct nemi* st, const char* configs_dir);
 void free_configs(struct nemi* st);
 
 //bool nemi_read_font_config(struct nemi* st, const char* filepath, struct nemi_font_config* font_cfg);

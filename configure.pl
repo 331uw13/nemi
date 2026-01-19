@@ -108,7 +108,7 @@ sub main {
         print("$ok_prefix libvterm compiled succesfully.\n");
     }
 
-    my $perl_prefix = argument_exists("-using_perlbrew") ? "perlbrew exec" : "";
+    my $perl_prefix = (argument_exists("-using_perlbrew") ? "perlbrew exec" : "perl");
 
     my @ccflags = ();
     my @ldflags = ();
@@ -122,7 +122,7 @@ sub main {
     push(@ccflags, "-I/usr/include/freetype2");
     push(@ccflags, "-I/usr/include/libpng16");
     push(@ccflags, "-I$libvterm_dir/include"); 
-    push(@ccflags, "`$perl_prefix perl -MExtUtils::Embed -e ccopts -e ldopts`");
+    push(@ccflags, "`$perl_prefix -MExtUtils::Embed -e ccopts -e ldopts`");
     push(@ldflags, "-lglfw");
     push(@ldflags, "-lGL");
     push(@ldflags, "-lGLEW");
@@ -147,13 +147,15 @@ sub main {
     #}
 
 
+
     open($FH, '>>', "Makefile") or die $!;
     truncate $FH, 0;
 
     my $compiler = "gcc";
+    
 
     my $target = "nemi";
-    f_append("LIB_TARGET = lib$target.so\n");
+    f_append("LIBNEMI_TARGET = lib$target.so\n");
     f_append("LOADER_TARGET = $target\n");
 
     f_append("CC = $compiler\n");
@@ -169,55 +171,63 @@ sub main {
         my $flag = $ldflags[$i];
         f_append("        $flag ". ($i+1 >= scalar(@ldflags) ? "\n" : "\\\n"));
     }
-    f_append("\n\n");
-   
-    f_append("SRC = \$(shell find ./src -type f -name '*.c')\n");
-    f_append("OBJS = \$(SRC:.c=.o)\n");
-    f_append("\n");
 
-    f_append("all: pre-build \$(LIB_TARGET) \$(LOADER_TARGET)\n\n");
     f_append(
+        "LIB_SRC_DIR     = ./src\n" .
+        "LOADER_SRC_DIR  = ./loader\n" .
+        "OBJ_DIR         = ./obj\n" .
+        "\n" .
+        "\n" .
+        "LIB_SRC_FILES = \$(shell find \$(LIB_SRC_DIR) -type f -name '*.c')\n" .
+        "LIB_OBJ_FILES = \$(patsubst \$(LIB_SRC_DIR)/%.c, \$(OBJ_DIR)/%.o, \$(LIB_SRC_FILES))\n" .
+        "\n" .
+        "LOADER_SRC_FILES = \$(wildcard \$(LOADER_SRC_DIR)/*.c)\n" .
+        "LOADER_OBJ_FILES = \$(patsubst \$(LOADER_SRC_DIR)/%.c, \$(OBJ_DIR)/%.o, \$(LOADER_SRC_FILES))\n" .
+        "\n" .
+        "\n" .
+        "all: pre-build \$(LIBNEMI_TARGET) \$(LOADER_TARGET) post-build\n" .
+        "\n" .
+        "\n" .
         "pre-build:\n" .
-        "\t\@$perl_prefix perl genxsfuncreg.pl\n" .
-        "\n"
-    );
-
-    f_append(
-        "# Compile library.\n" .
-        "%.o: %.c\n" .
-        "\t\$(CC) \$(CCFLAGS) -fPIC -c \$< -o \$@\n" .
-        "\n"
-    );
-
-    f_append(
-        "# Link library.\n" .
-        "\$(LIB_TARGET): \$(OBJS)\n" .
-        "\t\$(CC) \$(OBJS) \$(LDFLAGS) -shared -o \$@\n" .
-        "\n"
-    );
-
-    f_append(
-        "# Compile loader.\n" .
-        "loader.o: loader.c\n" .
-        "\t\$(CC) \$(CCFLAGS) -c \$< -o \$@\n" .
-        "\n"
-    );
-
-    f_append(
-        "# Link loader.\n" .
-        "\$(LOADER_TARGET): loader.o \$(LIB_TARGET)\n" .
-        "\t\$(CC) loader.o src/string.o \$(LDFLAGS) -o \$@\n" .
-        "\n"
-    );
-
-    f_append(
+        "\t\@$perl_prefix genxsfuncreg.pl\n" .
+        "\n" .
+        "post-build:\n" .
+        "\t\@echo -e \"> \033[1;32mBuild complete!\033[0m\"\n" .
+        "\n" .
+        "\n" .
+        "\n" .
+        "# Compile and link library.\n" .
+        "\n" .
+        "\$(LIB_OBJ_FILES): \$(OBJ_DIR)/%.o: \$(LIB_SRC_DIR)/%.c\n" .
+        "\t\@mkdir -p \$(shell dirname \$@)\n" .
+        "\t\@echo \"\$<\"\n" .
+        "\t@\$(CC) \$(CCFLAGS) -fPIC -c \$< -o \$@ || (echo -e \"\033[1;31mFailed to compile \$<\033[0m\")\n" .
+        "\n" .
+        "\$(LIBNEMI_TARGET): \$(LIB_OBJ_FILES)\n" .
+        "\t@\$(CC) \$(LIB_OBJ_FILES) \$(LDFLAGS) -shared -o \$@\n" .
+        "\n" .
+        "\n" .
+        "# Compile and link loader.\n" .
+        "\n" .
+        "\$(LOADER_OBJ_FILES): \$(OBJ_DIR)/%.o: \$(LOADER_SRC_DIR)/%.c\n" .
+        "\t@\$(CC) \$(CCFLAGS) -c \$< -o \$@\n" .
+        "\n" .
+        "\$(LOADER_TARGET): \$(LOADER_OBJ_FILES)\n" .
+        "\t@\$(CC) \$(LDFLAGS) \$(LOADER_OBJ_FILES) \$(OBJ_DIR)/string.o -o \$@\n" .
+        "\n" .
+        "\n" .
         "clean:\n" .
-        "\trm -v \$(OBJS) \$(LIB_TARGET) \$(LOADER_TARGET) loader.o\n" .
-        "\trm -v src/register_script_functions.inc\n" .
+        "\t\@rm -v \$(LOADER_OBJ_FILES)\n" .
+        "\t\@rm -v \$(LIB_OBJ_FILES)\n" .
+        "\t\@rm -v \$(LOADER_TARGET)\n" .
+        "\t\@rm -v src/register_script_functions.inc\n" .
         "\n" .
         ".PHONY: all clean\n"
     );
 
+    print("$perl_prefix\n");
+
+    
     close($FH);
     print("\n\033[1;32mMakefile was created.\033[0m\n");
 }

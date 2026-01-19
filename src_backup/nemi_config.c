@@ -28,7 +28,6 @@ int config_handler__log_ini
     const char* name,
     const char* value
 ){
-    (void)section;
     struct log_settings* log_cfg = (struct log_settings*)userptr;
 
     if(STR_MATCH(name, "enabled")) {
@@ -92,7 +91,6 @@ int config_handler__font_ini
     const char* name,
     const char* value
 ){
-    (void)section;
     struct nemi_config* cfg = (struct nemi_config*)userptr;
 
     if(STR_MATCH(name, "filepath")) {
@@ -133,7 +131,6 @@ int config_handler__scripts_ini
     const char* name,
     const char* value
 ){
-    (void)section;
     struct nemi* st = (struct nemi*)userptr;
     load_perl_script(st, value, name);
 
@@ -148,7 +145,6 @@ int config_handler__nemi_ini
     const char* name,
     const char* value
 ){
-    (void)section;
     struct nemi_config* cfg = (struct nemi_config*)userptr;
 
     if(STR_MATCH(name, "padding_x")) {
@@ -228,6 +224,8 @@ bool read_config
         return false;
     }
 
+    printf("%s: %s\n", __func__, path.bytes);
+
     if(ini_parse(path.bytes, handler, userptr)) {
         fprintf(stderr, "Cant parse config '%s'\n", path.bytes);
         return false;
@@ -237,7 +235,7 @@ bool read_config
     return true;
 }
 
-bool nemi_read_configs(struct nemi* st, char* configs_dir) {
+bool nemi_read_configs(struct nemi* st, const char* configs_dir) {
 
     struct log_settings log_settings = { 0 };
     log_settings.flags |= LOG_ENABLED;
@@ -259,7 +257,7 @@ bool nemi_read_configs(struct nemi* st, char* configs_dir) {
     return true;
 }
 
-bool nemi_load_scripts(struct nemi* st, char* configs_dir) {
+bool nemi_load_scripts(struct nemi* st, const char* configs_dir) {
     return read_config(config_handler__scripts_ini, st, configs_dir, "scripts.ini");
 }
 
@@ -270,3 +268,218 @@ void free_configs(struct nemi* st) {
     freeif(st->cfg.font.filepath);
 }
 
+/*
+enum config_read_pass {
+    READ_LOG_SETTINGS,
+    READ_OTHER_SETTINGS
+};
+
+struct config_values {
+    enum config_read_pass pass;
+    struct nemi* st;
+    struct log_settings log;
+};
+
+
+static
+bool strbool_istrue(const char* str) {
+    return STR_MATCH(str, "true");
+}
+
+static
+int handler
+(
+    void* userptr,
+    const char* section,
+    const char* name,
+    const char* value
+){
+    struct config_values* v = (struct config_values*)userptr;
+
+    if(v->pass == READ_LOG_SETTINGS) { 
+        if(!STR_MATCH(section, "log_settings")) {
+            return 1;
+        }
+
+        if(STR_MATCH(name, "enabled")) {
+            if(!strbool_istrue(value)) {
+                v->log.flags &= ~LOG_ENABLED;
+            }
+        }
+        else
+        if(STR_MATCH(name, "output")) {
+            const size_t output_value_len = strlen(value);
+            if(output_value_len >= sizeof(v->log.output)) {
+                fprintf(stderr, "Config Error: log output value is too long.\n");
+                return 0;
+            }
+
+            memset(v->log.output, 0, sizeof(v->log.output));
+            memcpy(v->log.output, value, output_value_len);
+        }
+        else
+        if(STR_MATCH(name, "use_color")) {
+            if(strbool_istrue(value)) {
+                v->log.flags |= LOG_USE_COLOR;
+            }
+        }
+        else
+        if(STR_MATCH(name, "include_callee")) {
+            if(strbool_istrue(value)) {
+                v->log.flags |= LOG_INCLUDE_CALLEE;
+            }
+        }
+        else
+        if(STR_MATCH(name, "enable_info")) {
+            if(strbool_istrue(value)) {
+                v->log.flags |= LOG_INFO;
+            }
+        }
+        else
+        if(STR_MATCH(name, "enable_warnings")) {
+            if(strbool_istrue(value)) {
+                v->log.flags |= LOG_WARN;
+            }
+        }
+        else
+        if(STR_MATCH(name, "enable_errors")) {
+            if(strbool_istrue(value)) {
+                v->log.flags |= LOG_ERROR;
+            }
+        }
+        
+        return 1; // Continue reading.
+    }
+
+    if(STR_MATCH(section, "scripts")) {
+        load_perl_script(v->st, value);
+    }
+    else
+    if(STR_MATCH(section, "render_settings")) {
+        if(STR_MATCH(name, "vsync")) {
+            v->st->cfg.vsync = strbool_istrue(value);
+        }
+        else
+        if(STR_MATCH(name, "padding_x")) {
+            v->st->cfg.padding_x = atof(value);
+        }
+        else
+        if(STR_MATCH(name, "padding_y")) {
+            v->st->cfg.padding_y = atof(value);
+        }
+        else
+        if(STR_MATCH(name, "line_padding")) {
+            v->st->cfg.line_padding = atof(value);
+        }
+        else
+        if(STR_MATCH(name, "char_spacing")) {
+            v->st->cfg.char_spacing = atof(value);
+        }
+        else
+        if(STR_MATCH(name, "italic_tilt")) {
+            v->st->cfg.italic_tilt = atof(value);
+        }
+        else
+        if(STR_MATCH(name, "underline_height")) {
+            v->st->cfg.underline_height = atoi(value);
+        }
+        else
+        if(STR_MATCH(name, "underline_offset")) {
+            v->st->cfg.underline_offset = atof(value);
+        }
+        else
+        if(STR_MATCH(name, "soft_blink")) {
+            v->st->cfg.soft_blink = strbool_istrue(value);
+        }
+        else
+        if(STR_MATCH(name, "soft_blink_pow")) {
+            v->st->cfg.soft_blink_pow = atof(value);
+        }
+        else
+        if(STR_MATCH(name, "blink_speed")) {
+            v->st->cfg.blink_speed = atof(value);
+        }
+    }
+    else
+    if(STR_MATCH(section, "misc_settings")) {
+        if(STR_MATCH(name, "show_frametime")) {
+            v->st->cfg.show_frametime = strbool_istrue(value);
+        }
+        else
+        if(STR_MATCH(name, "hide_mouse")) {
+            v->st->cfg.hide_mouse = strbool_istrue(value);
+        }
+    }
+
+
+
+    return 1; // Continue reading.
+}
+
+static
+int font_config_handler
+(
+    void* userptr,
+    const char* section,
+    const char* name,
+    const char* value
+){
+    if(!STR_MATCH(section, "font_settings")) { 
+        return 1;
+    }
+   
+    struct nemi_font_config* font_cfg = (struct nemi_font_config*)userptr;
+
+    if(STR_MATCH(name, "font_filepath")) {
+        const size_t value_len = strlen(value);
+        if(value_len >= sizeof(font_cfg->font_filepath)-1) {
+            logprintf(LOG_ERROR, "Font filepath is too long.");
+            return 0;
+        }
+
+        strcpy(font_cfg->font_filepath, value);
+    }
+    else
+    if(STR_MATCH(name, "font_center_char_to_cell")) {
+        font_cfg->font_center_char_to_cell = strbool_istrue(value);
+    }
+
+    return 1;
+}
+
+
+bool nemi_read_config(struct nemi* st, const char* filepath) {
+    struct config_values v = {
+        .st = st,
+        .log = { 0 }
+    };
+
+    v.log.flags = 0;
+    v.log.flags |= LOG_ENABLED;
+
+    v.pass = READ_LOG_SETTINGS;
+    if(ini_parse(filepath, handler, &v)) {
+        fprintf(stderr, "Cant parse config '%s'\n", filepath);
+        return false;
+    }
+    
+    log_init(v.log);
+
+    v.pass = READ_OTHER_SETTINGS;
+    if(ini_parse(filepath, handler, &v)) {
+        fprintf(stderr, "Cant parse config '%s'\n", filepath);
+        return false;
+    }
+
+
+    return true;
+}
+
+bool nemi_read_font_config(struct nemi* st, const char* filepath, struct nemi_font_config* font_cfg) {
+    if(ini_parse(filepath, font_config_handler, font_cfg)) {
+        fprintf(stderr, "Cant parse config '%s', when trying to read font settings.\n", filepath);
+        return false;
+    }
+    return true;
+}
+*/

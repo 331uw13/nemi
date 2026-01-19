@@ -47,6 +47,8 @@ float leaf_draw_char
     float x = (pos_x / (float)g_leaf_ctx->win_width) * 2.0f - 1.0f;
     float y = (pos_y / (float)g_leaf_ctx->win_height) * 2.0f - 1.0f;
 
+
+    float cw_n = (float)glyph->width / (float)font->texture_width;
     float glyph_vertices[] = {
         x,    y-ch, 0.0f, 1.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, y, font->italic,  
         x,    y,    0.0f, 0.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, y, font->italic,  

@@ -19,14 +19,13 @@
 
 
 void vterm_scroll_callback(VTermRect rect, int downward, int rightward, void *userptr) {
-    (void)rect;
-    (void)rightward;
 
     if(downward < 0) {
         return;
     }
 
     struct terminal* term = (struct terminal*)userptr;
+
     if(vterm_screen_is_altscreen(term->vtscrn)) {
         return;
     }

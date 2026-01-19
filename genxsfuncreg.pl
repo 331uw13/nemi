@@ -4,12 +4,10 @@ use warnings;
 
 our $file_in;
 our $file_out;
-our $write_total;
 
 sub appendf {
     #print($_[0]);
     print $file_out $_[0];
-    $write_total += length($_[0]);
 }
 
 sub main {
@@ -38,8 +36,6 @@ sub main {
 
     close($file_in);
     close($file_out);
-
-    print("$write_total bytes was written to '$output_file'\n");
 }
 
 

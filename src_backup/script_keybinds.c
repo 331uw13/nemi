@@ -134,7 +134,7 @@ bool parse_keys_from_str(int* keys, const char* keys_str, size_t keys_str_len) {
     size_t num_args = 0;
     size_t curr_arg_len = 0;
 
-    char* ch = (char*)&keys_str[0];
+    char* ch = &keys_str[0];
     memset(args[0], 0, sizeof(args[0]));
 
     while(ch < keys_str + keys_str_len) {
@@ -181,7 +181,7 @@ bool parse_keys_from_str(int* keys, const char* keys_str, size_t keys_str_len) {
         bool found_key = false;
 
         for(size_t j = 0; j < ARRAY_LEN(KEY_MAP); j++) {
-            const struct keymap_elem* key = &KEY_MAP[j];
+            struct keymap_elem* key = &KEY_MAP[j];
             if(STR_MATCH(kstr, key->str)) {
                 keys[num_keys] = key->glfw_key;
                 num_keys++;
@@ -252,7 +252,7 @@ void handle_script_keybind_event(struct nemi* st, struct perl_script* script) {
     size_t num_keys = 0;
 
     for(size_t i = 0; i < ARRAY_LEN(KEY_MAP); i++) {
-        const struct keymap_elem* key = &KEY_MAP[i];
+        struct keymap_elem* key = &KEY_MAP[i];
         if(glfwGetKey(st->lfctx->glfw_win, key->glfw_key) == GLFW_PRESS) {
             keys[num_keys] = key->glfw_key;
             num_keys++;

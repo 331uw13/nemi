@@ -73,7 +73,7 @@ struct nemi {
 };
 
 
-struct nemi* start_session(char* configs_dir, int leaf_open_flags);
+struct nemi* start_session(const char* configs_dir, int leaf_open_flags);
 void         quit_session(struct nemi* st);
 void         restart_session(struct nemi* st);
 

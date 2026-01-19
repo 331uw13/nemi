@@ -113,7 +113,7 @@ void get_script_reg_events(struct perl_script* script, const char* script_filepa
                 if(string_charptr_find(
                             line, 
                             line_len, 
-                            (char*)event_name->name,
+                            event_name->name,
                             strlen(event_name->name)) >= 0) {
                     script->reg_events |= event_name->num;
                     break;
@@ -148,7 +148,7 @@ bool load_perl_script(struct nemi* st, const char* filepath, const char* name) {
     PERL_SET_CONTEXT(script->perl_interp);
     perl_construct(script->perl_interp);
     
-    char* args[] = { "", (char*)filepath, NULL };
+    char* args[] = { "", filepath, NULL };
     perl_parse(script->perl_interp, NULL, 2, args, NULL);
     
     get_script_reg_events(script, filepath);
@@ -193,6 +193,7 @@ void unload_perl_script(struct perl_script* script) {
 void plscript_call(struct perl_script* script, const char* func) {
     void* old_context = PL_current_context; // Save old context if we are calling functions from scripts.
 
+    PerlInterpreter* my_perl = script->perl_interp;
     PERL_SET_CONTEXT(script->perl_interp);
 
     char* args[] = { NULL };
@@ -204,6 +205,7 @@ void plscript_call(struct perl_script* script, const char* func) {
 void plscript_call_args(struct perl_script* script, const char* func, char** args) {
     void* old_context = PL_current_context;
     
+    PerlInterpreter* my_perl = script->perl_interp;
     PERL_SET_CONTEXT(script->perl_interp);
 
     call_argv(func, G_DISCARD, args); 

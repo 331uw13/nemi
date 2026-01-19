@@ -309,7 +309,7 @@ sub init_script {
 
 #!REGISTER_EVENT
 sub event_help_message {
-    Nemi::create_msg(
+    nemi::create_msg(
         "=== vmode.pl help ===\n\r".
         " VMode or \"Visual mode\" creates another cursor\n\r" .
         " which the user can move around to any cell position on screen.\n\r" .

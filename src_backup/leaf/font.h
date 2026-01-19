@@ -32,8 +32,8 @@ struct font_t {
     float real_space_width;
     float real_tab_width;
 
-    uint32_t max_bitmap_width;
-    uint32_t max_bitmap_height;
+    int max_bitmap_width;
+    int max_bitmap_height;
 
     int char_width;
     int char_height;
@@ -82,6 +82,6 @@ void leaf_measure_text
     ssize_t text_length
 );
 
-void leaf_font_render(struct font_t* font);
+void leaf_font_render(struct leaf_ctx_t* lfctx, struct font_t* font);
 
 #endif

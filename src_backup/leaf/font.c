@@ -69,7 +69,7 @@ static const char FONT_FRAGMENT_SHADER_SRC[] = {
     "}"
 };
 
-void leaf_font_render(struct font_t* font) {
+void leaf_font_render(struct leaf_ctx_t* lfctx, struct font_t* font) {
 
     glBindVertexArray(font->vao);
     glUseProgram(font->shader);
@@ -228,6 +228,10 @@ bool leaf_load_font(struct font_t* font, const char* filepath) {
         glyph->atlas_x = char_index-1;
     }
 
+    printf("Font texture: %ix%i\n",
+            font->texture_width,
+            font->texture_height);
+ 
     glGenTextures(1, &font->texture);
     glBindTexture(GL_TEXTURE_2D, font->texture);
     glTexImage2D(

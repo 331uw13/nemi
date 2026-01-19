@@ -21,7 +21,7 @@ struct nemi* get_state() {
     return g_nemi_state;
 }
 
-struct nemi* start_session(char* configs_dir, int leaf_open_flags) {
+struct nemi* start_session(const char* configs_dir, int leaf_open_flags) {
     struct nemi* st = malloc(sizeof *st);
 
     st->frame_time = 0.001;
@@ -261,7 +261,7 @@ void end_frame(struct nemi* st) {
         }
     }
     //render_rbbuffer_nodes(st, RBNODE_LAYER_LAST);
-    leaf_font_render(&st->font);
+    leaf_font_render(st->lfctx, &st->font);
 
 
     st->last_char_in = 0;
@@ -364,6 +364,10 @@ void trigger_event_for_scripts(struct nemi* st, int event_num,
     }
 
     const char* event_name = plscript_get_event_name(event_num);
+
+
+    double time_start = glfwGetTime();
+
     for(size_t i = 0; i < st->num_scripts; i++) {
         struct perl_script* script = &st->scripts[i];
         if(!script->is_loaded) {
@@ -453,13 +457,8 @@ void glfw_char_callback(GLFWwindow* window, uint32_t codepoint) {
 }
 
 void glfw_scroll_callback(GLFWwindow* window, double x_offset, double y_offset) {
-    //struct nemi* st = (struct nemi*)glfwGetWindowUserPointer(window);
-
-    (void)window;
     (void)x_offset;
-    (void)y_offset;
-
-    // Currently not used...
+    struct nemi* st = (struct nemi*)glfwGetWindowUserPointer(window);
 }
 
 void glfw_window_resize_callback(GLFWwindow* window, int width, int height) {
@@ -568,7 +567,7 @@ void nemi_help(struct nemi* st, const char* what) {
     // Check if the string is equal to any script names
     // the user may be asking information about script.
     
-    for(size_t i = 0; i < st->num_scripts; i++) {
+    for(int i = 0; i < st->num_scripts; i++) {
         struct perl_script* script = &st->scripts[i];
         if(!script->is_loaded) {
             continue;
