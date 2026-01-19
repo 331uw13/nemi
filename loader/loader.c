@@ -5,8 +5,10 @@
 #include <dlfcn.h>
 
 
+
 #include "../src/nemi.h"
 #include "../src/string.h"
+#include "../src/memory.h"
 
 
 struct nemi*(*nemi_start_session)(const char*, int);
@@ -14,9 +16,10 @@ void(*nemi_quit_session)(struct nemi*);
 void(*nemi_update_frame)(struct nemi*);
 void(*nemi_create_msg)(struct nemi*st, const char*, ...);
 void(*nemi_write_term)(struct terminal*, enum term_write_target, char* fmt, ...);
+void(*nemi_prepare_from_hotreload)(struct nemi*);
 void* libnemi;
 
-static bool do_hotreload = false;
+static bool do_full_restart = false;
 
 bool load_libnemi() {
     libnemi = dlopen("./libnemi.so", RTLD_NOW);
@@ -30,17 +33,20 @@ bool load_libnemi() {
     nemi_update_frame = dlsym(libnemi, "update_frame");
     nemi_create_msg   = dlsym(libnemi, "create_msg");
     nemi_write_term   = dlsym(libnemi, "write_term");
+    nemi_prepare_from_hotreload = dlsym(libnemi, "prepare_from_hotreload");
     // TODO: Add more error checking.
 
     return true;
 }
 
+/*
 void close_libnemi(struct nemi* st) {
     nemi_quit_session(st);
     dlclose(libnemi);
 }
+*/
 
-
+/*
 bool recompile_src(struct nemi* st) {
     struct string_t cmd = string_create(0);
     string_append(&cmd, "(cd ", -1);
@@ -69,100 +75,113 @@ bool recompile_src(struct nemi* st) {
     int exit_code = WEXITSTATUS(pclose(pipe));
     return exit_code == 0;
 }
+*/
 
-void print_help() {
-    printf(
-        "Nemi - Terminal Emulator arguments:\n\n"
-        " -exec      :  Execute command at startup.\n"
-        " -noresize  :  Creates window which cannot be resized.\n\n"
-    );
-}
+struct arguments {
+    char* configs_dir;
+    char* startup_cmd;
+    int   leaf_open_flags;
+};
 
-// Returns index where 'arg' is found from 'argv'
-// If its not found -1 is returned.
-int argument_exists(int argc, char** argv, const char* arg) {
-    for(int i = 1; i < argc; i++) {
-        if(strcmp(argv[i], arg) == 0) {
-            return i;
-        }
-    }
-    return -1;
-}
-
-void run(int argc, char** argv) {
-    const char* configs_dir = "./configs";
-    char* startup_cmd = NULL;
-
-    struct nemi* st = NULL;
-    int leaf_open_flags = 0;
-
-
-    if(argc > 1) {
-        int arg_index = -1;
-
-        if(argument_exists(argc, argv, "-help") > 0) {
-            print_help();
-        }
-
-        if(argument_exists(argc, argv, "-noresize") > 0) {
-            leaf_open_flags |= LEAF_NO_RESIZE;
-        }
-        
-        if((arg_index = argument_exists(argc, argv, "-exec")) > 0) {
-            if(arg_index+1 >= argc) {
-                print_help();
-            }
-            else {
-                startup_cmd = strdup(argv[arg_index+1]);
-            }
-        }
-    }
-
+void run(struct arguments* args) {
     load_libnemi();
-    st = nemi_start_session(configs_dir, leaf_open_flags);
-    st->flags |= FLG_RECOMPILING_SUPPORTED;
+    struct nemi* st = nemi_start_session(args->configs_dir, args->leaf_open_flags);
 
-    if(startup_cmd) {
-        nemi_write_term(st->terminal, TERM_WRITE_PTY, startup_cmd);
+    st->flags |= FLG_RESTARTING_SUPPORTED;
+    st->flags |= FLG_HOTRELOADING_SUPPORTED;
+
+    if(args->startup_cmd) {
+        nemi_write_term(st->terminal, TERM_WRITE_PTY, args->startup_cmd);
         nemi_write_term(st->terminal, TERM_WRITE_PTY, "\n");
     }
 
     while(!glfwWindowShouldClose(st->lfctx->glfw_win)) {
-        if(glfwGetKey(st->lfctx->glfw_win, GLFW_KEY_LEFT_CONTROL)
-        && glfwGetKey(st->lfctx->glfw_win, GLFW_KEY_T)) {
-            do_hotreload = true;
+        if(st->flags & FLG_LOADER_RESTART_SESSION) {
+            printf("\033[1;32m Restarting...\033[0m\n");
+            st->flags &= ~FLG_LOADER_RESTART_SESSION;
+            do_full_restart = true;
             break;
         }
 
-        if(st->flags & FLG_LOADER_SHOULD_RECOMPILE) {
-            st->flags &= ~FLG_LOADER_SHOULD_RECOMPILE;
-            if(recompile_src(st)) {
-                do_hotreload = true;
-                break;
-            }
-            else {
-                nemi_create_msg(st, "\033[31mRecompiling failed.\033[0m");
-            }
+        if(st->flags & FLG_LOADER_HOTRELOAD_SESSION) {
+            printf("\033[1;32m Hotreloading...\033[0m\n");
+            st->flags &= ~FLG_LOADER_HOTRELOAD_SESSION;
+            dlclose(libnemi);
+            load_libnemi();
+
+            // We need to set some global variables again after
+            // hotreloading is done.
+            nemi_prepare_from_hotreload(st);
         }
+
         nemi_update_frame(st);
     }
 
+    nemi_quit_session(st);
+    dlclose(libnemi);
+}
 
-    if(startup_cmd) {
-        free(startup_cmd);
+void print_help() {
+    printf(
+        "Nemi - Terminal Emulator\n\n"
+        " -exec <command>             Execute command at startup.\n"
+        " -cfgdir <directory>         Specify configurations directory.\n"
+        " -noresize                   Creates window which cannot be resized.\n"
+        "\n"
+        "Version: %s, build: %s\n"
+        "Bug reports: https://github.com/331uw13/nemi  Thank you!:)\n",
+
+        NEMI_VERSION_STR,
+#ifdef DEVBUILD
+        "(development)"
+#else
+        "(release)"
+#endif
+    );
+}
+
+struct arguments parse_arguments(int argc, char** argv) {
+    struct arguments args = { 0 };
+    for(int i = 0; i < argc; i++) {
+        char* current_arg = argv[i];
+        bool has_next = (i+1 < argc);
+       
+        if(strcmp(current_arg, "help") == 0
+        || strcmp(current_arg, "-help") == 0
+        || strcmp(current_arg, "--help") == 0) { 
+            print_help();
+        }
+        else
+        if(strcmp(current_arg, "-noresize") == 0) {
+            args.leaf_open_flags |= LEAF_NORESIZE;
+        }
+        else
+        if(strcmp(current_arg, "-exec") == 0 && has_next) {
+            args.startup_cmd = strdup(argv[i+1]);
+            i++; // Skip next.
+        }
     }
-    close_libnemi(st);
+
+    return args;
 }
 
 
 int main(int argc, char** argv) {
-reload:
-    run(argc, argv);
-    if(do_hotreload) {
-        do_hotreload = false;
-        printf("\033[1;32m Reloading...\033[0m\n");
-        goto reload;
+    libnemi = NULL;
+    struct arguments args = parse_arguments(argc, argv);
+    if(args.configs_dir == NULL) {
+        args.configs_dir = strdup("./configs");
     }
+
+restart:
+    run(&args);
+    if(do_full_restart) {
+        do_full_restart = false;
+        goto restart;
+    }
+
+    freeif(args.configs_dir);
+    freeif(args.startup_cmd);
+    
     return 0;
 }
-

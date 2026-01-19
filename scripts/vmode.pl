@@ -12,6 +12,10 @@ our $select_start_x;
 our $select_start_y;
 our $select_mode_enabled;
 our $block_select_enabled;
+our $word_oncursor;
+our $word_oncursor_len;
+our $word_oncursor_x;
+our $word_oncursor_y;
 
 our $cursor_color;
 our $select_bg_color;
@@ -95,6 +99,52 @@ sub draw_selected_cells {
     }
 }
 
+
+sub update_word_oncursor_highlight {
+    if($word_oncursor_len == 0) {
+        return;
+    }
+    for(my $x = $word_oncursor_x; $x < $word_oncursor_x + $word_oncursor_len; $x++) {
+        nemi::term_set_cell_custom_attrs($x, $word_oncursor_y, 0x2);
+    }
+}
+
+sub disable_word_oncursor_highlight {
+    if($word_oncursor_len == 0) {
+        return;
+    }
+    for(my $x = $word_oncursor_x; $x < $word_oncursor_x + $word_oncursor_len; $x++) {
+        nemi::term_clear_cell_custom_attrs($x, $word_oncursor_y);
+    }
+}
+
+sub find_word_oncursor {
+    $word_oncursor = "";
+    $word_oncursor_len = 0;
+
+    my $line = "";
+    my $term_cols = nemi::term_get_cols();
+    for(my $i = 0; $i < $term_cols; $i++) {
+        my $ch = nemi::term_get_char($i, $cursor_y);
+        if($ch eq 0) {
+            last;
+        }
+        $line .= chr($ch);
+    }
+
+
+    my $begin = rindex($line, " ", $cursor_x) + 1;
+    my $end   = index($line, " ", $cursor_x);  
+    if($begin < 0) { $begin = 0; }
+    if($end < 0)   { $end = length($line); }
+
+    $word_oncursor_x = $begin;
+    $word_oncursor_y = $cursor_y;
+
+    $word_oncursor_len = $end - $begin;
+    $word_oncursor = substr($line, $begin, $word_oncursor_len);
+}
+
 sub move_cursor {
     if($select_mode_enabled) {    
        draw_selected_cells(0);
@@ -120,8 +170,14 @@ sub move_cursor {
         $cursor_y = $cursor_y_max;
     }   
 
+
     if($select_mode_enabled) {    
        draw_selected_cells(1);
+    }
+    else {
+        disable_word_oncursor_highlight(); # Disable old highlight.
+        find_word_oncursor();
+        update_word_oncursor_highlight();
     }
 }
 
@@ -218,6 +274,7 @@ sub event_keybind_press {
             nemi::term_unignore_chars();
             nemi::term_unignore_keys();
             draw_selected_cells(0);
+            disable_word_oncursor_highlight();
         }
         return;
     }
@@ -249,9 +306,13 @@ sub event_keybind_press {
             if(($select_mode_enabled = !$select_mode_enabled)) {
                 $select_start_x = $cursor_x;
                 $select_start_y = $cursor_y;
+                $word_oncursor = "";
+                disable_word_oncursor_highlight();
             }
             else {
                 draw_selected_cells(0);
+                find_word_oncursor();
+                update_word_oncursor_highlight();
             }
         } 
         when("copy_selected") {
@@ -283,11 +344,17 @@ sub init_script {
     $cursor_y = 0;
     $select_start_x = 0;
     $select_start_y = 0;
+    $word_oncursor = "";
+    $word_oncursor_len = 0;
+    $word_oncursor_x = 0;
+    $word_oncursor_y = 0;
 
     $cursor_color = 0xA03366;
     $select_bg_color = 0x6D2446;
     $select_fg_color = 0xDD9FBC;
 
+    # Note: word separators has to be written as integers
+    # because 'nemi::term_get_char()' returns int.
     @word_separators = ( 0x0, 0x20 );
 
     nemi::add_keybind($script_name, "toggle", "lctrl + k");

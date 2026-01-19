@@ -25,3 +25,10 @@ void* nemi_reallocz_ifneed(void* ptr, struct reallocz_args args) {
 }
 
 
+
+void freeif(void* ptr) {
+    if(ptr) {
+        free(ptr);
+    }
+}
+

@@ -31,6 +31,20 @@
 }
 */
 
+XS(xsw_restart) {
+    dXSARGS;
+    (void)items;
+    struct nemi* st = get_state();
+    restart_session(st);
+}
+
+XS(xsw_hotreload) {
+    dXSARGS;
+    (void)items;
+    struct nemi* st = get_state();
+    hotreload_session(st);
+}
+
 XS(xsw_draw_rect) {
     dXSARGS;
     (void)items;
@@ -121,14 +135,6 @@ XS(xsw_term_get_yscroll_offset) {
     (void)items;
     struct nemi* st = get_state();
     XSRETURN_IV(st->terminal->sb.offset);
-}
-
-XS(xsw_recompile) {
-    dXSARGS;
-    (void)items;
-    struct nemi* st = get_state();
-    nemi_recompile_src(st);
-    XSRETURN_EMPTY;
 }
 
 XS(xsw_add_keybind) {

@@ -5,6 +5,8 @@
 #include "nemi.h"
 #include "nemi_config.h"
 #include "common.h"
+#include "memory.h"
+
 #include "thirdparty/stb_ds.h"
 
 
@@ -20,6 +22,12 @@ void glfw_char_callback(GLFWwindow* window, uint32_t codepoint);
 struct nemi* get_state() {
     return g_nemi_state;
 }
+
+void prepare_from_hotreload(struct nemi* st) {
+    leaf_set_drawing_context(st->lfctx);
+    g_nemi_state = st;
+}
+
 
 struct nemi* start_session(char* configs_dir, int leaf_open_flags) {
     struct nemi* st = malloc(sizeof *st);
@@ -46,8 +54,6 @@ struct nemi* start_session(char* configs_dir, int leaf_open_flags) {
         return NULL;
     }
    
-
-    st->flags |= FLG_FONT_LOADED;
 
     st->font.center_char_to_cell = st->cfg.font.center_char_to_cell;
     st->font.spacing = 0.2f;
@@ -124,9 +130,7 @@ struct nemi* start_session(char* configs_dir, int leaf_open_flags) {
 }
 
 void quit_session(struct nemi* st) {
-    if(st->flags & FLG_FONT_LOADED) {
-        leaf_unload_font(&st->font);
-    }
+    leaf_unload_font(&st->font);
 
     for(uint16_t i = 0; i < st->num_terminals; i++) {
         close_terminal(&st->terminals[i]);
@@ -633,6 +637,7 @@ void nemi_message_script_keybinds(struct nemi* st, const char* script_name) {
     free_string(&tmpkey_str);
 }
 
+/*
 void nemi_recompile_src(struct nemi* st) {
     if(st->cfg.main.source_dir == NULL
     || (strlen(st->cfg.main.source_dir) == 0)) {
@@ -647,5 +652,26 @@ void nemi_recompile_src(struct nemi* st) {
     }
 
     st->flags |= FLG_LOADER_SHOULD_RECOMPILE;
+}
+*/
+
+void restart_session(struct nemi* st) {
+    if(!(st->flags & FLG_RESTARTING_SUPPORTED)) {
+        create_msg(st, "\033[31mRestarting is not supported by current loader.\n\r"
+                       "or 'FLG_RESTARTING_SUPPORTED' was not set by loader.\033[0m\n\r");
+        return;
+    }
+
+    st->flags |= FLG_LOADER_RESTART_SESSION;
+}
+
+void hotreload_session(struct nemi* st) {
+    if(!(st->flags & FLG_HOTRELOADING_SUPPORTED)) {
+        create_msg(st, "\033[31mHotReloading is not supported by current loader.\n\r"
+                       "or 'FLG_RESTARTING_SUPPORTED' was not set by loader.\033[0m\n\r");
+        return;
+    }
+
+    st->flags |= FLG_LOADER_HOTRELOAD_SESSION;
 }
 

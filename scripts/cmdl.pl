@@ -13,6 +13,9 @@ our $cursor_color;
 our $input_fg_color;
 our $input_bg_color;
 
+# Ideas:
+# Auto complete
+# Command to show all functions.
 
 
 sub execute_cmd {
@@ -28,7 +31,6 @@ sub execute_cmd {
         nemi::create_msg("$retval");
     }
 }
-
 
 #!REGISTER_EVENT
 sub event_render {

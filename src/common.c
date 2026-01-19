@@ -6,13 +6,6 @@
 
 
 
-
-void freeif(void* ptr) {
-    if(ptr) {
-        free(ptr);
-    }
-}
-
 int clampi(int x, int min, int max) {
     if(x < min) {
         return min;

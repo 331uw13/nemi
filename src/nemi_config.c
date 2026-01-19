@@ -4,6 +4,7 @@
 #include "nemi.h"
 #include "nemi_config.h"
 #include "common.h"
+#include "memory.h"
 #include "string.h"
 
 

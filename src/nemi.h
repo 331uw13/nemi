@@ -13,10 +13,13 @@
 #include "log.h"
 #include "string.h"
 
-#define FLG_FONT_LOADED (1 << 0)
-#define FLG_RECOMPILING_SUPPORTED (1 << 1)  // The loader must support hotreloading too.
-#define FLG_LOADER_SHOULD_RECOMPILE (1 << 2) // If 'nemi_recompile_src' is called this flag is set
-                                             // and its the loaders responsibility to recompile.
+#define NEMI_VERSION_STR "0.01"
+
+// Flags for 'struct nemi':
+#define FLG_HOTRELOADING_SUPPORTED   (1 << 1)
+#define FLG_RESTARTING_SUPPORTED     (1 << 2)
+#define FLG_LOADER_HOTRELOAD_SESSION (1 << 3)
+#define FLG_LOADER_RESTART_SESSION   (1 << 4)
 
 #define NEMI_TERMINALS_MAX 16
 #define NEMI_KEYINBUF_MAX 8
@@ -75,7 +78,9 @@ struct nemi {
 
 struct nemi* start_session(char* configs_dir, int leaf_open_flags);
 void         quit_session(struct nemi* st);
-void         restart_session(struct nemi* st);
+void         prepare_from_hotreload(struct nemi* st); // Some global variables must be set again after hotreloading.
+
+//void         restart_session(struct nemi* st);
 
 struct nemi* get_state(); 
 
@@ -119,7 +124,9 @@ void init_default_config(struct nemi* st);
 void nemi_help(struct nemi* st, const char* what);
 void nemi_message_script_keybinds(struct nemi* st, const char* script_name);
 
-void nemi_recompile_src(struct nemi* st);
+void restart_session(struct nemi* st);
+void hotreload_session(struct nemi* st);
+//void nemi_recompile_src(struct nemi* st);
 
 
 

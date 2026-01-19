@@ -27,7 +27,7 @@ struct leaf_ctx_t {
 };
 
 // 'flags' for leaf_open()
-#define LEAF_NO_RESIZE (1 << 0)
+#define LEAF_NORESIZE (1 << 0)
 
 
 struct leaf_ctx_t* leaf_open(const char* title, int width, int height, int flags);

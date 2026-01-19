@@ -16,7 +16,6 @@
 
 
 
-void freeif(void* ptr);
 int  clampi(int x, int min, int max);
 bool chararray_contains(char* buf, size_t size, char ch);
 

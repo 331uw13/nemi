@@ -5,6 +5,7 @@
 #include "script.h"
 #include "nemi.h"
 #include "common.h"
+#include "memory.h"
 #include "string.h"
 #include "nemi_xs_wrappers.h"
 #include "thirdparty/stb_ds.h"

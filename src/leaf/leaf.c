@@ -79,7 +79,7 @@ struct leaf_ctx_t* leaf_open(const char* title, int width, int height, int flags
     }
 
 
-    if(flags & LEAF_NO_RESIZE) {
+    if(flags & LEAF_NORESIZE) {
         glfwWindowHint(GLFW_RESIZABLE, false);
     }
 
@@ -91,7 +91,7 @@ struct leaf_ctx_t* leaf_open(const char* title, int width, int height, int flags
         goto out;
     }
 
-    if(flags & LEAF_NO_RESIZE) {
+    if(flags & LEAF_NORESIZE) {
         glfwSetWindowSizeLimits(ctx->glfw_win, width, height, GLFW_DONT_CARE, GLFW_DONT_CARE);
     }
 

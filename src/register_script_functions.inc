@@ -1,11 +1,12 @@
 // GENERATED CODE. Changes here will be lost when project is compiled.
 // Modify 'nemi_xs_wrappers.h' instead. Then run 'perl genxsfuncreg.pl'.
+newXS("nemi::restart", xsw_restart, __FILE__);
+newXS("nemi::hotreload", xsw_hotreload, __FILE__);
 newXS("nemi::draw_rect", xsw_draw_rect, __FILE__);
 newXS("nemi::draw_rect_cells", xsw_draw_rect_cells, __FILE__);
 newXS("nemi::draw_text", xsw_draw_text, __FILE__);
 newXS("nemi::draw_text_cells", xsw_draw_text_cells, __FILE__);
 newXS("nemi::term_get_yscroll_offset", xsw_term_get_yscroll_offset, __FILE__);
-newXS("nemi::recompile", xsw_recompile, __FILE__);
 newXS("nemi::add_keybind", xsw_add_keybind, __FILE__);
 newXS("nemi::script_keybinds", xsw_script_keybinds, __FILE__);
 newXS("nemi::help", xsw_help, __FILE__);

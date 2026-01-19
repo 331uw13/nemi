@@ -72,7 +72,7 @@ sub check_lib_installed {
 our $FH;
 
 sub f_append {
-    print($_[0]);
+    #print($_[0]);
     print $FH $_[0];
 }
 
@@ -173,6 +173,7 @@ sub main {
     }
 
     f_append(
+        "\n" .
         "LIB_SRC_DIR     = ./src\n" .
         "LOADER_SRC_DIR  = ./loader\n" .
         "OBJ_DIR         = ./obj\n" .
@@ -184,6 +185,14 @@ sub main {
         "LOADER_SRC_FILES = \$(wildcard \$(LOADER_SRC_DIR)/*.c)\n" .
         "LOADER_OBJ_FILES = \$(patsubst \$(LOADER_SRC_DIR)/%.c, \$(OBJ_DIR)/%.o, \$(LOADER_SRC_FILES))\n" .
         "\n" .
+        "BUILD ?= dev\n" .
+        "\n" .
+        "ifeq (\$(BUILD), release)\n" .
+        "\tCCFLAGS += -O2\n" .
+        "else ifeq (\$(BUILD), dev)\n" .
+        "\tCCFLAGS += -ggdb -O0\n" .
+        "\tCCFLAGS += -DDEVBUILD\n" .
+        "endif\n" .
         "\n" .
         "all: pre-build \$(LIBNEMI_TARGET) \$(LOADER_TARGET) post-build\n" .
         "\n" .
@@ -210,26 +219,30 @@ sub main {
         "# Compile and link loader.\n" .
         "\n" .
         "\$(LOADER_OBJ_FILES): \$(OBJ_DIR)/%.o: \$(LOADER_SRC_DIR)/%.c\n" .
+        "\t\@echo \"\$<\"\n" .
         "\t@\$(CC) \$(CCFLAGS) -c \$< -o \$@\n" .
         "\n" .
         "\$(LOADER_TARGET): \$(LOADER_OBJ_FILES)\n" .
-        "\t@\$(CC) \$(LDFLAGS) \$(LOADER_OBJ_FILES) \$(OBJ_DIR)/string.o -o \$@\n" .
+        "\t@\$(CC) \$(LDFLAGS) \$(LOADER_OBJ_FILES) \$(OBJ_DIR)/string.o \$(OBJ_DIR)/memory.o -o \$@\n" .
         "\n" .
         "\n" .
         "clean:\n" .
         "\t\@rm -v \$(LOADER_OBJ_FILES)\n" .
         "\t\@rm -v \$(LIB_OBJ_FILES)\n" .
         "\t\@rm -v \$(LOADER_TARGET)\n" .
+        "\t\@rm -v \$(LIBNEMI_TARGET)\n" .
         "\t\@rm -v src/register_script_functions.inc\n" .
+        "\n" .
+        "dev:\n" .
+        "\tmake BUILD=dev\n" .
+        "release:\n" .
+        "\tmake BUILD=release\n" .
         "\n" .
         ".PHONY: all clean\n"
     );
 
-    print("$perl_prefix\n");
-
-    
     close($FH);
-    print("\n\033[1;32mMakefile was created.\033[0m\n");
+    print("\n\033[1;32mMakefile configuration done!\033[0m\n");
 }
 
 main();

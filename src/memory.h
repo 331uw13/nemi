@@ -15,5 +15,7 @@ struct reallocz_args {
 // The pointer is returned untouched if no need to reallocate memory.
 void* nemi_reallocz_ifneed(void* ptr, struct reallocz_args args);
 
+// Free memory if 'ptr' is not NULL.
+void freeif(void* ptr);
 
 #endif

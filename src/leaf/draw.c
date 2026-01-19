@@ -42,10 +42,12 @@ float leaf_draw_char
 
     float cw = ch_width / (float)g_leaf_ctx->win_width;
     float ch = ch_height / (float)g_leaf_ctx->win_height;
+    
   
     pos_y = g_leaf_ctx->win_height - pos_y;
     float x = (pos_x / (float)g_leaf_ctx->win_width) * 2.0f - 1.0f;
     float y = (pos_y / (float)g_leaf_ctx->win_height) * 2.0f - 1.0f;
+    
 
     float glyph_vertices[] = {
         x,    y-ch, 0.0f, 1.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, y, font->italic,  
@@ -58,6 +60,7 @@ float leaf_draw_char
 
 //    printf("%s: %li / %li\n", __func__, 
 //            font->vbo_data_offset, font->vbo_memsize);
+    
 
     glBindBuffer(GL_ARRAY_BUFFER, font->vbo);
     glBufferSubData(
