@@ -1,0 +1,30 @@
+# Some ideas for improvement.
+
+
+
+
+
+# vmode.pl
+
+Add mouse support
+
+-------------------
+
+Keybind to go into select mode and select word on cursor.
+
+-------------------
+
+Record scrollback buffer offsets when command is executed and after the command has been executed
+Then add keybind to jump to the next offset.
+This allows easy and fast copy of text output in vmode select.
+
+-------------------
+
+Open files and directories
+
+-------------------
+
+Change current directory to selected path
+
+
+```

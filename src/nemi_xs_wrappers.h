@@ -31,11 +31,26 @@
 }
 */
 
+XS(xsw_draw_enable_scroll_offset) {
+    dXSARGS;
+    (void)items;
+    struct nemi* st = get_state();
+    st->flags |= FLG_SCRIPTDRAW_ADJUSTPOS_TO_SCROLL;
+}
+
+XS(xsw_draw_disable_scroll_offset) {
+    dXSARGS;
+    (void)items;
+    struct nemi* st = get_state();
+    st->flags &= ~FLG_SCRIPTDRAW_ADJUSTPOS_TO_SCROLL;
+}
+
 XS(xsw_restart) {
     dXSARGS;
     (void)items;
     struct nemi* st = get_state();
     restart_session(st);
+    XSRETURN_EMPTY;
 }
 
 XS(xsw_hotreload) {
@@ -43,6 +58,7 @@ XS(xsw_hotreload) {
     (void)items;
     struct nemi* st = get_state();
     hotreload_session(st);
+    XSRETURN_EMPTY;
 }
 
 XS(xsw_draw_rect) {
@@ -53,7 +69,9 @@ XS(xsw_draw_rect) {
     int w = SvIV(ST(2));
     int h = SvIV(ST(3));
     int color = SvIV(ST(4));
+    struct nemi* st = get_state();
     leaf_draw_rect(x, y, w, h, hexrgb_to_color_type(color));
+    XSRETURN_EMPTY;
 }
 
 XS(xsw_draw_rect_cells) {
@@ -65,12 +83,14 @@ XS(xsw_draw_rect_cells) {
     int h = SvIV(ST(3));
     int color = SvIV(ST(4));
     struct nemi* st = get_state();
+
     leaf_draw_rect(
             coltox(st, x),
-            rowtoy(st, y),
+            rowtoy(st, (st->flags & FLG_SCRIPTDRAW_ADJUSTPOS_TO_SCROLL) ? (y - st->terminal->yscroll) : y),
             w * st->font.char_width,
             h * st->font.char_height,
             hexrgb_to_color_type(color));
+    XSRETURN_EMPTY;
 }
 
 XS(xsw_draw_text) {
@@ -80,10 +100,9 @@ XS(xsw_draw_text) {
     int y = SvIV(ST(1));
     STRLEN text_len;
     char* text = SvPV(ST(2), text_len);
-    
     int color = SvIV(ST(3));
-    
     struct nemi* st = get_state();
+    
     struct color_t text_color = hexrgb_to_color_type(color);
     
     float old_font_r = st->font.char_color_r;
@@ -98,6 +117,7 @@ XS(xsw_draw_text) {
     st->font.char_color_r = old_font_r;
     st->font.char_color_g = old_font_g;
     st->font.char_color_b = old_font_b;
+    XSRETURN_EMPTY;
 }
 
 XS(xsw_draw_text_cells) {
@@ -107,10 +127,9 @@ XS(xsw_draw_text_cells) {
     int y = SvIV(ST(1));
     STRLEN text_len;
     char* text = SvPV(ST(2), text_len);
-    
     int color = SvIV(ST(3));
-    
     struct nemi* st = get_state();
+    
     struct color_t text_color = hexrgb_to_color_type(color);
     
     float old_font_r = st->font.char_color_r;
@@ -122,19 +141,20 @@ XS(xsw_draw_text_cells) {
 
     leaf_draw_text(&st->font,
             coltox(st, x),
-            rowtoy(st, y),
+            rowtoy(st, (st->flags & FLG_SCRIPTDRAW_ADJUSTPOS_TO_SCROLL) ? (y - st->terminal->yscroll) : y),
             text, text_len);
 
     st->font.char_color_r = old_font_r;
     st->font.char_color_g = old_font_g;
     st->font.char_color_b = old_font_b;
+    XSRETURN_EMPTY;
 }
 
-XS(xsw_term_get_yscroll_offset) {
+XS(xsw_term_get_yscroll) {
     dXSARGS;
     (void)items;
     struct nemi* st = get_state();
-    XSRETURN_IV(st->terminal->sb.offset);
+    XSRETURN_IV(st->terminal->yscroll);
 }
 
 XS(xsw_add_keybind) {
@@ -155,6 +175,7 @@ XS(xsw_add_keybind) {
             event_name,
             keybind_str,
             keybind_str_len);
+    XSRETURN_EMPTY;
 }
 
 XS(xsw_script_keybinds) { 
@@ -164,6 +185,7 @@ XS(xsw_script_keybinds) {
     char*  script_name = SvPV(ST(0), len);
     struct nemi* st = get_state();
     nemi_message_script_keybinds(st, script_name);
+    XSRETURN_EMPTY;
 }
 
 XS(xsw_help) {
@@ -305,13 +327,13 @@ XS(xsw_term_show_cells) {
     XSRETURN_EMPTY;
 }
 
-XS(xsw_term_scroll_y) {
+XS(xsw_term_yscroll) {
     dXSARGS;
     (void)items;
     int offset = SvIV(ST(0));
 
     struct nemi* st = get_state();
-    terminal_scroll(st->terminal, offset);
+    st->terminal->yscroll += offset;
     XSRETURN_EMPTY;
 }
 
@@ -391,6 +413,7 @@ XS(xsw_create_msg) {
     struct nemi* st = get_state();
 
     create_msg(st, str);
+    XSRETURN_EMPTY;
 }
 
 

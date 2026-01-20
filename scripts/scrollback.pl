@@ -11,10 +11,10 @@ sub event_keybind_press {
     my $event_name = $_[0];
     given($event_name) {
         when("scroll_up") {
-            nemi::term_scroll_y(1);
+            nemi::term_yscroll(-1);
         }
         when("scroll_down") {
-            nemi::term_scroll_y(-1);
+            nemi::term_yscroll(1);
         }
     }
 }

@@ -22,6 +22,7 @@ our $select_bg_color;
 our $select_fg_color;
 
 
+
 sub min {
     return $_[0] < $_[1] ? $_[0] : $_[1];
 }
@@ -104,7 +105,12 @@ sub update_word_oncursor_highlight {
     if($word_oncursor_len == 0) {
         return;
     }
-    for(my $x = $word_oncursor_x; $x < $word_oncursor_x + $word_oncursor_len; $x++) {
+    my $begin = $word_oncursor_x;
+    my $end   = $word_oncursor_x + $word_oncursor_len;
+     if($begin > 0) {
+        $begin++;
+    }
+    for(my $x = $begin; $x < $end; $x++) {
         nemi::term_set_cell_custom_attrs($x, $word_oncursor_y, 0x2);
     }
 }
@@ -113,7 +119,12 @@ sub disable_word_oncursor_highlight {
     if($word_oncursor_len == 0) {
         return;
     }
-    for(my $x = $word_oncursor_x; $x < $word_oncursor_x + $word_oncursor_len; $x++) {
+    my $begin = $word_oncursor_x;
+    my $end   = $word_oncursor_x + $word_oncursor_len;
+    if($begin > 0) {
+        $begin++;
+    }
+    for(my $x = $begin; $x < $end; $x++) {
         nemi::term_clear_cell_custom_attrs($x, $word_oncursor_y);
     }
 }
@@ -132,8 +143,7 @@ sub find_word_oncursor {
         $line .= chr($ch);
     }
 
-
-    my $begin = rindex($line, " ", $cursor_x) + 1;
+    my $begin = rindex($line, " ", $cursor_x);
     my $end   = index($line, " ", $cursor_x);  
     if($begin < 0) { $begin = 0; }
     if($end < 0)   { $end = length($line); }
@@ -143,6 +153,8 @@ sub find_word_oncursor {
 
     $word_oncursor_len = $end - $begin;
     $word_oncursor = substr($line, $begin, $word_oncursor_len);
+
+    #print("$word_oncursor\n");
 }
 
 sub move_cursor {
@@ -162,10 +174,10 @@ sub move_cursor {
     if($cursor_x > $cursor_x_max) {
         $cursor_x = $cursor_x_max;
     }
- 
-    if($cursor_y < 0) { 
-        $cursor_y = 0;
-    }
+
+    # Allow cursor_y to go negative on purpose, 
+    # It will get characters from the terminal's scrollback buffer
+    
     if($cursor_y > $cursor_y_max) {
         $cursor_y = $cursor_y_max;
     }   
@@ -240,17 +252,16 @@ sub event_render {
         return;
     }
 
+    nemi::draw_enable_scroll_offset();
     nemi::draw_rect_cells($cursor_x, $cursor_y, 1, 1, $cursor_color);
+    nemi::draw_disable_scroll_offset();
+
 
     my $info_text = "";
-
     if($select_mode_enabled) {
         $info_text .= $block_select_enabled ? "(b-select)" : "(select)";
     }
-
     $info_text .= " [vmode]";
-
-
     my $info_text_x = nemi::term_get_cols() - length($info_text)-1;
     my $info_text_y = 0;
     nemi::draw_text_cells($info_text_x, $info_text_y, $info_text, $cursor_color);

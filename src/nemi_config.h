@@ -74,40 +74,11 @@ struct nemi_config {
                          // but will work on that in the future..
     
     struct color_t colors [NEMI_COLOR_COUNT];
-    /*
-    int padding_x;
-    int padding_y;
-    int line_padding;
-    bool vsync;
-    bool show_frametime;
-    float italic_tilt;
-    int   underline_height;
-    float underline_offset;
-    bool hide_mouse;
-    bool soft_blink;
-    float soft_blink_pow;
-    float blink_speed;
-    float char_spacing;
-    struct color_t colors [NEMI_COLOR_COUNT];
-    */
 };
-
-/*
-struct nemi_font_config {
-    char   font_filepath [256];
-    bool   font_center_char_to_cell;
-};
-*/
-
 
 bool nemi_read_configs(struct nemi* st, char* configs_dir);
 bool nemi_load_scripts(struct nemi* st, char* configs_dir);
 void free_configs(struct nemi* st);
-
-//bool nemi_read_font_config(struct nemi* st, const char* filepath, struct nemi_font_config* font_cfg);
-
-
-
 
 
 #endif

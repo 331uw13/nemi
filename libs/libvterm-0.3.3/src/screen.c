@@ -11,6 +11,9 @@
 
 #undef DEBUG_REFLOW
 
+
+#define FULL_SBBUFFER_ROWS_MAX 1000
+
 /* State of the pen at some moment in time, also used in a cell */
 typedef struct
 {
@@ -73,6 +76,10 @@ struct VTermScreen
 
   /* buffer for a single screen row used in scrollback storage callbacks */
   VTermScreenCell *sb_buffer;
+  
+  /* Full scrollback buffer */
+  ScreenCell *full_sbbuffer; 
+  size_t      full_sbbuffer_num_rows;
 
   ScreenPen pen;
 };
@@ -89,11 +96,22 @@ static inline void clearcell(const VTermScreen *screen, ScreenCell *cell)
 
 static inline ScreenCell *getcell(const VTermScreen *screen, int row, int col)
 {
-  if(row < 0 || row >= screen->rows)
-    return NULL;
   if(col < 0 || col >= screen->cols)
     return NULL;
-  return screen->buffer + (screen->cols * row) + col;
+  
+  if(row < 0) {
+      int64_t sb_row = screen->full_sbbuffer_num_rows - abs(row);
+      if(sb_row < 0 || sb_row >= screen->full_sbbuffer_num_rows) {
+        return NULL;
+      }
+      return screen->full_sbbuffer + (screen->cols * sb_row) + col;
+  }
+  else
+  if(row < screen->rows) {
+    return screen->buffer + (screen->cols * row) + col;
+  }
+
+  return NULL;
 }
 static ScreenCell *alloc_buffer(VTermScreen *screen, int rows, int cols)
 {
@@ -321,10 +339,72 @@ static int erase(VTermRect rect, int selective, void *user)
   erase_internal(rect, selective, user);
   return erase_user(rect, 0, user);
 }
+/*
+static void test_print_sb(VTermScreen* screen) {
+    printf("\033[32m--------------------------------------------------\033[0m\n");
+    for(size_t i = 0; i < screen->full_sbbuffer_num_rows; i++) {
+        for(int k = 0; k < screen->cols; k++) {
+            ScreenCell* sb_cell = &screen->full_sbbuffer[
+                k + i * screen->cols
+            ];
+
+            if(sb_cell->chars[0] == 0) {
+                break;
+            }
+            printf("%c", sb_cell->chars[0]);
+        }
+        printf("\n");
+    }
+    printf("\033[31m--------------------------------------------------\033[0m\n");
+}
+*/
+
+size_t vterm_screen_get_fullsbbuffer_num_rows(const VTermScreen* screen) {
+    return screen->full_sbbuffer_num_rows;
+}
+
+static void push_full_sbbuffer_row(VTermScreen* screen, VTermRect rect) {
+    printf("%s %i, %i, %i, %i\n",__func__,
+            rect.start_col,
+            rect.start_row,
+            rect.end_col,
+            rect.end_row);
+
+    if(screen->full_sbbuffer_num_rows+1 >= FULL_SBBUFFER_ROWS_MAX) {
+        printf("(TODO) %s() %s: Shift scrollback buffer\n", __func__, __FILE__);
+        return;
+    }
+
+    for(int col = rect.start_col; col < rect.end_col; col++) {
+        if(col < 0 || col >= screen->cols) {
+            continue;
+        }
+        ScreenCell* cell = getcell(screen, 0, col);
+
+        ScreenCell* sb_cell = &screen->full_sbbuffer[
+            col + screen->full_sbbuffer_num_rows * screen->cols
+        ];
+
+        sb_cell->pen = cell->pen;
+        memcpy(
+            sb_cell->chars,
+            cell->chars,
+            sizeof(cell->chars)
+        );
+        //printf("%p -> %p\n", cell, sb_cell);
+    }
+
+    screen->full_sbbuffer_num_rows++;
+    //test_print_sb(screen);
+}
 
 static int scrollrect(VTermRect rect, int downward, int rightward, void *user)
 {
-  VTermScreen *screen = user;
+    VTermScreen *screen = user;
+
+    if(downward > 0) {
+        push_full_sbbuffer_row(screen, rect);
+    }
 
   if(screen->damage_merge != VTERM_DAMAGE_SCROLL) {
     vterm_scroll_rect(rect, downward, rightward,
@@ -891,11 +971,12 @@ static VTermScreen *screen_new(VTerm *vt)
   screen->cbdata    = NULL;
 
   screen->buffers[BUFIDX_PRIMARY] = alloc_buffer(screen, rows, cols);
+  screen->full_sbbuffer = alloc_buffer(screen, FULL_SBBUFFER_ROWS_MAX, cols);
+  screen->full_sbbuffer_num_rows = 0;
 
   screen->buffer = screen->buffers[BUFIDX_PRIMARY];
 
   screen->sb_buffer = vterm_allocator_malloc(screen->vt, sizeof(VTermScreenCell) * cols);
-
   vterm_state_set_callbacks(screen->state, &state_cbs, screen);
 
   return screen;
@@ -907,8 +988,8 @@ INTERNAL void vterm_screen_free(VTermScreen *screen)
   if(screen->buffers[BUFIDX_ALTSCREEN])
     vterm_allocator_free(screen->vt, screen->buffers[BUFIDX_ALTSCREEN]);
 
+  vterm_allocator_free(screen->vt, screen->full_sbbuffer);
   vterm_allocator_free(screen->vt, screen->sb_buffer);
-
   vterm_allocator_free(screen->vt, screen);
 }
 

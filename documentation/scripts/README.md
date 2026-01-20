@@ -109,8 +109,9 @@ nemi::term_unignore_chars          < No arguments >
 nemi::term_unignore_keys           < No arguments >
 nemi::term_hide_cells              (col, row, width, height) // Parts of the rendered cells can be
 nemi::term_show_cells              (col, row, width, height) // hidden to make room for your own stuff
-nemi::term_scroll_y                (offset)
-nemi::term_get_char                (column, row)
+nemi::term_yscroll                 (offset)
+nemi::term_get_yscroll             < No arguments >  // Returns offset of the scrollback buffer.
+nemi::term_get_char                (column, row)  // When row goes negative its taken from scrollback buffer
 nemi::term_get_cursor_x            < No arguments >
 nemi::term_get_cursor_y            < No arguments >
 nemi::term_set_cell_custom_fg      (column, row, hex_rgb_color)
@@ -120,7 +121,6 @@ nemi::term_clear_cell_custom_fg    (column, row)
 nemi::term_clear_cell_custom_bg    (column, row)
 nemi::term_clear_cell_custom_attrs (column, row)
 nemi::term_copy_to_clipboard       (start_column, start_row, end_column, end_row) 
-nemi::term_get_yscroll_offset      < No arguments >
 
 
 ////  Rendering  ////
@@ -129,6 +129,12 @@ nemi::draw_rect           (x, y, width, height, hexrgb_color)
 nemi::draw_text           (x, y, text, hexrgb_color)
 nemi::draw_rect_cells     (column, row, width_columns, height_rows, hexrgb_color)
 nemi::draw_text_cells     (column, row, text, hexrgb_color)
+
+// This function can be used to adjust the drawn objects position
+// to move with terminal scrollback buffer offset.
+// Remember to disable it atleast at end of 'event_draw'
+nemi::draw_enable_scroll_offset  < No arguments >
+nemi::draw_disable_scroll_offset < No arguments >
 
 
 ////  Misc  ////

@@ -1,12 +1,14 @@
 // GENERATED CODE. Changes here will be lost when project is compiled.
 // Modify 'nemi_xs_wrappers.h' instead. Then run 'perl genxsfuncreg.pl'.
+newXS("nemi::draw_enable_scroll_offset", xsw_draw_enable_scroll_offset, __FILE__);
+newXS("nemi::draw_disable_scroll_offset", xsw_draw_disable_scroll_offset, __FILE__);
 newXS("nemi::restart", xsw_restart, __FILE__);
 newXS("nemi::hotreload", xsw_hotreload, __FILE__);
 newXS("nemi::draw_rect", xsw_draw_rect, __FILE__);
 newXS("nemi::draw_rect_cells", xsw_draw_rect_cells, __FILE__);
 newXS("nemi::draw_text", xsw_draw_text, __FILE__);
 newXS("nemi::draw_text_cells", xsw_draw_text_cells, __FILE__);
-newXS("nemi::term_get_yscroll_offset", xsw_term_get_yscroll_offset, __FILE__);
+newXS("nemi::term_get_yscroll", xsw_term_get_yscroll, __FILE__);
 newXS("nemi::add_keybind", xsw_add_keybind, __FILE__);
 newXS("nemi::script_keybinds", xsw_script_keybinds, __FILE__);
 newXS("nemi::help", xsw_help, __FILE__);
@@ -22,7 +24,7 @@ newXS("nemi::term_get_cursor_x", xsw_term_get_cursor_x, __FILE__);
 newXS("nemi::term_get_cursor_y", xsw_term_get_cursor_y, __FILE__);
 newXS("nemi::term_hide_cells", xsw_term_hide_cells, __FILE__);
 newXS("nemi::term_show_cells", xsw_term_show_cells, __FILE__);
-newXS("nemi::term_scroll_y", xsw_term_scroll_y, __FILE__);
+newXS("nemi::term_yscroll", xsw_term_yscroll, __FILE__);
 newXS("nemi::term_get_rows", xsw_term_get_rows, __FILE__);
 newXS("nemi::term_get_cols", xsw_term_get_cols, __FILE__);
 newXS("nemi::keydown", xsw_keydown, __FILE__);

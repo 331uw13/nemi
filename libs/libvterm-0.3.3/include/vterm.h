@@ -580,6 +580,8 @@ void   vterm_screen_reset(VTermScreen *screen, int hard);
 size_t vterm_screen_get_chars(const VTermScreen *screen, uint32_t *chars, size_t len, const VTermRect rect);
 size_t vterm_screen_get_text(const VTermScreen *screen, char *str, size_t len, const VTermRect rect);
 
+size_t vterm_screen_get_fullsbbuffer_num_rows(const VTermScreen* screen);
+
 typedef enum {
   VTERM_ATTR_BOLD_MASK       = 1 << 0,
   VTERM_ATTR_UNDERLINE_MASK  = 1 << 1,
