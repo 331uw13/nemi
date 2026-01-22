@@ -5,7 +5,9 @@ You can create and modify perl scripts to customize the terminal emulator's beha
 or add any kind of new features.
 
 > [!NOTE]
-> Scripting support in progress, Currently some functions may change or be removed without any warning.
+> Scripting support in progress, Currently some functions may change or be removed without any warning. 
+>
+> In the future, it will be continued with backward compatibility in mind.
 
 ## Documentation
 
@@ -30,9 +32,30 @@ Then configure the project with
 $ perl configure.pl -using_perlbrew
 ```
 
+
+## About default scripts
+
+### cmdl.pl
+Command line script. You can evaluate perl expressions and the output is going to be written into echo terminal (messages).
+Functions which are listed in the scripting documentation are also available. They start with the prefix `nemi::`.
+Open `scripts/cmdl.pl` and check what is the toggle keybind. Then run `nemi::script_keybinds("cmdl")`.
+It will tell you all keybinds and what they do for the script.
+
+### vmode.pl
+Vmode or "visual mode" creates another cursor for you. You can select text, interact with the word under the second cursor.
+And alot more, see vmode keybinds with command in cmdl: `nemi::script_keybinds("vmode")`
+
+### scrollback.pl
+This script was made to allow easy access to modify the scrolling behaviour.
+
+### general.pl
+Keybind shortcuts to functions. Again see output from `nemi::script_keybinds("general")`
+
+
+----------------
+
 ## Contribute
 All kinds of ideas are welcome! Create pull request or open an issue and we can discuss about it.
-
 
 ----------------
 
