@@ -6,12 +6,6 @@
 
 # vmode.pl
 
-Add mouse support
-
--------------------
-
-Keybind to go into select mode and select word on cursor.
-
 -------------------
 
 Record scrollback buffer offsets when command is executed and after the command has been executed
@@ -25,6 +19,5 @@ Open files and directories
 -------------------
 
 Change current directory to selected path
-
 
 ```

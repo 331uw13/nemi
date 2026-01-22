@@ -12,13 +12,16 @@ our $cmdl_prefix;
 our $cursor_color;
 our $input_fg_color;
 our $input_bg_color;
-
-# Ideas:
-# Auto complete
-# Command to show all functions.
+our @ext_funcs;
+our @cmd_suggestions;
+our $cmd_suggestion_cursor;
 
 
 sub execute_cmd {
+    if(length($cmdl_input) == 0) {
+        return;
+    }
+
     my $retval = eval($cmdl_input);
     if($@) {
         chomp($@);
@@ -43,8 +46,41 @@ sub event_render {
     
     nemi::draw_rect_cells(-1, $draw_row, nemi::term_get_cols()+2, 1, $input_bg_color);
 
+
+
+    my $draw_x = $prefix_len;
+    #foreach my $suggestion (@cmd_suggestions) {
+    for(my $i = $cmd_suggestion_cursor; $i < scalar(@cmd_suggestions); $i++) {
+        my $suggestion = $cmd_suggestions[$i];
+
+
+        nemi::draw_text_cells($draw_x, $draw_row-1, $suggestion, 
+            ($i eq $cmd_suggestion_cursor) ? 0x3f724d : 0x3a3a3a
+        );
+
+        $draw_x += length($suggestion) + 1;
+    }
+
     nemi::draw_rect_cells($cursor_x + $prefix_len, $draw_row, 1, 1, $cursor_color);
     nemi::draw_text_cells(0, $draw_row, $cmdl_prefix . $cmdl_input, $input_fg_color);
+}
+
+sub find_cmd_suggestions {
+    @cmd_suggestions = ( );
+
+    foreach my $func (@ext_funcs) {
+        if(index($func, $cmdl_input) >= 0) {
+            push(@cmd_suggestions, $func);
+        }
+    }
+
+    my $cmd_suggestions_len = scalar(@cmd_suggestions);
+    if($cmd_suggestion_cursor >= $cmd_suggestions_len) {
+        $cmd_suggestion_cursor = $cmd_suggestions_len - 1;
+    }
+    if($cmd_suggestion_cursor < 0) {
+        $cmd_suggestion_cursor = 0;
+    }
 }
 
 #!REGISTER_EVENT
@@ -54,6 +90,7 @@ sub event_char_input {
     }
 
     substr($cmdl_input, $cursor_x, 0) = chr($_[0]);
+    find_cmd_suggestions();
     $cursor_x++;
 }
 
@@ -84,6 +121,7 @@ sub event_keybind_press {
         when("erase_char") {
             if($cursor_x > 0) {
                 substr($cmdl_input, $cursor_x-1, 1, '');
+                find_cmd_suggestions();
                 $cursor_x--;
             }
         }
@@ -97,10 +135,24 @@ sub event_keybind_press {
                 $cursor_x++;
             }
         }
+        when("pick_suggestion") {
+            $cmdl_input = $cmd_suggestions[$cmd_suggestion_cursor];
+            $cursor_x = length($cmdl_input);
+            find_cmd_suggestions();
+        }
         when("execute_cmd") {
             execute_cmd();
+            @cmd_suggestions = ( );
             $cmdl_input = "";
             $cursor_x = 0;
+        }
+        when("cycle_cmd_suggestions_right") {
+            $cmd_suggestion_cursor++;
+            $cmd_suggestion_cursor %= scalar(@cmd_suggestions);
+        }
+        when("cycle_cmd_suggestions_left") {
+            $cmd_suggestion_cursor--;
+            $cmd_suggestion_cursor %= scalar(@cmd_suggestions);
         }
     }
 
@@ -112,7 +164,8 @@ sub init_script {
     $cmdl_prefix = "> ";
     $cmdl_enabled = 0;
     $cursor_x = 0;
-
+    @cmd_suggestions = ( );
+    $cmd_suggestion_cursor = 0;
     $cursor_color = 0x50AE00;
     $input_fg_color = 0xFFFFFF;
     $input_bg_color = 0x171b23;
@@ -122,8 +175,17 @@ sub init_script {
     nemi::add_keybind($script_name, "move_cursor_left", "left");
     nemi::add_keybind($script_name, "move_cursor_right", "right");
     nemi::add_keybind($script_name, "execute_cmd", "enter");
-
-    
+    nemi::add_keybind($script_name, "cycle_cmd_suggestions_left", "lctrl + l");
+    nemi::add_keybind($script_name, "cycle_cmd_suggestions_left", "left");
+    nemi::add_keybind($script_name, "cycle_cmd_suggestions_right", "lctrl + j");
+    nemi::add_keybind($script_name, "cycle_cmd_suggestions_right", "right");
+    nemi::add_keybind($script_name, "pick_suggestion", "tab");
+    foreach my $entry (keys %nemi::) {
+        no strict 'refs';
+        if (defined &{"nemi::$entry"}) {
+            push(@ext_funcs, "nemi::$entry");
+        }
+    }
 }
 
 #!REGISTER_EVENT
