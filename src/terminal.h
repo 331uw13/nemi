@@ -7,6 +7,13 @@
 #include "vec2.h"
 #include "string.h"
 
+
+
+enum terminal_type {
+    ECHO_TERMINAL,
+    SHELL_TERMINAL
+};
+
 struct terminal {
     int          flags;
     int          master_fd;
@@ -15,6 +22,7 @@ struct terminal {
     VTermScreen* vtscrn;
     VTermState*  vtstate;
     bool         is_altscreen;
+    enum terminal_type type;
 
     int yscroll;
     //struct scrollback sb;
@@ -40,7 +48,7 @@ enum term_write_target {
 
 struct nemi;
 
-struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, const char* shell);
+struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, enum terminal_type term_type);
 void             close_terminal(struct terminal* term);
 
 void read_terminal         (struct nemi* st, struct terminal* term);

@@ -64,6 +64,7 @@ struct nemi_config {
         char* source_dir;
         char* recompile_num_cores;
         char* favourite_texteditor;
+        char* shell;
     }
     main;
 

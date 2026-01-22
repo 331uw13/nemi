@@ -129,7 +129,7 @@ sub init_script {
 #!REGISTER_EVENT
 sub event_help_message {
     nemi::create_msg(
-        "=== cmdl.pl help ===\n\r".
+        "=== $script_name.pl help ===\n\r".
         "--------------------\n\r".
         " You can evaluate perl expressions,\n\r".
         " the output is going to be written here.\n\r".

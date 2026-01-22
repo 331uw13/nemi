@@ -160,6 +160,7 @@ bool load_perl_script(struct nemi* st, const char* filepath, const char* name) {
     script->keybind_map = NULL;
     script->is_loaded = true;
     script->name = strdup(name);
+    script->filepath = strdup(filepath);
 
     register_functions(script);
     plscript_call(script, "init_script");
@@ -189,6 +190,8 @@ void unload_perl_script(struct perl_script* script) {
     perl_destruct(script->perl_interp);
     perl_free(script->perl_interp);
     freeif(script->name);
+    freeif(script->filepath);
+    script->is_loaded = false;
 }
 
 void plscript_call(struct perl_script* script, const char* func) {

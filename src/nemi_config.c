@@ -199,6 +199,10 @@ int config_handler__nemi_ini
     if(STR_MATCH(name, "favourite_texteditor")) {
         cfg->main.favourite_texteditor = strdup(value);
     }
+    else
+    if(STR_MATCH(name, "shell")) {
+        cfg->main.shell = strdup(value);
+    }
     else {
         logprintf(LOG_ERROR, "No config entry named '%s' for %s", name, section);
     }
@@ -239,7 +243,6 @@ bool read_config
 }
 
 bool nemi_read_configs(struct nemi* st, char* configs_dir) {
-
     struct log_settings log_settings = { 0 };
     log_settings.flags |= LOG_ENABLED;
     if(read_config(config_handler__log_ini, (void*)&log_settings, configs_dir, "log.ini")) {
@@ -268,6 +271,7 @@ void free_configs(struct nemi* st) {
     freeif(st->cfg.main.source_dir);
     freeif(st->cfg.main.recompile_num_cores);
     freeif(st->cfg.main.favourite_texteditor);
+    freeif(st->cfg.main.shell);
     freeif(st->cfg.font.filepath);
 }
 

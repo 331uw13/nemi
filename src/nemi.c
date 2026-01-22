@@ -80,8 +80,8 @@ struct nemi* start_session(char* configs_dir, int leaf_open_flags) {
     st->win_rows -= 1;
 
     // Spawn default terminal.
-    st->terminal = spawn_terminal(st, st->win_rows, st->win_cols, getenv("SHELL"));
-    st->messages = spawn_terminal(st, st->win_rows, st->win_cols, "/bin/cat");
+    st->terminal = spawn_terminal(st, st->win_rows, st->win_cols, SHELL_TERMINAL);
+    st->messages = spawn_terminal(st, st->win_rows, st->win_cols, ECHO_TERMINAL);
     st->terminal_prev = st->terminal;
     
     write_term(st->messages, TERM_WRITE_VTERM, 
@@ -180,57 +180,6 @@ void switch_terminal_ptr(struct nemi* st, struct terminal* term) {
     st->terminal = term;
 }
 
-/*
-static
-void render_rbbuffer_nodes(struct nemi* st, enum rb_node_layer layer) {
-
-    for(size_t i = 0; i < ARRAY_LEN(st->renderbufs); i++) {
-        struct render_buffer* rb = &st->renderbufs[i];
-        if(rb->num_nodes == 0) {
-            continue;
-        }
-
-        struct rb_node* rnode = rb->node_link_head;
-        
-        while(rnode) {
-            if(rnode->hidden || (rnode->layer != layer)) {
-                rnode = rnode->next;
-                continue;
-            }
-            
-            switch(rnode->type) {
-                case RBNODE_UNUSED: 
-                    logprintf(LOG_WARN, "Trying to render unused rbnode.");
-                    break; // Ignored.
-                   
-                case RBNODE_MESH:
-                    leaf_render_vertices(st->lfctx, 
-                            rnode->mesh.vertices, rnode->mesh.vertices_memsize);
-                    
-                    break;
-
-                case RBNODE_TEXT:
-                    leaf_set_font_color(&st->font, rnode->text.color);
-
-                    leaf_draw_text(&st->font, 
-                            rnode->text.pos_x, rnode->text.pos_y,
-                            rnode->text.data,
-                            rnode->text.len);
-                    break;
-
-                default:
-                    logprintf(LOG_ERROR, "Unknown rbnode type %i", rnode->type);
-                    break;
-
-
-                // More will be added later.
-            }
-
-            rnode = rnode->next;
-        }
-    }
-}
-*/
 
 static
 void begin_frame(struct nemi* st) {
@@ -241,7 +190,6 @@ void begin_frame(struct nemi* st) {
             (float)st->cfg.colors[NEMI_COLOR_BG].b / 255.0f,
             1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
-    //render_rbbuffer_nodes(st, RBNODE_LAYER_FIRST);
 }
 
 
@@ -264,9 +212,8 @@ void end_frame(struct nemi* st) {
             plscript_call(script, "event_render");
         }
     }
-    //render_rbbuffer_nodes(st, RBNODE_LAYER_LAST);
-    leaf_font_render(&st->font);
 
+    leaf_font_render(&st->font);
 
     st->last_char_in = 0;
     st->last_key_in = 0;
@@ -302,7 +249,7 @@ void init_default_config(struct nemi* st) {
     int l_v = 30;   // Low value color component.
 
     st->cfg.colors[NEMI_COLOR_FG] = (struct color_t){ 200, 180, 160 };
-    st->cfg.colors[NEMI_COLOR_BG] = (struct color_t){ 10, 4, 15 };
+    st->cfg.colors[NEMI_COLOR_BG] = (struct color_t){ 4, 4, 10 };
     st->cfg.colors[NEMI_COLOR_BLACK]   = (struct color_t){ 0, 0, 0 };
     st->cfg.colors[NEMI_COLOR_RED]     = (struct color_t){ d_v, l_v, l_v };
     st->cfg.colors[NEMI_COLOR_GREEN]   = (struct color_t){ l_v, d_v, l_v };
@@ -511,31 +458,6 @@ int coltox(struct nemi* st, int col) {
 int rowtoy(struct nemi* st, int row) {
     return row * (st->font.char_height + st->cfg.main.line_padding) + st->cfg.main.padding_y;
 }
-
-/*
-int new_renderbuf(struct nemi* st, int num_nodes_max) {
-    int ret_index = -1;
-
-    for(size_t i = 0; i < ARRAY_LEN(st->renderbufs); i++) {
-        struct render_buffer* rb = &st->renderbufs[i];
-        if(rb->nodes) {
-            continue;
-        }
-
-        rb->nodes = calloc(num_nodes_max, sizeof *rb->nodes);
-        rb->num_nodes_max = num_nodes_max;
-        rb->num_nodes     = 0;
-        rb->node_link_head = NULL;
-        rb->node_link_tail = NULL;
-        logprintf(LOG_INFO, "Created new render buffer with %i nodes.", num_nodes_max);
-
-        ret_index = i;
-        break;
-    }
-
-    return ret_index;
-}
-*/
 
 void font_scale(struct nemi* st, float offset) {
     leaf_set_font_scale(&st->font, st->font.scale + offset);

@@ -87,7 +87,7 @@ const struct keymap_elem KEY_MAP[] = {
     { .str = "down", .glfw_key = GLFW_KEY_DOWN },
     { .str = "up", .glfw_key = GLFW_KEY_UP },
     { .str = "pgup", .glfw_key = GLFW_KEY_PAGE_UP },
-    { .str = "pgdn", .glfw_key = GLFW_KEY_DOWN },
+    { .str = "pgdn", .glfw_key = GLFW_KEY_PAGE_DOWN },
     { .str = "home", .glfw_key = GLFW_KEY_HOME },
     { .str = "end", .glfw_key = GLFW_KEY_END },
     { .str = "capslock", .glfw_key = GLFW_KEY_CAPS_LOCK},
@@ -109,17 +109,36 @@ const struct keymap_elem KEY_MAP[] = {
     { .str = "f12", .glfw_key = GLFW_KEY_F12 }
 };
 
-#define FNV_OFFSET 14695981039346656037UL
-#define FNV_PRIME 1099511628211UL
+//#define FNV_OFFSET 14695981039346656037UL
+//#define FNV_PRIME 1099511628211UL
 
 static
-uint64_t hash_keys(int* keys) {
+uint64_t hash_keys(int* keys, size_t num_keys) {
+    /*
     uint64_t hash = FNV_OFFSET;
     int* k = keys;
     while(k && *k > 0) {
         hash ^= (uint64_t)(uint8_t)(*k);
-        hash *= FNV_PRIME - 3;
+        hash *= FNV_PRIME;
         k++;
+    }
+    return hash;
+    */
+
+    /*
+    uint64_t hash = 7;
+    int* k = keys;
+    while(k && (*k >= 0)) {
+        printf("%i\n", *k);
+        hash = hash * 31 ^ *k;
+        k++;
+    }
+    */
+
+    uint64_t hash = 7;
+    for(size_t i = 0; i < num_keys; i++) {
+        int key = keys[i];
+        hash = hash * 31 ^ key;
     }
     return hash;
 }
@@ -127,7 +146,7 @@ uint64_t hash_keys(int* keys) {
 
 // 'keys_str' is expected to be something like this. Example: "ctrl + a + b"
 static
-bool parse_keys_from_str(int* keys, const char* keys_str, size_t keys_str_len) {
+bool parse_keys_from_str(int* keys, size_t* num_keys_out, const char* keys_str, size_t keys_str_len) {
     
     const size_t key_str_max_len = 24;
     char   args [NEMI_SCRIPTS_KEYBIND_KEYS_MAX][key_str_max_len];
@@ -169,7 +188,6 @@ bool parse_keys_from_str(int* keys, const char* keys_str, size_t keys_str_len) {
     }
     num_args++;
 
-
     // Now we have separated the keys
     // but still need to figure out what do they correspond to.
 
@@ -200,7 +218,7 @@ bool parse_keys_from_str(int* keys, const char* keys_str, size_t keys_str_len) {
         //printf("\n");
     }
 
-    keys[num_keys] = -1;
+    *num_keys_out = num_keys;
     return true;
 }
 
@@ -228,8 +246,8 @@ void add_script_keybind
 
 
     int* keys = calloc(NEMI_SCRIPTS_KEYBIND_KEYS_MAX+1, sizeof *keys);
-
-    if(!parse_keys_from_str(keys, keybind_str, keybind_str_len)) {
+    size_t num_keys = 0;
+    if(!parse_keys_from_str(keys, &num_keys, keybind_str, keybind_str_len)) {
         logprintf(LOG_ERROR, "Failed to parse keys from '%s'", keybind_str);
         free(keys);
         return;
@@ -240,7 +258,7 @@ void add_script_keybind
     value->keys_str = strdup(keybind_str);
     value->event_name = strdup(event_name);
 
-    hmput(script->keybind_map, hash_keys(keys), value);
+    hmput(script->keybind_map, hash_keys(keys, num_keys), value);
 }
 
 void handle_script_keybind_event(struct nemi* st, struct perl_script* script) {
@@ -253,20 +271,22 @@ void handle_script_keybind_event(struct nemi* st, struct perl_script* script) {
 
     for(size_t i = 0; i < ARRAY_LEN(KEY_MAP); i++) {
         const struct keymap_elem* key = &KEY_MAP[i];
+        
         if(glfwGetKey(st->lfctx->glfw_win, key->glfw_key) == GLFW_PRESS) {
             keys[num_keys] = key->glfw_key;
             num_keys++;
+
             if(num_keys >= NEMI_SCRIPTS_KEYBIND_KEYS_MAX) {
                 break;
             }
         }
     }
 
-    struct script_keybind* kb = hmgetp_null(script->keybind_map, hash_keys(keys));
+    struct script_keybind* kb = hmgetp_null(script->keybind_map, hash_keys(keys, num_keys));
     if(kb == NULL) {
         return;
     }
-
+    
     char* event_fn_args[] = {
         kb->value->event_name,
         NULL

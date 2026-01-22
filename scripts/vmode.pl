@@ -16,6 +16,8 @@ our $word_oncursor;
 our $word_oncursor_len;
 our $word_oncursor_x;
 our $word_oncursor_y;
+our $mouse_old_col;
+our $mouse_old_row;
 
 our $cursor_color;
 our $select_bg_color;
@@ -107,7 +109,7 @@ sub update_word_oncursor_highlight {
     }
     my $begin = $word_oncursor_x;
     my $end   = $word_oncursor_x + $word_oncursor_len;
-     if($begin > 0) {
+    if($begin > 0) {
         $begin++;
     }
     for(my $x = $begin; $x < $end; $x++) {
@@ -130,31 +132,31 @@ sub disable_word_oncursor_highlight {
 }
 
 sub find_word_oncursor {
+    my $from_col = $_[0];
+    my $from_row = $_[1];
     $word_oncursor = "";
     $word_oncursor_len = 0;
 
     my $line = "";
     my $term_cols = nemi::term_get_cols();
     for(my $i = 0; $i < $term_cols; $i++) {
-        my $ch = nemi::term_get_char($i, $cursor_y);
+        my $ch = nemi::term_get_char($i, $from_row);
         if($ch eq 0) {
             last;
         }
         $line .= chr($ch);
     }
 
-    my $begin = rindex($line, " ", $cursor_x);
-    my $end   = index($line, " ", $cursor_x);  
+    my $begin = rindex($line, " ", $from_col);
+    my $end   = index($line, " ", $from_col); 
     if($begin < 0) { $begin = 0; }
     if($end < 0)   { $end = length($line); }
 
     $word_oncursor_x = $begin;
-    $word_oncursor_y = $cursor_y;
+    $word_oncursor_y = $from_row;
 
     $word_oncursor_len = $end - $begin;
     $word_oncursor = substr($line, $begin, $word_oncursor_len);
-
-    #print("$word_oncursor\n");
 }
 
 sub move_cursor {
@@ -188,7 +190,7 @@ sub move_cursor {
     }
     else {
         disable_word_oncursor_highlight(); # Disable old highlight.
-        find_word_oncursor();
+        find_word_oncursor($cursor_x, $cursor_y);
         update_word_oncursor_highlight();
     }
 }
@@ -246,6 +248,56 @@ sub get_word_jump_to_direction {
     return $x - $cursor_x;
 }
 
+sub toggle_vmode {
+    if(($vmode_enabled = !$vmode_enabled)) {
+        nemi::term_ignore_chars();
+        nemi::term_ignore_keys();
+        $cursor_x = nemi::term_get_cursor_x() + 1;
+        $cursor_y = nemi::term_get_cursor_y();
+        $select_mode_enabled = 0;
+        $block_select_enabled = 0;
+    
+        # Set mouse old column and row now or "mouse moved" check will get confused.
+        my @mouse_cellpos = nemi::get_mouse_cellpos();
+        $mouse_old_col = $mouse_cellpos[0];
+        $mouse_old_row = $mouse_cellpos[1];
+    }
+    else {
+        nemi::term_unignore_chars();
+        nemi::term_unignore_keys();
+        draw_selected_cells(0);
+        disable_word_oncursor_highlight();
+    }
+}
+
+sub toggle_select_mode {
+    if(($select_mode_enabled = !$select_mode_enabled)) {
+        $select_start_x = $cursor_x;
+        $select_start_y = $cursor_y;
+        $word_oncursor = "";
+        disable_word_oncursor_highlight();
+    }
+    else {
+        draw_selected_cells(0);
+        find_word_oncursor($cursor_x, $cursor_y);
+        update_word_oncursor_highlight();
+    }
+}
+
+sub interact_with_file {
+    if($word_oncursor_len == 0) {
+        return; # TODO: Make this support text from select mode.
+    }
+
+    my $cmd = nemi::get_user_texteditor();
+    $cmd .= " $word_oncursor";
+
+    toggle_vmode();
+    nemi::term_exec($cmd);
+}
+
+
+
 #!REGISTER_EVENT
 sub event_render {
     if(!$vmode_enabled) {
@@ -266,6 +318,19 @@ sub event_render {
     my $info_text_y = 0;
     nemi::draw_text_cells($info_text_x, $info_text_y, $info_text, $cursor_color);
 
+
+
+    my @mouse_cellpos = nemi::get_mouse_cellpos();
+
+    if($mouse_cellpos[0] ne $mouse_old_col or $mouse_cellpos[1] ne $mouse_old_row) {
+        move_cursor(
+            $mouse_cellpos[0] - $cursor_x - 1,
+            $mouse_cellpos[1] - $cursor_y
+        );
+    }
+
+    $mouse_old_col = $mouse_cellpos[0];
+    $mouse_old_row = $mouse_cellpos[1];
 }
 
 #!REGISTER_EVENT
@@ -273,20 +338,7 @@ sub event_keybind_press {
     my $event_name = $_[0];
 
     if($event_name eq "toggle") {
-        if(($vmode_enabled = !$vmode_enabled)) {
-            nemi::term_ignore_chars();
-            nemi::term_ignore_keys();
-            $cursor_x = nemi::term_get_cursor_x() + 1;
-            $cursor_y = nemi::term_get_cursor_y();
-            $select_mode_enabled = 0;
-            $block_select_enabled = 0;
-        }
-        else {
-            nemi::term_unignore_chars();
-            nemi::term_unignore_keys();
-            draw_selected_cells(0);
-            disable_word_oncursor_highlight();
-        }
+        toggle_vmode();
         return;
     }
 
@@ -314,17 +366,7 @@ sub event_keybind_press {
             move_cursor(get_word_jump_to_direction(-1), 0);
         }
         when("toggle_select_mode") {
-            if(($select_mode_enabled = !$select_mode_enabled)) {
-                $select_start_x = $cursor_x;
-                $select_start_y = $cursor_y;
-                $word_oncursor = "";
-                disable_word_oncursor_highlight();
-            }
-            else {
-                draw_selected_cells(0);
-                find_word_oncursor();
-                update_word_oncursor_highlight();
-            }
+            toggle_select_mode();
         } 
         when("copy_selected") {
             if($select_mode_enabled) {
@@ -344,8 +386,29 @@ sub event_keybind_press {
                 draw_selected_cells(1);
             }
         }
-    }
+        when("select_word_oncursor") {
+            if($word_oncursor_len <= 0) {
+                return;
+            }
 
+            if(!$select_mode_enabled) {
+                toggle_select_mode();
+            }
+            
+            $select_start_x = $word_oncursor_x;
+            $select_start_y = $word_oncursor_y;
+            $cursor_x = $word_oncursor_x + $word_oncursor_len;
+            
+            if($select_start_x > 0) {
+                $select_start_x++;
+            }
+
+            draw_selected_cells(1);
+        }
+        when("open_filename_oncursor") {
+            interact_with_file();
+        }
+    }
 }
 
 
@@ -359,6 +422,8 @@ sub init_script {
     $word_oncursor_len = 0;
     $word_oncursor_x = 0;
     $word_oncursor_y = 0;
+    $mouse_old_col = 0;
+    $mouse_old_row = 0;
 
     $cursor_color = 0xA03366;
     $select_bg_color = 0x6D2446;
@@ -382,6 +447,8 @@ sub init_script {
     nemi::add_keybind($script_name, "toggle_select_mode", "s");
     nemi::add_keybind($script_name, "copy_selected", "c");
     nemi::add_keybind($script_name, "toggle_block_select", "b");
+    nemi::add_keybind($script_name, "select_word_oncursor", "x");
+    nemi::add_keybind($script_name, "open_filename_oncursor", "e");
 }
 
 
@@ -393,7 +460,7 @@ sub event_help_message {
         " which the user can move around to any cell position on screen.\n\r" .
         " You can also select and copy text.\n\r" .
         " View files under cursor.\n\r" .
-        " Run 'Nemi::script_keybinds(\"$script_name\")' to see all features.\n\r"
+        " Run 'nemi::script_keybinds(\"$script_name\")' to see all features.\n\r"
     );
 }
 

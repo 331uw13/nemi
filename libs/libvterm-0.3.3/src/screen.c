@@ -280,6 +280,78 @@ static int moverect_internal(VTermRect dest, VTermRect src, void *user)
   return 1;
 }
 
+/*
+static void test_print_sb(VTermScreen* screen) {
+    printf("\033[32m--------------------------------------------------\033[0m\n");
+    for(size_t i = 0; i < screen->full_sbbuffer_num_rows; i++) {
+        for(int k = 0; k < screen->cols; k++) {
+            ScreenCell* sb_cell = &screen->full_sbbuffer[
+                k + i * screen->cols
+            ];
+
+            if(sb_cell->chars[0] == 0) {
+                break;
+            }
+            printf("%c", sb_cell->chars[0]);
+        }
+        printf("\n");
+    }
+    printf("\033[31m--------------------------------------------------\033[0m\n");
+}
+*/
+
+size_t vterm_screen_get_fullsbbuffer_num_rows(const VTermScreen* screen) {
+    return screen->full_sbbuffer_num_rows;
+}
+
+
+static void copy_cell(ScreenCell* to, ScreenCell* from) {
+    to->pen = from->pen;
+    memcpy(
+        to->chars,
+        from->chars,
+        sizeof(from->chars)
+    );
+}
+
+static void push_full_sbbuffer_row(VTermScreen* screen, int row_num) {
+    bool sb_has_max_rows = screen->full_sbbuffer_num_rows + 1 >= FULL_SBBUFFER_ROWS_MAX;
+    if(sb_has_max_rows) {
+        for(size_t row = 0; row < FULL_SBBUFFER_ROWS_MAX-1; row++) {
+            size_t next_row = row + 1;
+
+            for(int col = 0; col < screen->cols; col++) {
+                
+                ScreenCell* curr_row_cell = &screen->full_sbbuffer
+                    [ col + row * screen->cols];
+                
+                ScreenCell* next_row_cell = &screen->full_sbbuffer
+                    [ col + next_row * screen->cols];
+
+                copy_cell(curr_row_cell, next_row_cell);
+            }
+        }
+    }
+
+    for(int col = 0; col < screen->cols; col++) {
+        if(col < 0 || col >= screen->cols) {
+            continue;
+        }
+        ScreenCell* cell = getcell(screen, row_num, col);
+
+        ScreenCell* sb_cell = &screen->full_sbbuffer[
+            col + screen->full_sbbuffer_num_rows * screen->cols
+        ];
+
+        copy_cell(sb_cell, cell);
+    }
+
+    if(!sb_has_max_rows) {
+        screen->full_sbbuffer_num_rows++;
+    }
+    //test_print_sb(screen);
+}
+
 static int moverect_user(VTermRect dest, VTermRect src, void *user)
 {
   VTermScreen *screen = user;
@@ -336,74 +408,31 @@ static int erase_user(VTermRect rect, int selective, void *user)
 
 static int erase(VTermRect rect, int selective, void *user)
 {
-  erase_internal(rect, selective, user);
+  VTermScreen *screen = user;
+
+  // If the whole screen is being erased, it must be saved
+  // to scrollback buffer first.
+  // Scrollback callback pushed the first row already to the buffer
+  // so thats why we start from 1 here..
+  if(rect.start_col == 0 && rect.start_row == 0
+  && rect.end_col == screen->cols
+  && rect.end_row == screen->rows) {
+      for(int row = 1; row < screen->rows-1; row++) {
+          push_full_sbbuffer_row(screen, row);
+      }
+  }
+
+    erase_internal(rect, selective, user);
   return erase_user(rect, 0, user);
 }
-/*
-static void test_print_sb(VTermScreen* screen) {
-    printf("\033[32m--------------------------------------------------\033[0m\n");
-    for(size_t i = 0; i < screen->full_sbbuffer_num_rows; i++) {
-        for(int k = 0; k < screen->cols; k++) {
-            ScreenCell* sb_cell = &screen->full_sbbuffer[
-                k + i * screen->cols
-            ];
 
-            if(sb_cell->chars[0] == 0) {
-                break;
-            }
-            printf("%c", sb_cell->chars[0]);
-        }
-        printf("\n");
-    }
-    printf("\033[31m--------------------------------------------------\033[0m\n");
-}
-*/
-
-size_t vterm_screen_get_fullsbbuffer_num_rows(const VTermScreen* screen) {
-    return screen->full_sbbuffer_num_rows;
-}
-
-static void push_full_sbbuffer_row(VTermScreen* screen, VTermRect rect) {
-    printf("%s %i, %i, %i, %i\n",__func__,
-            rect.start_col,
-            rect.start_row,
-            rect.end_col,
-            rect.end_row);
-
-    if(screen->full_sbbuffer_num_rows+1 >= FULL_SBBUFFER_ROWS_MAX) {
-        printf("(TODO) %s() %s: Shift scrollback buffer\n", __func__, __FILE__);
-        return;
-    }
-
-    for(int col = rect.start_col; col < rect.end_col; col++) {
-        if(col < 0 || col >= screen->cols) {
-            continue;
-        }
-        ScreenCell* cell = getcell(screen, 0, col);
-
-        ScreenCell* sb_cell = &screen->full_sbbuffer[
-            col + screen->full_sbbuffer_num_rows * screen->cols
-        ];
-
-        sb_cell->pen = cell->pen;
-        memcpy(
-            sb_cell->chars,
-            cell->chars,
-            sizeof(cell->chars)
-        );
-        //printf("%p -> %p\n", cell, sb_cell);
-    }
-
-    screen->full_sbbuffer_num_rows++;
-    //test_print_sb(screen);
-}
 
 static int scrollrect(VTermRect rect, int downward, int rightward, void *user)
 {
     VTermScreen *screen = user;
 
     if(downward > 0) {
-        push_full_sbbuffer_row(screen, rect);
+        push_full_sbbuffer_row(screen, 0);
     }
 
   if(screen->damage_merge != VTERM_DAMAGE_SCROLL) {
@@ -602,11 +631,16 @@ static void resize_buffer(VTermScreen *screen, int bufidx, int new_rows, int new
   int old_rows = screen->rows;
   int old_cols = screen->cols;
 
+  if(old_cols < new_cols) {
+      screen->full_sbbuffer = realloc(screen->full_sbbuffer, FULL_SBBUFFER_ROWS_MAX * new_cols * sizeof *screen->full_sbbuffer);
+  }
+
   ScreenCell *old_buffer = screen->buffers[bufidx];
   VTermLineInfo *old_lineinfo = statefields->lineinfos[bufidx];
 
   ScreenCell *new_buffer = vterm_allocator_malloc(screen->vt, sizeof(ScreenCell) * new_rows * new_cols);
   VTermLineInfo *new_lineinfo = vterm_allocator_malloc(screen->vt, sizeof(new_lineinfo[0]) * new_rows);
+
 
   int old_row = old_rows - 1;
   int new_row = new_rows - 1;
@@ -927,6 +961,8 @@ static int sb_clear(void *user) {
     if((*screen->callbacks->sb_clear)(screen->cbdata))
       return 1;
 
+
+  //printf("%s\n", __func__);
   return 0;
 }
 

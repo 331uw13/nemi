@@ -6,13 +6,14 @@
 
 #include "nemi.h"
 
+// https://perldoc.perl.org/perlguts
+
 
 /*
 
    XSRETURN_IV    - Return int
    XSRETURN_NV    - Return double
    XSRETURN_PV    - Return string.
-   XSRETURN_SV    - Return SV
    XSRETURN_UNDEF - Return 'undef'
    XSRETURN_EMPTY - Return void
 
@@ -30,6 +31,121 @@
     XSRETURN_EMPTY;
 }
 */
+
+// TODO: Add error checking..
+
+XS(xsw_list_scripts) {
+    dXSARGS;
+    (void)items;
+    struct nemi* st = get_state();
+
+    if(st->num_scripts == 0) {
+        create_msg(st, "No scripts loaded.");
+        return;
+    }
+
+    for(size_t i = 0; i < st->num_scripts; i++) {
+        struct perl_script* script = &st->scripts[i];
+        create_msg(st, "%s %s %30s", 
+                (script->is_loaded ? "\033[32m(Loaded)\033[0m" : "\033[31m(Failed to load)\033[0m"),
+                script->name,
+                script->filepath);
+    }
+}
+
+XS(xsw_get_win_width) {
+    dXSARGS;
+    (void)items;
+    struct nemi* st = get_state();
+
+    XSRETURN_IV(st->lfctx->win_width);
+}
+XS(xsw_get_win_height) {
+    dXSARGS;
+    (void)items;
+    struct nemi* st = get_state();
+    XSRETURN_IV(st->lfctx->win_height);
+}
+
+XS(xsw_get_font_charsize) {
+    dXSARGS;
+    (void)items;
+    struct nemi* st = get_state();
+
+    mXPUSHi(st->font.char_width);
+    mXPUSHi(st->font.char_height);
+    XSRETURN(2);
+}
+
+XS(xsw_get_mouse_pos) {
+    dXSARGS;
+    (void)items;
+    struct nemi* st = get_state();
+   
+    double p[2];
+    glfwGetCursorPos(st->lfctx->glfw_win, &p[0], &p[1]);
+
+    mXPUSHi((int)p[0]);
+    mXPUSHi((int)p[1]);
+    XSRETURN(2);
+}
+
+XS(xsw_get_mouse_cellpos) {
+    dXSARGS;
+    (void)items;
+    struct nemi* st = get_state();
+   
+    double p[2];
+    glfwGetCursorPos(st->lfctx->glfw_win, &p[0], &p[1]);
+
+    mXPUSHi(floor((int)p[0] / st->font.char_width));
+    mXPUSHi(floor((int)p[1] / (st->font.char_height + st->cfg.main.line_padding)));
+    XSRETURN(2);
+}
+
+XS(xsw_term_exec) {
+    dXSARGS;
+    (void)items;
+    STRLEN cmd_len;
+    char* cmd = SvPV(ST(0), cmd_len);
+    struct nemi* st = get_state();
+ 
+    if(cmd_len == 0) {
+        XSRETURN_EMPTY;
+    }
+
+    // Need to find some terminal to execute the command.
+    // It cannot be echo terminal or one which is in altscreen mode.
+    // TODO: This should be made to take in count if the terminal is already executing a command.
+    struct terminal* term = NULL;
+    for(uint16_t i = 0; i < st->num_terminals; i++) {
+        struct terminal* candidate = &st->terminals[i];
+        if(!candidate->is_altscreen && candidate->type == SHELL_TERMINAL) {
+            term = candidate;
+            break;
+        }
+    }
+
+    if(term == NULL) {
+        create_msg(st, "\033[31mFailed to find available terminal to execute command \"%s\"\033[0m",
+                cmd);
+        XSRETURN_EMPTY;
+    }
+
+    switch_terminal_ptr(st, term);
+    write(term->master_fd, cmd, cmd_len);
+    if(cmd[cmd_len-1] != '\n') {
+        write(st->terminal->master_fd, "\n", 1);
+    }
+    XSRETURN_EMPTY;
+}
+
+XS(xsw_get_user_texteditor) {
+    dXSARGS;
+    (void)items;
+    struct nemi* st = get_state();
+    XSRETURN_PV(st->cfg.main.favourite_texteditor);
+}
 
 XS(xsw_draw_enable_scroll_offset) {
     dXSARGS;

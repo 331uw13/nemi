@@ -31,6 +31,7 @@ struct script_keybind {
 struct perl_script {
     PerlInterpreter* perl_interp;
     char* name;
+    char* filepath;
     bool is_loaded;
     int reg_events; // What events the script wants to get.
     //int uid; // Unique identitifer.

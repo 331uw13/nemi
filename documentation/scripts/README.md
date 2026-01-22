@@ -121,6 +121,7 @@ nemi::term_clear_cell_custom_fg    (column, row)
 nemi::term_clear_cell_custom_bg    (column, row)
 nemi::term_clear_cell_custom_attrs (column, row)
 nemi::term_copy_to_clipboard       (start_column, start_row, end_column, end_row) 
+nemi::term_exec                    (command)
 
 
 ////  Rendering  ////
@@ -139,12 +140,20 @@ nemi::draw_disable_scroll_offset < No arguments >
 
 ////  Misc  ////
 
+nemi::get_win_width        < No arguments >
+nemi::get_win_height       < No arguments >
+nemi::get_font_charsize    < No arguments >  // Returns int array. [0]: char_width, [1]: char_height.
+nemi::get_mouse_pos        < No arguments >  // Returns int array. [0]: mouse_x, [1]: mouse_y.
+nemi::get_user_texteditor  < No arguments >  // Returns 'favourite_texteditor' from 'configs/nemi.ini'
+nemi::restart              < No arguments >
+nemi::hotreload            < No arguments >
 nemi::keydown              (GLFW Key number)
 nemi::create_msg           (text)
 nemi::add_keybind          (script_name, event_name, keybind_str)
 nemi::recompile            < No arguments >  // Only works if 'source_dir' in config is set, and loader supports it.
 nemi::script_keybinds      (script_name)     // Write script's keybinds to message terminal.
 nemi::help                 (str)             // Can be used to get help message for specific thing.
+nemi::list_scripts         < No arguments >
 
 ```
 

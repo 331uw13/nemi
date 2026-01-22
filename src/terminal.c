@@ -16,8 +16,20 @@
 #include "memory.h"
 
 
+static
+const char* get_terminaltype_shell(struct nemi* st, enum terminal_type term_type) {
+    if(term_type == SHELL_TERMINAL) {
+        return st->cfg.main.shell;
+    }
+    else
+    if(term_type == ECHO_TERMINAL) {
+        return "/bin/cat";
+    }
 
-struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, const char* shell) {
+    return NULL;
+}
+
+struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, enum terminal_type term_type) {
     if(st->num_terminals+1 >= NEMI_TERMINALS_MAX) {
         return NULL;
     }
@@ -30,9 +42,15 @@ struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, const char*
     };
 
     struct terminal* term = &st->terminals[st->num_terminals++];
+    term->type = term_type;
     term->pid = forkpty(&term->master_fd, NULL, NULL, &ws);
 
     if(term->pid == 0) {
+        const char* shell = get_terminaltype_shell(st, term_type);
+        if(!shell) {
+            logprintf(LOG_ERROR, "Invalid terminal type!");
+        }
+
         execlp(shell, shell, NULL);
     }
 
@@ -43,6 +61,7 @@ struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, const char*
     term->yscroll = 0;
     term->line_height = st->font.char_height + st->cfg.main.line_padding;
     term->blink_timer = 0;
+    term->is_altscreen = false;
 
     term->hidden_cells = calloc(term->cols * term->rows, sizeof *term->hidden_cells);
 
@@ -66,7 +85,10 @@ struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, const char*
     // Clear terminal because sometimes background appears black when its not supposed to
     // on the first line.
     write_term(term, TERM_WRITE_VTERM, "\033[2J\033[H\033[0m");
-    logprintf(LOG_INFO, "Created terminal (%ix%i)", term->rows, term->cols);
+    logprintf(LOG_INFO, "Created %s terminal (%ix%i)", 
+            (term_type == SHELL_TERMINAL) ? "shell" : "echo",
+            term->rows,
+            term->cols);
     return term;
 }
 
@@ -249,31 +271,6 @@ void render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, 
     }
 }
 
-/*
-static
-void render_scrollback_buffer(struct nemi* st, struct terminal* term) {
-    if(term->sb.offset > 0 && term->sb.num_rows > 0) {
-        int row = 0;
-
-        ssize_t start_offset = term->sb.num_rows - term->sb.offset;
-        if(start_offset < 0) {
-            logprintf(LOG_ERROR, "Invalid scrollback offset %li", start_offset);
-            return;
-        }
-            
-        struct scrollback_row* sbrow = &term->sb.rows[ start_offset ];
-
-        while(row < term->sb.offset) {
-            for(int col = 0; col < term->cols; col++) {
-                render_cell(st, term, &sbrow->cells[col], (VTermPos){ row, col });
-            }
-            row++;
-            sbrow++;
-        }
-    }
-}
-*/
-
 void render_terminal(struct nemi* st, struct terminal* term) {
     vterm_get_size(term->vt, &term->rows, &term->cols);
     if(vterm_screen_is_altscreen(term->vtscrn)) {
@@ -338,7 +335,7 @@ void terminal_handle_char_event(struct nemi* st, struct terminal* term) {
     }
 
     write(term->master_fd, &st->last_char_in, 1);
-    term->yscroll = 0;
+    //term->yscroll = 0;
 }
 
 
