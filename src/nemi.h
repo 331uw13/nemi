@@ -32,9 +32,19 @@
 
 
 
+
+struct nemi_filepaths {
+    char* nemi_home;
+    char* libnemi;
+    char* fonts;
+    char* configs;
+    char* colorthemes;
+};
+
 struct nemi {
     int flags;
 
+    struct nemi_filepaths filepaths;
     struct leaf_ctx_t* lfctx;    
     struct font_t      font;
     struct nemi_config cfg;
@@ -77,7 +87,7 @@ struct nemi {
 };
 
 
-struct nemi* start_session(char* configs_dir, int leaf_open_flags);
+struct nemi* start_session(struct nemi_filepaths filepaths);
 void         quit_session(struct nemi* st);
 void         prepare_from_hotreload(struct nemi* st); // Some global variables must be set again after hotreloading.
 

@@ -211,6 +211,8 @@ int config_handler__nemi_ini
 }
 
 
+#include <stdio.h>
+
 static
 bool read_config
 (
@@ -227,6 +229,7 @@ bool read_config
     }
     string_append(&path, config_file, -1);
     string_nullterm(&path);
+
 
     if(access(path.bytes, R_OK) != 0) {
         fprintf(stderr, "%s: '%s' No access for reading.\n", __func__, path.bytes);
@@ -251,6 +254,7 @@ bool nemi_read_configs(struct nemi* st, char* configs_dir) {
     else {
         return false;
     }
+
 
     if(!read_config(config_handler__nemi_ini, &st->cfg, configs_dir, "nemi.ini")) {
         return false;

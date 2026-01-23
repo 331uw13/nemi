@@ -20,6 +20,7 @@ struct glyph_t {
 };
 
 struct font_t {
+    bool loaded;
     struct glyph_t glyphs[FONT_NUM_CHARS];
     float scale;
     

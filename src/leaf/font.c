@@ -312,13 +312,15 @@ bool leaf_load_font(struct font_t* font, const char* filepath) {
     leaf_set_font_spacing(font, 1.0f);
     leaf_set_font_space_width(font, 8);
     leaf_set_font_tab_width(font, 8*4);
+    
+    font->loaded = true;
+    res = 1;
 
 error_and_done:
 
     FT_Done_Face(face);
     FT_Done_FreeType(ft);
 
-    res = 1;
 
 error:
     return res;

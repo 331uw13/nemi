@@ -14,10 +14,6 @@ This allows easy and fast copy of text output in vmode select.
 
 -------------------
 
-Open files and directories
-
--------------------
-
 Change current directory to selected path
 
 ```

@@ -29,14 +29,15 @@ void prepare_from_hotreload(struct nemi* st) {
 }
 
 
-struct nemi* start_session(char* configs_dir, int leaf_open_flags) {
+struct nemi* start_session(struct nemi_filepaths filepaths) {
     struct nemi* st = malloc(sizeof *st);
 
+    st->filepaths = filepaths; 
     st->frame_time = 0.001;
     st->frame_time_begin = 0.0;
     st->flags = 0;
     st->num_scripts = 0;
-    st->lfctx = leaf_open("Nemi - Terminal Emulator", 900, 700, leaf_open_flags);
+    st->lfctx = leaf_open("Nemi - Terminal Emulator", 900, 700, 0);
     st->num_terminals = 0;
     st->term_ignore_char_input_counter = 0;
     st->term_ignore_key_input_counter = 0;
@@ -44,12 +45,40 @@ struct nemi* start_session(char* configs_dir, int leaf_open_flags) {
     zero_input_buffers(st);
     init_default_config(st);
 
-    if(!nemi_read_configs(st, configs_dir)) {
-        logprintf(LOG_ERROR, "Failed to read configs from '%s'", configs_dir);
+    if(!nemi_read_configs(st, st->filepaths.configs)) {
+        logprintf(LOG_ERROR, "Failed to read configs from '%s'", st->filepaths.configs);
+        quit_session(st);
         return NULL;
     }
 
-    if(!leaf_load_font(&st->font, st->cfg.font.filepath)) {
+
+
+    st->font.loaded = false;
+
+    if(access(st->cfg.font.filepath, R_OK) == 0) {
+        leaf_load_font(&st->font, st->cfg.font.filepath);
+    }
+    else {
+        // Font was not found, Lets try from 'filepaths.fonts + font.filepath' next. 
+        struct string_t font_path = string_create(0);
+        string_append(&font_path, filepaths.fonts, -1);
+        if(string_lastbyte(&font_path) != '/' && st->cfg.font.filepath[0] != '/') {
+            string_pushbyte(&font_path, '/');
+        }
+        string_append(&font_path, st->cfg.font.filepath, -1);
+
+        if(access(font_path.bytes, R_OK) == 0) {
+            leaf_load_font(&st->font, font_path.bytes);
+        }
+        else {
+            logprintf(LOG_ERROR, "Failed to find font. tried paths: '%s', '%s'",
+                    st->cfg.font.filepath, font_path.bytes);
+        }
+        free_string(&font_path);
+    }
+
+    if(!st->font.loaded) {
+        logprintf(LOG_ERROR, "Error happened while loading font.");
         quit_session(st);
         return NULL;
     }
@@ -108,7 +137,7 @@ struct nemi* start_session(char* configs_dir, int leaf_open_flags) {
     g_nemi_state = st;
 
 
-    if(!nemi_load_scripts(st, configs_dir)) {
+    if(!nemi_load_scripts(st, st->filepaths.configs)) {
         logprintf(LOG_ERROR, "Failed to load all scripts.");
     }
 
@@ -125,6 +154,9 @@ struct nemi* start_session(char* configs_dir, int leaf_open_flags) {
     */
     //glfwSwapInterval(st->cfg.vsync ? 0 : 1);
 
+    if(st->cfg.main.hide_mouse) {
+        glfwSetInputMode(st->lfctx->glfw_win, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+    }
 
     return st;
 }
