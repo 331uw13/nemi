@@ -8,3 +8,5 @@ rsync -av ./configs $TARGET_DIR
 rsync -av ./scripts $TARGET_DIR
 rsync -av ./fonts $TARGET_DIR
 rsync -v libnemi.so $TARGET_DIR
+
+sudo cp nemi /usr/local/bin/nemi

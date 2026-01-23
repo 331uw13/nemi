@@ -152,7 +152,7 @@ struct nemi* start_session(struct nemi_filepaths filepaths) {
         glfwSetInputMode(st->lfctx->glfw_win, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
     }
     */
-    //glfwSwapInterval(st->cfg.vsync ? 0 : 1);
+    glfwSwapInterval(st->cfg.main.vsync ? 0 : 1);
 
     if(st->cfg.main.hide_mouse) {
         glfwSetInputMode(st->lfctx->glfw_win, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
@@ -227,17 +227,15 @@ void begin_frame(struct nemi* st) {
 
 static
 void end_frame(struct nemi* st) {
-
     if(st->cfg.main.show_frametime) {
         float old_font_scale = st->font.scale;
-        leaf_set_font_scale(&st->font, 0.7f);
+        leaf_set_font_scale(&st->font, 1.0f);
         leaf_draw_text_fmt(&st->font, 
-                st->lfctx->win_width-250, 10,
+                st->lfctx->win_width-300, 10,
                 "frame_time=%0.3fms", st->frame_time * 1000.0);
         leaf_set_font_scale(&st->font, old_font_scale);
     }
    
-
     for(uint32_t i = 0; i < st->num_scripts; i++) {
         struct perl_script* script = &st->scripts[i];
         if(script->reg_events & REG_EVENT_RENDER) {
@@ -252,10 +250,13 @@ void end_frame(struct nemi* st) {
     glfwSwapBuffers(st->lfctx->glfw_win);
     
     glfwPollEvents();
-    usleep(1000);
+    //usleep(10 * 1000);
 
     st->frame_time = glfwGetTime() - st->frame_time_begin;
 }
+
+
+static int frame_count = 0;
 
 void update_frame(struct nemi* st) {
     begin_frame(st);

@@ -92,7 +92,6 @@ void leaf_font_render(struct font_t* font) {
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    //printf("%s: vbo_data_offset = %li\n", __func__, font->vbo_data_offset);
     font->vbo_data_offset = 0;
     font->vbo_num_vertices = 0;
 }
@@ -261,7 +260,7 @@ bool leaf_load_font(struct font_t* font, const char* filepath) {
     // char italic
     const int stride_num_floats = 2 + 2 + 1 + 3 + 1 + 1;
 
-    font->vbo_memsize = (100*100) * (sizeof(float) * (stride_num_floats * 6));
+    font->vbo_memsize = (100 * 100) * (sizeof(float) * (stride_num_floats * 6));
     glGenBuffers(1, &font->vbo);
     glBindBuffer(GL_ARRAY_BUFFER, font->vbo);
     glBufferData(GL_ARRAY_BUFFER, font->vbo_memsize, NULL, GL_DYNAMIC_DRAW);
@@ -312,7 +311,12 @@ bool leaf_load_font(struct font_t* font, const char* filepath) {
     leaf_set_font_spacing(font, 1.0f);
     leaf_set_font_space_width(font, 8);
     leaf_set_font_tab_width(font, 8*4);
-    
+   
+
+    printf("%s: Font texture: %ix%i\n", __FILE__,
+            font->texture_width,
+            font->texture_height);
+
     font->loaded = true;
     res = 1;
 
@@ -414,6 +418,4 @@ void leaf_measure_text
     }
 
 }
-
-
 

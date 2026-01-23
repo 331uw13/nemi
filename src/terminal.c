@@ -51,6 +51,7 @@ struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, enum termin
             logprintf(LOG_ERROR, "Invalid terminal type!");
         }
 
+        setenv("TERM", "xterm-256color", 1);
         execlp(shell, shell, NULL);
     }
 
@@ -74,17 +75,14 @@ struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, enum termin
 
     //vterm_screen_set_putglyph_callback(term->vtscrn, vterm_putglyph_callback, term);
     //vterm_state_set_scroll_callback(term->vtstate, vterm_scroll_callback, term);
-    
+    vterm_screen_enable_reflow(term->vtscrn, true);
     vterm_screen_enable_altscreen(term->vtscrn, true);
     vterm_screen_reset(term->vtscrn, true);
 
     term->is_altscreen = false;
-
     terminal_init_palette(st, term);
 
-    // Clear terminal because sometimes background appears black when its not supposed to
-    // on the first line.
-    write_term(term, TERM_WRITE_VTERM, "\033[2J\033[H\033[0m");
+   
     logprintf(LOG_INFO, "Created %s terminal (%ix%i)", 
             (term_type == SHELL_TERMINAL) ? "shell" : "echo",
             term->rows,

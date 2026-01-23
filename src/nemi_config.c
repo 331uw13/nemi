@@ -271,7 +271,6 @@ bool nemi_read_configs(struct nemi* st, char* configs_dir) {
         return false;
     }
 
-
     if(!read_config(config_handler__nemi_ini, &st->cfg, configs_dir, "nemi.ini")) {
         return false;
     }
