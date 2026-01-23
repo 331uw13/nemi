@@ -69,11 +69,11 @@ sub init_script() {
 
 ### Loading scripts
 
-You can name your script what ever you want. To load the script you have to add it into 
-`configs/scripts.ini` file. Example:
+You can name your script what ever you want. The script should be available at `/home/$USER/.nemi/scripts` for loading.  
+Then you have to update `configs/scripts.ini` file. Example:
 ```
 [SCRIPTS]
-my_script = ./scripts/my_script.pl
+my_script = my_script.pl
 ```
 
 -----------------------------

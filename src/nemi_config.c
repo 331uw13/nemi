@@ -136,7 +136,23 @@ int config_handler__scripts_ini
 ){
     (void)section;
     struct nemi* st = (struct nemi*)userptr;
-    load_perl_script(st, value, name);
+    
+    if(access(value, R_OK) == 0) {
+        load_perl_script(st, value, name);
+        return 1;
+    }
+
+    struct string_t path = string_create(0);
+
+    string_append(&path, st->filepaths.scripts, -1);
+    if(string_lastbyte(&path) != '/' && value[0] != '/') {
+        string_pushbyte(&path, '/');
+    }
+    string_append(&path, (char*)value, -1);
+    string_nullterm(&path);
+
+    load_perl_script(st, path.bytes, name);
+    free_string(&path);
 
     return 1; // Continue reading.
 }

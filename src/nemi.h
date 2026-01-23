@@ -38,6 +38,7 @@ struct nemi_filepaths {
     char* libnemi;
     char* fonts;
     char* configs;
+    char* scripts;
     char* colorthemes;
 };
 

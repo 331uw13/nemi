@@ -48,54 +48,6 @@ bool load_libnemi(const char* libpath) {
     return true;
 }
 
-/*
-void close_libnemi(struct nemi* st) {
-    nemi_quit_session(st);
-    dlclose(libnemi);
-}
-*/
-
-/*
-bool recompile_src(struct nemi* st) {
-    struct string_t cmd = string_create(0);
-    string_append(&cmd, "(cd ", -1);
-    string_append(&cmd, st->cfg.main.source_dir, -1);
-    string_append(&cmd, " && make --output-sync=target -B -j", -1);
-    string_append(&cmd, st->cfg.main.recompile_num_cores, -1);
-    string_append(&cmd, " 2>&1)", -1);
-    string_nullterm(&cmd);
-
-    FILE* pipe = popen(cmd.bytes, "r");
-    if(pipe == NULL) {
-        nemi_create_msg(st, 
-                "popen(\"%s\", \"r\") Failed! %s",
-                cmd.bytes,
-                strerror(errno)
-        );
-        return false;
-    }
- 
-    char rd_buffer[512] = { 0 };
-    while(fgets(rd_buffer, sizeof(rd_buffer)-1, pipe)) {
-        nemi_create_msg(st, rd_buffer);
-        nemi_update_frame(st);
-    }
-
-    int exit_code = WEXITSTATUS(pclose(pipe));
-    return exit_code == 0;
-}
-*/
-/*
-struct arguments {
-    char* nemi_homedir;
-    char* libnemi_path;
-    char* configs_dir;
-    char* fonts_dir;
-    char* startup_cmd;
-    int   leaf_open_flags;
-};
-*/
-
 bool run(struct nemi_filepaths filepaths) {
     load_libnemi(filepaths.libnemi);
   
@@ -105,28 +57,8 @@ bool run(struct nemi_filepaths filepaths) {
         return false;
     }
 
-
-    /*
-    struct nemi* st = nemi_start_session(
-        args->nemi_homedir,
-        args->fonts_dir,
-        args->configs_dir,
-        args->leaf_open_flags
-    );
-    if(!st) {
-        return false;
-    }
-    */
-
     st->flags |= FLG_RESTARTING_SUPPORTED;
     st->flags |= FLG_HOTRELOADING_SUPPORTED;
-
-    /*
-    if(args->startup_cmd) {
-        nemi_write_term(st->terminal, TERM_WRITE_PTY, args->startup_cmd);
-        nemi_write_term(st->terminal, TERM_WRITE_PTY, "\n");
-    }
-    */
 
     while(!glfwWindowShouldClose(st->lfctx->glfw_win)) {
         if(st->flags & FLG_LOADER_RESTART_SESSION) {
@@ -154,114 +86,6 @@ bool run(struct nemi_filepaths filepaths) {
     dlclose(libnemi);
     return true;
 }
-/*
-void print_help() {
-    printf(
-        "Nemi - Terminal Emulator\n\n"
-        " -exec <command>             Execute command at startup.\n"
-        " -cfgdir <directory>         Specify configurations directory.\n"
-        " -noresize                   Creates window which cannot be resized.\n"
-        "\n"
-        "Version: %s, build: %s\n"
-        "Bug reports: https://github.com/331uw13/nemi  Thank you!:)\n",
-
-        NEMI_VERSION_STR,
-#ifdef DEVBUILD
-        "(development)"
-#else
-        "(release)"
-#endif
-    );
-}
-*/
-/*
-struct arguments parse_arguments(int argc, char** argv) {
-    struct arguments args = { 0 };
-    for(int i = 0; i < argc; i++) {
-        char* current_arg = argv[i];
-        bool has_next = (i+1 < argc);
-       
-        if(strcmp(current_arg, "help") == 0
-        || strcmp(current_arg, "-help") == 0
-        || strcmp(current_arg, "--help") == 0) { 
-            print_help();
-        }
-        else
-        if(strcmp(current_arg, "-noresize") == 0) {
-            args.leaf_open_flags |= LEAF_NORESIZE;
-        }
-        else
-        if(strcmp(current_arg, "-exec") == 0 && has_next) {
-            args.startup_cmd = strdup(argv[i+1]);
-            i++; // Skip next.
-
-        }
-    }
-
-    return args;
-}
-*/
-
-/*
-
-*/
-
-/*
-// Check first if the current directory has the library (for development purposes)
-// If its not found then check '/home/$USER/.nemi/libnemi.so'
-bool find_libnemi(struct arguments* args) {
-    bool is_found = false;
-
-    if(access("./libnemi.so", R_OK) == 0) {
-        args->libnemi_path = strdup("./"LIBNEMI);
-        is_found = true;
-    }
-    else {
-        struct string_t path = string_create(0);
-        string_append(&path, args->nemi_homedir, -1);
-        
-        if(string_lastbyte(&path) != '/' && LIBNEMI[0] != '/') {
-            string_pushbyte(&path, '/');
-        }
-        string_append(&path, LIBNEMI, -1);
-        string_nullterm(&path);
-
-        if(access(path.bytes, R_OK) == 0) {
-            args->libnemi_path = strdup(path.bytes);
-            is_found = true;
-        }
-        free_string(&path);
-    }
-
-    return is_found;
-}
-
-// Check first if the current directory has configs dir (for development purposes)
-// If its not found then check '/home/$USER/.nemi/configs'
-bool find_configs_dir(struct arguments* args) {
-    bool is_found = false;
- 
-    if(access("./configs", R_OK) == 0) {
-        args->configs_dir = strdup("./configs");
-        is_found = true;
-    }
-    else {
-        struct string_t path = string_create(0);
-        string_append(&path, args->nemi_homedir, -1);
-        if(string_lastbyte(&path) != '/') {
-            string_pushbyte(&path, '/');
-        }
-        string_append(&path, "configs", -1);
-        string_nullterm(&path);
-
-        if(access(path.bytes, R_OK) == 0) {
-            args->configs_dir = strdup(path.bytes);
-            is_found = true;
-        }
-    }
-    return is_found;
-}
-*/
 
 bool find_home(char** output) {
     bool is_found = false;
@@ -315,7 +139,6 @@ bool find_file
         *output = strdup(path.bytes);
     }
 
-
     free_string(&path);
     return is_found;
 }
@@ -326,10 +149,21 @@ int main(int argc, char** argv) {
     struct nemi_filepaths filepaths;
     memset(&filepaths, 0, sizeof(filepaths));
 
+    for(int i = 0; i < argc; i++) {
+        bool last = i+1 >= argc;
+        if(strcmp(argv[i], "-home") == 0 && !last) {
+            filepaths.nemi_home = strdup(argv[i+1]);
+            i++;
+        }
+    }
 
-    if(!find_home(&filepaths.nemi_home)) {
-        fprintf(stderr, "Could not find nemi home directory. '%s'\n", filepaths.nemi_home);
-        goto out;
+    if(filepaths.nemi_home == NULL) {
+        if(!find_home(&filepaths.nemi_home)) {
+            fprintf(stderr, "Could not find nemi home directory. Did you run install.sh?\n"
+                    "If you dont want to install and just want to test, run: %s -home .\n",
+                    argv[0]);
+            goto out;
+        }
     }
 
     if(!find_file(filepaths.nemi_home, &filepaths.libnemi, "libnemi.so")) {
@@ -341,6 +175,9 @@ int main(int argc, char** argv) {
     if(!find_file(filepaths.nemi_home, &filepaths.configs, "configs")) {
         goto out;
     }
+    if(!find_file(filepaths.nemi_home, &filepaths.scripts, "scripts")) {
+        goto out;
+    }
     if(!find_file(filepaths.nemi_home, &filepaths.colorthemes, "configs/colorthemes")) {
         goto out;
     }
@@ -349,6 +186,7 @@ int main(int argc, char** argv) {
     printf("Lib:     '%s'\n", filepaths.libnemi);
     printf("Fonts:   '%s'\n", filepaths.fonts);
     printf("Configs: '%s'\n", filepaths.configs);
+    printf("Scripts: '%s'\n", filepaths.scripts);
     printf("Colors:  '%s'\n", filepaths.colorthemes);
 
     while(true) {
