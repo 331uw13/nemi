@@ -13,15 +13,6 @@ or add any kind of new features.
 * Working with scripts: https://github.com/331uw13/nemi/tree/main/documentation/scripts
 * Development: https://github.com/331uw13/nemi/tree/main/documentation/development
 
-# Compiling the project
-```
-$ perl configure.pl && make -j4
-```
-To copy libnemi.so and config directory to `/home/$USER/.nemi/` you can run this:
-```
-$ ./install.sh
-```
-
 
 # Compatibility with older perl verions
 If you are having problems with compiling the
@@ -34,6 +25,11 @@ $ perlbrew install perl-5.42.0
 Then configure the project with
 ```
 $ perl configure.pl -using_perlbrew
+```
+
+# Setup for use
+```
+$ perl configure.pl && make -j4 && ./install.sh
 ```
 
 
