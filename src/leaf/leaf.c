@@ -238,15 +238,15 @@ void leaf_render_vertices(struct leaf_ctx_t* ctx, float* vertices, size_t vertic
     }
     */
 
-
+    /*
     glBindBuffer(GL_ARRAY_BUFFER, ctx->renderer_vbo);
     glBufferSubData(GL_ARRAY_BUFFER, ctx->renderer_vbo_data_offset, vertices_memsize, vertices);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     ctx->renderer_vbo_data_offset += vertices_memsize;
-    ctx->renderer_vbo_num_vertices += ((vertices_memsize / sizeof(float)) / 5);
-
-    /*
+    ctx->renderer_vbo_num_vertices += 6;//((vertices_memsize / sizeof(float)) / 5);
+    */
+    
     glBindBuffer(GL_ARRAY_BUFFER, ctx->renderer_vbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, vertices_memsize, vertices);
     
@@ -259,7 +259,6 @@ void leaf_render_vertices(struct leaf_ctx_t* ctx, float* vertices, size_t vertic
     
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
-    */
 }
 
 void leaf_renderer_flush(struct leaf_ctx_t* ctx) {
@@ -282,7 +281,7 @@ uint32_t leaf_load_texture(const char* path, int* width, int* height) {
 
     uint8_t* image = stbi_load(path, width, height, &channels, 0);
 
-    printf("%s: %i, %i\n", __func__, *width, *height);
+    printf("%s(): %s: %i, %i\n", __func__, path, *width, *height);
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
 
@@ -332,3 +331,54 @@ struct color_t hexrgb_to_color_type(int hexrgb) {
     };
 }
 
+bool leaf_create_framebuffer(struct framebuffer* fb, uint32_t width, uint32_t height) {
+    fb->fbo = 0;
+    fb->texture = 0;
+    fb->width = 0;
+    fb->height = 0;
+    glGenFramebuffers(1, &fb->fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fb->fbo);
+
+    glGenTextures(1, &fb->texture);
+    glBindTexture(GL_TEXTURE_2D, fb->texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    // Attach texture to framebuffer object.
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fb->texture, 0);
+    bool result = (glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    if(!result) {
+        leaf_free_framebuffer(fb);
+        fprintf(stderr, "%s: Failed to create framebuffer (%ix%i), glError = 0x%02X\n",
+                __func__, width, height, glGetError());
+    }
+    else {
+        fb->width = width;
+        fb->height = height;
+    }
+
+    return result;
+}
+
+
+void leaf_free_framebuffer(struct framebuffer* fb) {
+    glDeleteFramebuffers(1, &fb->fbo);
+    glDeleteTextures(1, &fb->texture);
+}
+
+void leaf_use_framebuffer(struct framebuffer* fb) {
+    if(fb == NULL) {
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        return;
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, fb->fbo);
+    glViewport(0, 0, fb->width, fb->height);
+}

@@ -6,6 +6,16 @@
 
 #include "draw.h"
 
+
+
+struct framebuffer {
+    uint32_t texture;
+    uint32_t fbo;
+    uint32_t rbo;
+    uint32_t width;
+    uint32_t height;
+};
+
 struct leaf_ctx_t {
     GLFWwindow* glfw_win;
     int win_width;
@@ -54,5 +64,9 @@ struct color_t hexrgb_to_color_type(int hexrgb);
 
 float leaf_lerp(float x, float y, float t);
 struct color_t leaf_color_lerp(struct color_t x, struct color_t y, float t);
+
+void leaf_use_framebuffer(struct framebuffer* fb);
+bool leaf_create_framebuffer(struct framebuffer* fb, uint32_t width, uint32_t height);
+void leaf_free_framebuffer(struct framebuffer* fb);
 
 #endif

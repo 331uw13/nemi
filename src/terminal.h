@@ -28,8 +28,6 @@ struct terminal {
     VTermScreenCell* back_cell_buffer;
 
 
-    uint32_t num_rendered_cells; // For debug purposes. TODO: Remove later.
-
     bool         is_altscreen; // TODO: Maybe rename this later to 'is_altbuffer_enabled'
     enum terminal_type type;
 
@@ -39,6 +37,11 @@ struct terminal {
     int rows;
     int cols;
     int line_height;
+
+    int cursor_col;
+    int cursor_row;
+    int cursor_old_col;
+    int cursor_old_row;
 
     float blink_timer;
 

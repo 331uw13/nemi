@@ -82,9 +82,21 @@ struct nemi {
     // because if another script ignores input and another unignores it
     // it will not work as expected.
     // FIXME: The counters get confused very rarely and locks the input forever.
-    // TODO: Try to create 'focus' for scripts.
+    // TODO: Try to create "focus" system for scripts (?)
     int term_ignore_char_input_counter;
     int term_ignore_key_input_counter;
+
+
+    // Terminal framebuffer is separated
+    // because terminals keep track of "front" and "back" cell buffers
+    // to optimize rendering.
+    // We dont want to that kind of thing for other stuff
+    // because they may not be bound to cell coordinates.
+    struct framebuffer term_cells_framebuffer; // Terminals are rendered to this framebuffer.
+    struct framebuffer altrender_framebuffer;  // Anything else is rendered to this framebuffer.
+
+
+    
 };
 
 

@@ -37,7 +37,7 @@ struct nemi* start_session(struct nemi_filepaths filepaths) {
     st->frame_time_begin = 0.0;
     st->flags = 0;
     st->num_scripts = 0;
-    st->lfctx = leaf_open("Nemi - Terminal Emulator", 900, 700, 0);
+    st->lfctx = leaf_open("Nemi - Terminal Emulator", 900, 700, LEAF_NORESIZE);
     st->num_terminals = 0;
     st->term_ignore_char_input_counter = 0;
     st->term_ignore_key_input_counter = 0;
@@ -157,8 +157,12 @@ struct nemi* start_session(struct nemi_filepaths filepaths) {
     if(st->cfg.main.hide_mouse) {
         glfwSetInputMode(st->lfctx->glfw_win, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
     }
-    
-    clear_region(st, 0, 0, st->lfctx->win_width, st->lfctx->win_height);
+   
+
+    leaf_create_framebuffer(&st->term_cells_framebuffer, st->lfctx->win_width, st->lfctx->win_height);
+    leaf_create_framebuffer(&st->altrender_framebuffer, st->lfctx->win_width, st->lfctx->win_height);
+
+    //clear_region(st, 0, 0, st->lfctx->win_width, st->lfctx->win_height);
     return st;
 }
 
@@ -181,6 +185,8 @@ void quit_session(struct nemi* st) {
     for(size_t i = 0; i < ARRAY_LEN(st->scripts); i++) {
         unload_perl_script(&st->scripts[i]);
     }
+
+    leaf_free_framebuffer(&st->term_cells_framebuffer);
 
     /*
     for(size_t i = 0; i < ARRAY_LEN(st->renderbufs); i++) {
@@ -211,52 +217,35 @@ void switch_terminal_ptr(struct nemi* st, struct terminal* term) {
     }
     st->terminal_prev = st->terminal;
     st->terminal = term;
-    clear_region(st, 0, 0, st->lfctx->win_width, st->lfctx->win_height);
+    //clear_region(st, 0, 0, st->lfctx->win_width, st->lfctx->win_height);
 }
 
 
-void clear_region(struct nemi* st, int x, int y, int w, int h) {
-    glEnable(GL_SCISSOR_TEST);
-    glScissor(x, (st->lfctx->win_height - h) - y, w, h);
+void clear_color_buffer_bit(struct nemi* st) {
     glClearColor(
             (float)st->cfg.colors[NEMI_COLOR_BG].r / 255.0f,
             (float)st->cfg.colors[NEMI_COLOR_BG].g / 255.0f,
             (float)st->cfg.colors[NEMI_COLOR_BG].b / 255.0f,
-            1.0f);
+            0.0f);
     glClear(GL_COLOR_BUFFER_BIT);
+}
+
+void clear_region(struct nemi* st, int x, int y, int w, int h) {
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(x, (st->lfctx->win_height - h) - y, w, h);
+    clear_color_buffer_bit(st);
     glDisable(GL_SCISSOR_TEST);
 }
 
+static int frame_count = 0;
+
+
+
+// NOTE: 'altrender_framebuffer' is active during this subroutine.
 static
-void begin_frame(struct nemi* st) {
-    st->frame_time_begin = glfwGetTime();
+void altrender(struct nemi* st) {
 
-}
-
-
-static
-void end_frame(struct nemi* st) {
-    if(st->cfg.main.show_frametime) {
-        float old_font_scale = st->font.scale;
-        leaf_set_font_scale(&st->font, 1.0f);
-        leaf_draw_text_fmt(&st->font, 
-                st->lfctx->win_width-300, 10,
-                "frame_time=%0.3fms", st->frame_time * 1000.0);
-        leaf_set_font_scale(&st->font, old_font_scale);
-    }
- 
-
-    {
-        clear_region(st, st->lfctx->win_width-300, 40, 500, 30);
-        float old_font_scale = st->font.scale;
-        leaf_set_font_scale(&st->font, 1.0f);
-        leaf_draw_text_fmt(&st->font, 
-                st->lfctx->win_width-300, 40,
-                "RenderedCells: %i", st->terminal->num_rendered_cells);
-        leaf_set_font_scale(&st->font, old_font_scale); 
-    }
-
-
+    // Allow scripts to render stuff.
     for(uint32_t i = 0; i < st->num_scripts; i++) {
         struct perl_script* script = &st->scripts[i];
         if(script->reg_events & REG_EVENT_RENDER) {
@@ -264,8 +253,63 @@ void end_frame(struct nemi* st) {
         }
     }
 
+
+    leaf_draw_text_fmt(&st->font, 100, 100, "HELLO FRAMEBUFFERS!");
+}
+
+void update_frame(struct nemi* st) {
+    st->frame_time_begin = glfwGetTime();
+
+
+    // Render terminal cells to 'term_cells_framebuffer'
+    leaf_use_framebuffer(&st->term_cells_framebuffer);
+    {
+        read_terminal(st, st->terminal);
+        render_terminal(st, st->terminal);
+
+        leaf_font_render(&st->font);
+        leaf_renderer_flush(st->lfctx);
+    }
+
+    // Render anything else to 'altrender_framebuffer'
+    leaf_use_framebuffer(&st->altrender_framebuffer);
+    {
+        clear_color_buffer_bit(st);
+        altrender(st);
+        leaf_font_render(&st->font);
+        leaf_renderer_flush(st->lfctx);
+    }
+
+
+
+    leaf_use_framebuffer(NULL);
+    glClearColor(
+            (float)st->cfg.colors[NEMI_COLOR_BG].r / 255.0f,
+            (float)st->cfg.colors[NEMI_COLOR_BG].g / 255.0f,
+            (float)st->cfg.colors[NEMI_COLOR_BG].b / 255.0f,
+            1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+
+    leaf_draw_texture_rect(0, 0,
+            st->term_cells_framebuffer.width,
+            st->term_cells_framebuffer.height,
+            st->term_cells_framebuffer.texture,
+            (struct color_t){ 255, 255, 255 },
+            LEAF_TEXTURE_NOFLIP);
+
+
+    leaf_draw_texture_rect(0, 0,
+            st->altrender_framebuffer.width,
+            st->altrender_framebuffer.height,
+            st->altrender_framebuffer.texture,
+            (struct color_t){ 255, 255, 255 },
+            LEAF_TEXTURE_NOFLIP);
+
+
+  
     //leaf_renderer_flush(st->lfctx);
-    leaf_font_render(&st->font);
+    //leaf_font_render(&st->font);
 
     st->last_char_in = 0;
     st->last_key_in = 0;
@@ -275,19 +319,7 @@ void end_frame(struct nemi* st) {
     usleep(10000);
 
     st->frame_time = glfwGetTime() - st->frame_time_begin;
-}
 
-
-static int frame_count = 0;
-
-void update_frame(struct nemi* st) {
-    begin_frame(st);
-
-    read_terminal(st, st->terminal);
-    render_terminal(st, st->terminal);
-    update_terminal_blink_timer(st, st->terminal);
-
-    end_frame(st);
 }
 
 bool key_down(struct nemi* st, int key) {
@@ -486,7 +518,11 @@ void glfw_window_resize_callback(GLFWwindow* window, int width, int height) {
         terminal_handle_resize_event(st, &st->terminals[i]);
     }
 
-    clear_region(st, 0, 0, st->lfctx->win_width, st->lfctx->win_height);
+    leaf_free_framebuffer(&st->term_cells_framebuffer);
+    leaf_free_framebuffer(&st->altrender_framebuffer);
+    leaf_create_framebuffer(&st->term_cells_framebuffer, st->lfctx->win_width, st->lfctx->win_height);
+    leaf_create_framebuffer(&st->altrender_framebuffer, st->lfctx->win_width, st->lfctx->win_height);
+    //clear_region(st, 0, 0, st->lfctx->win_width, st->lfctx->win_height);
     trigger_event_for_scripts(st, REG_EVENT_WIN_RESIZED,
             "ii",
             st->win_cols,

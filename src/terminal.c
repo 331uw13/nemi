@@ -39,66 +39,76 @@ void clear_cell(VTermScreenCell* cell) {
     memset(cell->chars, 0, sizeof(cell->chars));
     cell->width = 0;
     cell->attrs = (VTermScreenCellAttrs){ 0 };
-    cell->fg = (VTermColor){ 0 };
-    cell->bg = (VTermColor){ 0 };
+
+    memset(&cell->fg, 0, sizeof(VTermColor));
+    memset(&cell->bg, 0, sizeof(VTermColor));
 }
+
 
 static
 void copy_cell(VTermScreenCell* src, VTermScreenCell* dest) {
     dest->width = src->width;
     dest->attrs = src->attrs;
-    dest->bg = src->bg;
-    dest->fg = src->fg;
 
+    /*memset(&dest->fg, 0, sizeof(VTermColor));
+    memset(&dest->bg, 0, sizeof(VTermColor));
+    memcpy(&dest->bg, &src->bg, sizeof(VTermColor));
+    memcpy(&dest->fg, &src->fg, sizeof(VTermColor));
+    */
+
+    dest->fg = src->fg;
+    dest->bg = src->bg;
     memcpy(dest->chars, src->chars, sizeof(src->chars));
 }
 
 
 static inline
 bool do_vterm_colors_match(VTermColor* color_a, VTermColor* color_b) {
-   
+    
     if(color_a->type != color_b->type) {
         return false;
     }
 
     if(VTERM_COLOR_IS_RGB(color_a)
     && VTERM_COLOR_IS_RGB(color_b)) {
-        if(color_a->rgb.red != color_b->rgb.red
-        || color_a->rgb.green != color_b->rgb.green
-        || color_a->rgb.blue != color_b->rgb.blue) {
+        if(
+               color_a->rgb.red   != color_b->rgb.red 
+            || color_a->rgb.green != color_b->rgb.green
+            || color_a->rgb.blue  != color_b->rgb.blue
+        ) {
             return false;
         }
     }
-    else
+    
     if(VTERM_COLOR_IS_INDEXED(color_a)
     && VTERM_COLOR_IS_INDEXED(color_b)) {
         if(color_a->indexed.idx != color_b->indexed.idx) {
             return false;
         }
     }
-
+    
     return true;
 }
 
 static inline
 bool do_cells_match(VTermScreenCell* cell_a, VTermScreenCell* cell_b) {
-    
     if(cell_a->width != cell_b->width) {
         return false;
     }
 
-    if(cell_a->attrs.bold != cell_b->attrs.bold 
+
+    if(cell_a->attrs.bold      != cell_b->attrs.bold 
     || cell_a->attrs.underline != cell_b->attrs.underline
-    || cell_a->attrs.italic != cell_b->attrs.italic
-    || cell_a->attrs.blink != cell_b->attrs.blink
-    || cell_a->attrs.reverse != cell_b->attrs.reverse
-    || cell_a->attrs.conceal != cell_b->attrs.conceal
-    || cell_a->attrs.strike != cell_b->attrs.strike
-    || cell_a->attrs.font != cell_b->attrs.font
-    || cell_a->attrs.dwl != cell_b->attrs.dwl
-    || cell_a->attrs.dhl != cell_b->attrs.dhl
-    || cell_a->attrs.small != cell_b->attrs.small
-    || cell_a->attrs.baseline != cell_b->attrs.baseline) {
+    || cell_a->attrs.italic    != cell_b->attrs.italic
+    || cell_a->attrs.blink     != cell_b->attrs.blink
+    || cell_a->attrs.reverse   != cell_b->attrs.reverse
+    || cell_a->attrs.conceal   != cell_b->attrs.conceal
+    || cell_a->attrs.strike    != cell_b->attrs.strike
+    || cell_a->attrs.font      != cell_b->attrs.font
+    || cell_a->attrs.dwl       != cell_b->attrs.dwl
+    || cell_a->attrs.dhl       != cell_b->attrs.dhl
+    || cell_a->attrs.small     != cell_b->attrs.small
+    || cell_a->attrs.baseline  != cell_b->attrs.baseline) {
         return false;
     }
 
@@ -164,7 +174,10 @@ struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, enum termin
 
     term->rows = rows;
     term->cols = cols;
-    
+    term->cursor_col = 0;
+    term->cursor_row = 0;
+    term->cursor_old_col = 0;
+    term->cursor_old_row = 0;
     term->flags = 0;
     term->yscroll = 0;
     term->line_height = st->font.char_height + st->cfg.main.line_padding;
@@ -262,18 +275,6 @@ void read_terminal(struct nemi* st, struct terminal* term) {
 }
 
 
-static
-void render_terminal_cursor(struct nemi* st, struct terminal* term) {
-    VTermPos vtcurs_pos = (VTermPos){ 0, 0 };
-    vterm_state_get_cursorpos(term->vtstate, &vtcurs_pos);
-
-    leaf_draw_rect(
-            coltox(st, vtcurs_pos.col) * st->cfg.font.char_spacing,
-            rowtoy(st, vtcurs_pos.row - term->yscroll),
-            st->font.char_width,
-            st->font.char_height,
-            (struct color_t) { 60, 60, 60 });
-}
 
 static
 struct color_t vtermcolor_to_leafcolor(VTermColor* c) {
@@ -311,16 +312,16 @@ void terminal_hide_cells(struct terminal* term, bool hidden, int col, int row, i
 
 static
 bool render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, VTermPos pos) {
-    
+   
     if(cell->chars[0] == 0) {
         return false;
     }
 
     // Unicode is not supported at least for now.
     // So just skip anything that is not ascii character.
-    if(cell->chars[0] <= 0x20 || cell->chars[0] > 0x7E) {
+    /*if(cell->chars[0] <= 0x20 || cell->chars[0] > 0x7E) {
         return false;
-    }
+    }*/
 
     // User maybe want to disable some cells from being rendered.
     bool* is_hidden = get_hidden_cell_status(term, pos.col, pos.row);
@@ -349,7 +350,8 @@ bool render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, 
         || bg_color.b != st->cfg.colors[NEMI_COLOR_BG].b) {
             
             leaf_draw_rect(
-                    char_x, char_y,
+                    char_x, 
+                    char_y,
                     st->font.char_width,
                     st->font.char_height,
                     bg_color);
@@ -394,6 +396,41 @@ bool render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, 
 }
 
 
+static
+void render_terminal_cursor(struct nemi* st, struct terminal* term) {
+    VTermPos vtcurs_pos = (VTermPos){ 0, 0 };
+    vterm_state_get_cursorpos(term->vtstate, &vtcurs_pos);
+
+    int cursor_draw_x = coltox(st, vtcurs_pos.col) * st->cfg.font.char_spacing;
+    int cursor_draw_y = rowtoy(st, vtcurs_pos.row - term->yscroll);
+
+    //int cursor_old_draw_x = coltox(st, term->cursor_old_col) * st->cfg.font.char_spacing;
+    //int cursor_old_draw_y = rowtoy(st, term->cursor_old_row - term->yscroll);
+    //clear_region(st, cursor_old_draw_x, cursor_old_draw_y, st->font.char_width, st->font.char_height);
+ 
+    VTermScreenCell old_cursor_cell;
+    VTermPos old_cursor_pos = (VTermPos){
+        term->cursor_old_row,
+        term->cursor_old_col
+    };
+    if(vterm_screen_get_cell(term->vtscrn, old_cursor_pos, &old_cursor_cell)) {
+        render_cell(st, term, &old_cursor_cell, old_cursor_pos);
+    }
+
+    leaf_draw_rect(
+            cursor_draw_x,
+            cursor_draw_y,
+            st->font.char_width,
+            st->font.char_height,
+            (struct color_t) { 60, 60, 60 });
+
+    term->cursor_row = vtcurs_pos.row;
+    term->cursor_col = vtcurs_pos.col;
+
+    term->cursor_old_row = term->cursor_row;
+    term->cursor_old_col = term->cursor_col;
+}
+
 void render_terminal(struct nemi* st, struct terminal* term) {
     vterm_get_size(term->vt, &term->rows, &term->cols);
     if(vterm_screen_is_altscreen(term->vtscrn)) {
@@ -403,7 +440,29 @@ void render_terminal(struct nemi* st, struct terminal* term) {
     uint32_t num_rendered_cells = 0; 
 
 
+    /*
+    for(int row = 0; row < term->rows; row++) {
+        for(int col = 0; col < term->cols; col++) {
+            int actual_row = row + term->yscroll;
 
+            VTermScreenCell cell;
+ 
+            if(!vterm_screen_get_cell(term->vtscrn, (VTermPos){ actual_row, col }, &cell)) {
+                continue;
+            }
+
+
+            render_cell(st, term, &cell, (VTermPos){ row, col });
+       }
+    }*/
+
+    
+    bool dirty_rows[term->rows];
+    for(int row = 0; row < term->rows; row++) {
+        dirty_rows[row] = false;
+    }
+
+    dirty_rows[term->cursor_row] = true;
 
     // Update front buffer.
 
@@ -411,75 +470,52 @@ void render_terminal(struct nemi* st, struct terminal* term) {
         for(int col = 0; col < term->cols; col++) {
             int actual_row = row + term->yscroll;
            
-            VTermScreenCell* cell = &term->front_cell_buffer[col + row * term->cols];
-            //clear_cell(cell);
+            VTermScreenCell* back_cell  = &term->back_cell_buffer[col + row * term->cols];
+            VTermScreenCell* front_cell = &term->front_cell_buffer[col + row * term->cols];
 
-            if(!vterm_screen_get_cell(term->vtscrn, 
-                        (VTermPos){ actual_row, col }, cell)) {
+            // Get up to date cell to 'front_cell'
+            if(!vterm_screen_get_cell(term->vtscrn, (VTermPos){ actual_row, col }, front_cell)) {
                 continue;
             }
-
-        }
-    }
-
-
-
-    int cleared = 0;
-
-    for(int row = 0; row < term->rows; row++) {
-        for(int col = 0; col < term->cols; col++) {
-            
-            VTermScreenCell* front_cell = &term->front_cell_buffer[col + row * term->cols];
-            VTermScreenCell* back_cell = &term->back_cell_buffer[col + row * term->cols];
- 
 
             if(!do_cells_match(front_cell, back_cell)) {
-            
-                int char_x = coltox(st, col) * st->cfg.font.char_spacing;
-                int char_y = rowtoy(st, row);
-                clear_region(st, char_x, char_y, st->font.char_width, st->font.char_height);
-                
-                render_cell(st, term, front_cell, (VTermPos){ row, col });
-                copy_cell(front_cell, back_cell);
-
-                cleared++;
+                dirty_rows[row] = true;
             }
-                
+            
+            copy_cell(front_cell, back_cell);
         }
     }
 
-    printf("Cleared cells: %i\n", cleared);
 
-
-
-    /*
+    int cleared_rows = 0;
 
     for(int row = 0; row < term->rows; row++) {
+        if(!dirty_rows[row]) {
+            continue;
+        }
+
+        clear_region(st,
+                0, 
+                rowtoy(st, row),
+                st->lfctx->win_width,
+                st->font.char_height + st->cfg.main.line_padding);
+
+
         for(int col = 0; col < term->cols; col++) {
-    
-            VTermScreenCell* prevframe_cell = &term->rendered_cells_prevframe[col + row * term->cols];
-            VTermScreenCell* currframe_cell = &term->rendered_cells[col + row * term->cols];
-
-            if(do_cells_match(prevframe_cell, currframe_cell)) {
-                continue;
-            }
-
 
             int char_x = coltox(st, col) * st->cfg.font.char_spacing;
             int char_y = rowtoy(st, row);
-
-            cleared_cells++;
-            clear_region(st, char_x, char_y, st->font.char_width, st->font.char_height);
+        
+            VTermScreenCell* front_cell = &term->front_cell_buffer[col + row * term->cols];
+            render_cell(st, term, front_cell, (VTermPos){ row, col });
         }
+
+        cleared_rows++;
     }
-    */
 
+    //printf("Cleared rows: %i\n", cleared_rows);
 
-
-    term->num_rendered_cells = num_rendered_cells;
-    //printf("Num rendered cells: %i\n", num_rendered_cells);
-
-    if(term != st->messages) {
+    if(term->type != ECHO_TERMINAL) {
         render_terminal_cursor(st, term);
     }
 }
@@ -725,6 +761,7 @@ void terminal_set_cell_custom_bg(struct terminal* term, VTermPos pos, int hex_rg
             pos,
             (VTermColor) {
                 .type = VTERM_COLOR_RGB,
+                .rgb.type = VTERM_COLOR_RGB,
                 .rgb.red = HEX2RED_CHANNEL(hex_rgb_color),
                 .rgb.green = HEX2GRN_CHANNEL(hex_rgb_color),
                 .rgb.blue = HEX2BLU_CHANNEL(hex_rgb_color)
@@ -736,6 +773,7 @@ void terminal_set_cell_custom_fg(struct terminal* term, VTermPos pos, int hex_rg
             pos,
             (VTermColor) {
                 .type = VTERM_COLOR_RGB,
+                .rgb.type = VTERM_COLOR_RGB,
                 .rgb.red = HEX2RED_CHANNEL(hex_rgb_color),
                 .rgb.green = HEX2GRN_CHANNEL(hex_rgb_color),
                 .rgb.blue = HEX2BLU_CHANNEL(hex_rgb_color)

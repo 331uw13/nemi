@@ -45,6 +45,9 @@ void leaf_draw_rect
     struct color_t color
 );
 
+#define LEAF_TEXTURE_NOFLIP 0
+#define LEAF_TEXTURE_FLIP_HORIZONTAL 1
+#define LEAF_TEXTURE_FLIP_VERTICAL 2
 void leaf_draw_texture_rect
 (
     float pos_x,
@@ -52,7 +55,8 @@ void leaf_draw_texture_rect
     float width,
     float height,
     uint32_t texture,
-    struct color_t color
+    struct color_t color,
+    int flip_options
 );
 
 void leaf_draw_circle

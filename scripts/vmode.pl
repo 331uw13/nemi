@@ -113,7 +113,7 @@ sub update_word_oncursor_highlight {
         $begin++;
     }
     for(my $x = $begin; $x < $end; $x++) {
-        nemi::term_set_cell_custom_attrs($x, $word_oncursor_y, 0x2);
+        nemi::term_set_cell_custom_attrs($x, $word_oncursor_y, 0x2 | 0x4);
     }
 }
 
@@ -426,8 +426,8 @@ sub init_script {
     $mouse_old_row = 0;
 
     $cursor_color = 0xA03366;
-    $select_bg_color = 0x6D2446;
-    $select_fg_color = 0xDD9FBC;
+    $select_bg_color = 0xFFFFFF;
+    $select_fg_color = 0x511b33;
 
     # Note: word separators has to be written as integers
     # because 'nemi::term_get_char()' returns int.

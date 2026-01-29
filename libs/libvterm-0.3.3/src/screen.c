@@ -211,6 +211,8 @@ static int putglyph(VTermGlyphInfo *info, VTermPos pos, void *user)
     cell->pen.has_custom_attrs = false;
     cell->pen.has_custom_bg = false;
     cell->pen.has_custom_fg = false;
+    cell->pen.custom_bg = (VTermColor) { 0 };
+    cell->pen.custom_fg = (VTermColor) { 0 };
   }
   if(i < VTERM_MAX_CHARS_PER_CELL)
     cell->chars[i] = 0;
@@ -387,7 +389,7 @@ static int erase_internal(VTermRect rect, int selective, void *user)
       cell->pen = (ScreenPen){
         /* Only copy .fg and .bg; leave things like rv in reset state */
         .fg = screen->pen.fg,
-        .bg = screen->pen.bg,
+        .bg = screen->pen.bg
       };
       cell->pen.dwl = info->doublewidth;
       cell->pen.dhl = info->doubleheight;
