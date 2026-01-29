@@ -24,6 +24,8 @@ struct leaf_ctx_t {
     size_t   renderer_num_vertex_positions;
     size_t   renderer_vbo_memsize;
     size_t   renderer_vbo_size;
+    size_t   renderer_vbo_data_offset;
+    size_t   renderer_vbo_num_vertices;
 };
 
 // 'flags' for leaf_open()
@@ -44,6 +46,7 @@ void leaf_free_renderer(struct leaf_ctx_t* ctx);
 
 // One vertex: [x, y, r, g, b]
 void leaf_render_vertices(struct leaf_ctx_t* ctx, float* vertices, size_t vertices_memsize);
+void leaf_renderer_flush(struct leaf_ctx_t* ctx);
 uint32_t leaf_load_texture(const char* path, int* width, int* height);
 
 

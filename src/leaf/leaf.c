@@ -147,9 +147,11 @@ void leaf_init_renderer(struct leaf_ctx_t* ctx, size_t vbo_memsize) {
     glBufferData(GL_ARRAY_BUFFER, vbo_memsize, NULL, GL_STATIC_DRAW);
 
     ctx->renderer_vbo_memsize = vbo_memsize;
-
-
+    ctx->renderer_vbo_data_offset = 0;
+    ctx->renderer_vbo_num_vertices = 0;
     size_t stride_size = (2 + 3) * sizeof(float);
+
+
     // Positions.
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, stride_size, (void*)(0));
     glEnableVertexAttribArray(0);
@@ -228,12 +230,23 @@ void leaf_render_vertices(struct leaf_ctx_t* ctx, float* vertices, size_t vertic
         return;
     }
 
+    /*
     if(vertices_memsize >= ctx->renderer_vbo_memsize) {
         fprintf(stderr, "(%s) %s(): Renderer VBO doesnt have enough memory allocated.\n",
                 __FILE__, __func__);
         return;
     }
+    */
 
+
+    glBindBuffer(GL_ARRAY_BUFFER, ctx->renderer_vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, ctx->renderer_vbo_data_offset, vertices_memsize, vertices);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    ctx->renderer_vbo_data_offset += vertices_memsize;
+    ctx->renderer_vbo_num_vertices += ((vertices_memsize / sizeof(float)) / 5);
+
+    /*
     glBindBuffer(GL_ARRAY_BUFFER, ctx->renderer_vbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, vertices_memsize, vertices);
     
@@ -246,8 +259,22 @@ void leaf_render_vertices(struct leaf_ctx_t* ctx, float* vertices, size_t vertic
     
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
+    */
 }
 
+void leaf_renderer_flush(struct leaf_ctx_t* ctx) {
+
+    glBindBuffer(GL_ARRAY_BUFFER, ctx->renderer_vbo);
+    glBindVertexArray(ctx->renderer_vao);
+    glUseProgram(ctx->renderer_shader);
+
+    glDrawArrays(GL_TRIANGLES, 0, ctx->renderer_vbo_num_vertices);
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    ctx->renderer_vbo_data_offset = 0;
+    ctx->renderer_vbo_num_vertices = 0;
+}
 
 uint32_t leaf_load_texture(const char* path, int* width, int* height) {
     uint32_t tex = 0;

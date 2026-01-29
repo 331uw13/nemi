@@ -122,6 +122,9 @@ bool key_down(struct nemi* st, int key);
 // TODO: Not all types are currently supported.
 void trigger_event_for_scripts(struct nemi* st, int event_num, const char* arg_types, ...);
 
+// Clear rendered pixels.
+void clear_region(struct nemi* st, int x, int y, int w, int h);
+
 // Convert column/row to window x/y position.
 int coltox(struct nemi* st, int col);
 int rowtoy(struct nemi* st, int row);

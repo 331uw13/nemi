@@ -29,6 +29,113 @@ const char* get_terminaltype_shell(struct nemi* st, enum terminal_type term_type
     return NULL;
 }
 
+
+static
+void clear_cell(VTermScreenCell* cell) {
+    if(!cell) {
+        return;
+    }
+
+    memset(cell->chars, 0, sizeof(cell->chars));
+    cell->width = 0;
+    cell->attrs = (VTermScreenCellAttrs){ 0 };
+    cell->fg = (VTermColor){ 0 };
+    cell->bg = (VTermColor){ 0 };
+}
+
+static
+void copy_cell(VTermScreenCell* src, VTermScreenCell* dest) {
+    dest->width = src->width;
+    dest->attrs = src->attrs;
+    dest->bg = src->bg;
+    dest->fg = src->fg;
+
+    memcpy(dest->chars, src->chars, sizeof(src->chars));
+}
+
+
+static inline
+bool do_vterm_colors_match(VTermColor* color_a, VTermColor* color_b) {
+   
+    if(color_a->type != color_b->type) {
+        return false;
+    }
+
+    if(VTERM_COLOR_IS_RGB(color_a)
+    && VTERM_COLOR_IS_RGB(color_b)) {
+        if(color_a->rgb.red != color_b->rgb.red
+        || color_a->rgb.green != color_b->rgb.green
+        || color_a->rgb.blue != color_b->rgb.blue) {
+            return false;
+        }
+    }
+    else
+    if(VTERM_COLOR_IS_INDEXED(color_a)
+    && VTERM_COLOR_IS_INDEXED(color_b)) {
+        if(color_a->indexed.idx != color_b->indexed.idx) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static inline
+bool do_cells_match(VTermScreenCell* cell_a, VTermScreenCell* cell_b) {
+    
+    if(cell_a->width != cell_b->width) {
+        return false;
+    }
+
+    if(cell_a->attrs.bold != cell_b->attrs.bold 
+    || cell_a->attrs.underline != cell_b->attrs.underline
+    || cell_a->attrs.italic != cell_b->attrs.italic
+    || cell_a->attrs.blink != cell_b->attrs.blink
+    || cell_a->attrs.reverse != cell_b->attrs.reverse
+    || cell_a->attrs.conceal != cell_b->attrs.conceal
+    || cell_a->attrs.strike != cell_b->attrs.strike
+    || cell_a->attrs.font != cell_b->attrs.font
+    || cell_a->attrs.dwl != cell_b->attrs.dwl
+    || cell_a->attrs.dhl != cell_b->attrs.dhl
+    || cell_a->attrs.small != cell_b->attrs.small
+    || cell_a->attrs.baseline != cell_b->attrs.baseline) {
+        return false;
+    }
+
+    if(!do_vterm_colors_match(&cell_a->fg, &cell_b->fg)) {
+        return false;
+    }
+
+    if(!do_vterm_colors_match(&cell_a->bg, &cell_b->bg)) {
+        return false;
+    }
+    
+    for(size_t i = 0; i < VTERM_MAX_CHARS_PER_CELL; i++) {
+        if(cell_a->chars[i] != cell_b->chars[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+static 
+void resize_terminal_cell_buffers(struct terminal* term) {
+    // TODO: Add error checking.
+
+    size_t buffer_size = (term->cols * term->rows) * sizeof(VTermScreenCell);
+    term->front_cell_buffer = realloc(term->front_cell_buffer, buffer_size);
+    term->back_cell_buffer = realloc(term->back_cell_buffer, buffer_size);
+
+
+    for(int row = 0; row < term->rows; row++) {
+        for(int col = 0; col < term->cols; col++) {
+        
+            clear_cell(&term->front_cell_buffer[col + row * term->cols]);
+            clear_cell(&term->back_cell_buffer[col + row * term->cols]);
+        }
+    }
+}
+
 struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, enum terminal_type term_type) {
     if(st->num_terminals+1 >= NEMI_TERMINALS_MAX) {
         return NULL;
@@ -82,6 +189,9 @@ struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, enum termin
     term->is_altscreen = false;
     terminal_init_palette(st, term);
 
+    term->front_cell_buffer = NULL;
+    term->back_cell_buffer = NULL;
+    resize_terminal_cell_buffers(term);
    
     logprintf(LOG_INFO, "Created %s terminal (%ix%i)", 
             (term_type == SHELL_TERMINAL) ? "shell" : "echo",
@@ -99,6 +209,8 @@ void close_terminal(struct terminal* term) {
     }
 
     freeif(term->hidden_cells);
+    freeif(term->front_cell_buffer);
+    freeif(term->back_cell_buffer);
 
     close(term->master_fd);
     term->master_fd = -1;
@@ -196,24 +308,31 @@ void terminal_hide_cells(struct terminal* term, bool hidden, int col, int row, i
 }
 
 
+
 static
-void render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, VTermPos pos) {
+bool render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, VTermPos pos) {
     
     if(cell->chars[0] == 0) {
-        return;
+        return false;
     }
 
+    // Unicode is not supported at least for now.
+    // So just skip anything that is not ascii character.
+    if(cell->chars[0] <= 0x20 || cell->chars[0] > 0x7E) {
+        return false;
+    }
+
+    // User maybe want to disable some cells from being rendered.
     bool* is_hidden = get_hidden_cell_status(term, pos.col, pos.row);
-    if(is_hidden) {
-        if(*is_hidden) {
-            return;
-        }
+    if(is_hidden && *is_hidden) {
+        return false;
     }
 
-    int char_x = coltox(st, pos.col);
+    int char_x = coltox(st, pos.col) * st->cfg.font.char_spacing;
     int char_y = rowtoy(st, pos.row);
 
-    char_x *= st->cfg.font.char_spacing;
+    //clear_region(st, char_x, char_y, st->font.char_width, st->font.char_height);
+   
 
     // Cell background.
 
@@ -239,8 +358,8 @@ void render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, 
 
     // Cell foreground.
 
+    struct color_t fg_color = st->cfg.colors[NEMI_COLOR_FG];
 
-    struct color_t fg_color = st->cfg.colors[NEMI_COLOR_FG]; // Default color.
 
     if(VTERM_COLOR_IS_INDEXED(&cell->fg)) {
         vterm_state_convert_color_to_rgb(term->vtstate, &cell->fg);
@@ -259,6 +378,7 @@ void render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, 
     leaf_set_font_color(&st->font, fg_color);
     leaf_draw_char(&st->font, char_x, char_y, cell->chars[0]);
 
+
     if(cell->attrs.underline) {
         leaf_draw_rect(
                 char_x,
@@ -267,7 +387,12 @@ void render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, 
                 st->cfg.font.underline_height,
                 fg_color);
     }
+
+
+
+    return true;
 }
+
 
 void render_terminal(struct nemi* st, struct terminal* term) {
     vterm_get_size(term->vt, &term->rows, &term->cols);
@@ -275,16 +400,84 @@ void render_terminal(struct nemi* st, struct terminal* term) {
         term->yscroll = 0;
     }
 
+    uint32_t num_rendered_cells = 0; 
+
+
+
+
+    // Update front buffer.
+
     for(int row = 0; row < term->rows; row++) {
         for(int col = 0; col < term->cols; col++) {
             int actual_row = row + term->yscroll;
-            VTermScreenCell cell;
-            if(!vterm_screen_get_cell(term->vtscrn, (VTermPos){ actual_row, col }, &cell)) {
+           
+            VTermScreenCell* cell = &term->front_cell_buffer[col + row * term->cols];
+            //clear_cell(cell);
+
+            if(!vterm_screen_get_cell(term->vtscrn, 
+                        (VTermPos){ actual_row, col }, cell)) {
                 continue;
             }
-            render_cell(st, term, &cell, (VTermPos){ row, col });
+
         }
     }
+
+
+
+    int cleared = 0;
+
+    for(int row = 0; row < term->rows; row++) {
+        for(int col = 0; col < term->cols; col++) {
+            
+            VTermScreenCell* front_cell = &term->front_cell_buffer[col + row * term->cols];
+            VTermScreenCell* back_cell = &term->back_cell_buffer[col + row * term->cols];
+ 
+
+            if(!do_cells_match(front_cell, back_cell)) {
+            
+                int char_x = coltox(st, col) * st->cfg.font.char_spacing;
+                int char_y = rowtoy(st, row);
+                clear_region(st, char_x, char_y, st->font.char_width, st->font.char_height);
+                
+                render_cell(st, term, front_cell, (VTermPos){ row, col });
+                copy_cell(front_cell, back_cell);
+
+                cleared++;
+            }
+                
+        }
+    }
+
+    printf("Cleared cells: %i\n", cleared);
+
+
+
+    /*
+
+    for(int row = 0; row < term->rows; row++) {
+        for(int col = 0; col < term->cols; col++) {
+    
+            VTermScreenCell* prevframe_cell = &term->rendered_cells_prevframe[col + row * term->cols];
+            VTermScreenCell* currframe_cell = &term->rendered_cells[col + row * term->cols];
+
+            if(do_cells_match(prevframe_cell, currframe_cell)) {
+                continue;
+            }
+
+
+            int char_x = coltox(st, col) * st->cfg.font.char_spacing;
+            int char_y = rowtoy(st, row);
+
+            cleared_cells++;
+            clear_region(st, char_x, char_y, st->font.char_width, st->font.char_height);
+        }
+    }
+    */
+
+
+
+    term->num_rendered_cells = num_rendered_cells;
+    //printf("Num rendered cells: %i\n", num_rendered_cells);
 
     if(term != st->messages) {
         render_terminal_cursor(st, term);
@@ -449,6 +642,8 @@ void terminal_handle_resize_event(struct nemi* st, struct terminal* term) {
     for(size_t i = old_num_cells; i < num_curr_cells; i++) {
         term->hidden_cells[i] = false;
     }
+
+    resize_terminal_cell_buffers(term);
 }
 
 

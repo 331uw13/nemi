@@ -157,7 +157,8 @@ struct nemi* start_session(struct nemi_filepaths filepaths) {
     if(st->cfg.main.hide_mouse) {
         glfwSetInputMode(st->lfctx->glfw_win, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
     }
-
+    
+    clear_region(st, 0, 0, st->lfctx->win_width, st->lfctx->win_height);
     return st;
 }
 
@@ -210,18 +211,26 @@ void switch_terminal_ptr(struct nemi* st, struct terminal* term) {
     }
     st->terminal_prev = st->terminal;
     st->terminal = term;
+    clear_region(st, 0, 0, st->lfctx->win_width, st->lfctx->win_height);
 }
 
 
-static
-void begin_frame(struct nemi* st) {
-    st->frame_time_begin = glfwGetTime();
+void clear_region(struct nemi* st, int x, int y, int w, int h) {
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(x, (st->lfctx->win_height - h) - y, w, h);
     glClearColor(
             (float)st->cfg.colors[NEMI_COLOR_BG].r / 255.0f,
             (float)st->cfg.colors[NEMI_COLOR_BG].g / 255.0f,
             (float)st->cfg.colors[NEMI_COLOR_BG].b / 255.0f,
             1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
+    glDisable(GL_SCISSOR_TEST);
+}
+
+static
+void begin_frame(struct nemi* st) {
+    st->frame_time_begin = glfwGetTime();
+
 }
 
 
@@ -235,7 +244,19 @@ void end_frame(struct nemi* st) {
                 "frame_time=%0.3fms", st->frame_time * 1000.0);
         leaf_set_font_scale(&st->font, old_font_scale);
     }
-   
+ 
+
+    {
+        clear_region(st, st->lfctx->win_width-300, 40, 500, 30);
+        float old_font_scale = st->font.scale;
+        leaf_set_font_scale(&st->font, 1.0f);
+        leaf_draw_text_fmt(&st->font, 
+                st->lfctx->win_width-300, 40,
+                "RenderedCells: %i", st->terminal->num_rendered_cells);
+        leaf_set_font_scale(&st->font, old_font_scale); 
+    }
+
+
     for(uint32_t i = 0; i < st->num_scripts; i++) {
         struct perl_script* script = &st->scripts[i];
         if(script->reg_events & REG_EVENT_RENDER) {
@@ -243,6 +264,7 @@ void end_frame(struct nemi* st) {
         }
     }
 
+    //leaf_renderer_flush(st->lfctx);
     leaf_font_render(&st->font);
 
     st->last_char_in = 0;
@@ -250,7 +272,7 @@ void end_frame(struct nemi* st) {
     glfwSwapBuffers(st->lfctx->glfw_win);
     
     glfwPollEvents();
-    //usleep(10 * 1000);
+    usleep(10000);
 
     st->frame_time = glfwGetTime() - st->frame_time_begin;
 }
@@ -464,6 +486,7 @@ void glfw_window_resize_callback(GLFWwindow* window, int width, int height) {
         terminal_handle_resize_event(st, &st->terminals[i]);
     }
 
+    clear_region(st, 0, 0, st->lfctx->win_width, st->lfctx->win_height);
     trigger_event_for_scripts(st, REG_EVENT_WIN_RESIZED,
             "ii",
             st->win_cols,

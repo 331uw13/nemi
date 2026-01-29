@@ -57,7 +57,6 @@ struct font_t {
     size_t   vbo_memsize;
     size_t   vbo_data_offset;
     size_t   vbo_num_vertices;
-    void*    vbo_ptr;
 
     float    char_color_r;
     float    char_color_g;

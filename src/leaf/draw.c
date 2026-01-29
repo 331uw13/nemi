@@ -58,10 +58,6 @@ float leaf_draw_char
         x+cw, y-ch, 1.0f, 1.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, y, font->italic
     };
 
-//    printf("%s: %li / %li\n", __func__, 
-//            font->vbo_data_offset, font->vbo_memsize);
-    
-
     glBindBuffer(GL_ARRAY_BUFFER, font->vbo);
     glBufferSubData(
             GL_ARRAY_BUFFER,
@@ -82,90 +78,6 @@ float leaf_draw_char
     }
 
     return ret_width;
-
-
-
-
-
-    /*
-    float ch_width = glyph->width * font->scale;
-    float ch_height = glyph->height * font->scale;
-
-    // Move glyph to its base line.
-    // For example 'g', '-', '*'...  are at differen Y levels.
-    float yfix = (font->char_height*2 - glyph->height*font->scale) / 2;
-    yfix += ((glyph->height - glyph->bearing_y) * font->scale) / 2;
-
-
-    float xF = (float)pos_x;
-    float yF = (float)g_leaf_ctx->win_height - ((float)pos_y + yfix);
-
-
-    if(font->center_char_to_cell) {
-        xF += (font->char_width*2 - ch_width) / 4.0f;
-    }
-
-
-    yF += 1;
-    
-    glBindVertexArray(glyph->vao);
-    glUseProgram(font->shader); 
-        
-    float x = (xF / (float)g_leaf_ctx->win_width) * 2.0f - 1.0f;
-    float y = (yF / (float)g_leaf_ctx->win_height) * 2.0f - 1.0f;
-    shader_uniform1f(font->shader, "u_char_y", y);
-    shader_uniform1f(font->shader, "u_char_x", x);
-
-    shader_uniform1f(font->shader, "u_italic", font->italic);
-    shader_uniform1f(font->shader, "u_scale", font->scale); 
-    
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, glyph->texture);
-    //glBindBuffer(GL_ARRAY_BUFFER, glyph->vbo);
-    //glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
-
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    */
-
-
-    /*
-    // Normalize position from:  zero - (win_width/height)  ->  -1.0f - +1.0f
-    float x = (xF / (float)g_leaf_ctx->win_width) * 2.0f - 1.0f;
-    float y = (yF / (float)g_leaf_ctx->win_height) * 2.0f - 1.0f;
-
-    float w = ch_width / (float)g_leaf_ctx->win_width;
-    float h = ch_height / (float)g_leaf_ctx->win_height;
-
-    float vertices[] = {
-        x,   y-h, 0.0f, 1.0f,
-        x,   y,   0.0f, 0.0f,
-        x+w, y,   1.0f, 0.0f,
-
-        x,   y-h, 0.0f, 1.0f,
-        x+w, y,   1.0f, 0.0f,
-        x+w, y-h, 1.0f, 1.0f
-    };
-
-    glBindVertexArray(font->vao);
-    glUseProgram(font->shader); 
-
-    shader_uniform1f(font->shader, "u_italic", font->italic);
-    if(font->italic > -0.001f
-    || font->italic <  0.001f) { // Avoid floating point precision errors.
-        // Character position (top left corner)
-        // is needed to pass into vertex shader
-        // to get distance between current pixel and where it started.
-        // By adding that to current pixel x position we get italic text.
-        shader_uniform1f(font->shader, "u_char_y", y);
-    }
-    
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, glyph->texture);
-    glBindBuffer(GL_ARRAY_BUFFER, font->vbo);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
-
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    */
 }
 
 

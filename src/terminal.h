@@ -21,7 +21,16 @@ struct terminal {
     VTerm*       vt;
     VTermScreen* vtscrn;
     VTermState*  vtstate;
-    bool         is_altscreen;
+
+    // Back and front cell buffers for knowing what cells to render
+    // so we dont need to render already rendered cells again.
+    VTermScreenCell* front_cell_buffer;
+    VTermScreenCell* back_cell_buffer;
+
+
+    uint32_t num_rendered_cells; // For debug purposes. TODO: Remove later.
+
+    bool         is_altscreen; // TODO: Maybe rename this later to 'is_altbuffer_enabled'
     enum terminal_type type;
 
     int yscroll;
@@ -33,6 +42,7 @@ struct terminal {
 
     float blink_timer;
 
+    // TODO: This needs fixing.
     // Users can hide terminal's cells.
     // This is done because then they can render
     // anything they want from scripts without
