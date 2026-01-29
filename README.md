@@ -51,8 +51,7 @@ Keybind shortcuts to functions. Again see output from `nemi::script_keybinds("ge
 You can also set the log output to a filepath, but make sure it can be accessed where you are running it from.
 
 
-* Bug reporting
-To report bugs open an issue with corresponding label to your problem. Please include log output so logging can be improved :)
+* To report bugs open an issue with corresponding label to your problem. Please include log output so logging can be improved :)
 
 
 ## Compatibility with older perl verions

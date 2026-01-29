@@ -307,7 +307,6 @@ void update_frame(struct nemi* st) {
             LEAF_TEXTURE_NOFLIP);
 
 
-  
     //leaf_renderer_flush(st->lfctx);
     //leaf_font_render(&st->font);
 
