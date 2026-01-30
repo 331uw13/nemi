@@ -3,10 +3,10 @@
 You can create and modify perl scripts to customize the terminal emulator's behaviour
 or add any kind of new features.
 
-> [!NOTE]
+> [!WARNING]
 > Scripting support in progress, Currently some functions may change or be removed without any warning. 
 >
-> In the future, it will be continued with backward compatibility in mind.
+> > In the future, it will be continued with backward compatibility in mind.
 
 ## Documentation
 
@@ -15,33 +15,33 @@ or add any kind of new features.
 
 # Setup for use
 > [!NOTE]
-> **If you dont want to install** and just want to test. You can run the program with `./nemi -home .`
+> <ins>**If you dont want to install**</ins> and just want to test. You can run the program with `./nemi -home .`
 ```
 $ perl configure.pl && make release && ./install.sh
 ```
-
+> If your system has older version of perl, read `Troubleshooting` section below if you encounter problems.
 
 # Default scripts
 
-## cmdl.pl
-Command line script. You can evaluate perl expressions and the output is going to be written into echo terminal (messages).
-Functions which are listed in the scripting documentation are also available. They start with the prefix `nemi::`.
-Open `scripts/cmdl.pl` and check what is the toggle keybind. Then run `nemi::script_keybinds("cmdl")`.
-It will tell you all keybinds and what they do for the script.
+  - ## `cmdl.pl`
+    Alternative command line. You can evaluate perl expressions and the output is going to be written into echo terminal.
+    Functions which are listed in the scripting documentation are also available. They start with the prefix `nemi::`
+    
+    Open `scripts/cmdl.pl` and check what is the toggle keybind. Then run `nemi::script_keybinds("cmdl")`.
+    It will tell you all keybinds and what they do for the script. That command works for all loaded scripts which have keybinds assigned.
 
 
-## vmode.pl
-Vmode or "visual mode" creates another cursor for you. You can select text, interact with the word under the second cursor.
-And alot more, see vmode keybinds with command in cmdl: `nemi::script_keybinds("vmode")`
+  - ## `vmode.pl`
+    Vmode or "visual mode" creates another cursor for you. You can select text, interact with the word under the second cursor.
+    And alot more, see more info with `nemi::script_keybinds("vmode")`
 
 
-## scrollback.pl
-This script was made to allow easy access to modify the scrolling behaviour.
+  - ## `scrollback.pl`
+    This script was made to allow easy access to modify the scrolling behaviour.
 
 
-## general.pl
-Keybind shortcuts to functions. Again see output from `nemi::script_keybinds("general")`
-
+  - ## `general.pl`
+    Useful keybind shortcuts to functions.
 
 # Troubleshooting
 
@@ -73,4 +73,5 @@ All kinds of ideas are welcome! Create pull request or open an issue and we can 
 ### My contacts:
 * Matrix.org: `@eeiuwie:matrix.org`
 * Discord: `_331uw13`
+
 

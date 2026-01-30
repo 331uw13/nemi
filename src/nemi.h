@@ -42,6 +42,12 @@ struct nemi_filepaths {
     char* colorthemes;
 };
 
+struct image {
+    int width;
+    int height;
+    uint32_t texture;
+};
+
 struct nemi {
     int flags;
 
