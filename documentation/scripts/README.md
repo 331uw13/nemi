@@ -87,10 +87,10 @@ what events the script actually wants so it doesnt need to implement all event f
 Function                     Arguments
 --------                     ---------
 event_help_message           < No arguments >        // When this event is called user wants a help message for the script.
-event_key_input              $_[0]: Key, $_[1]: Key modifier
-event_char_input             $_[0]: Character
-event_win_resized            $_[0]: New window width, $_[1]: New window height
-event_term_buffer_changed    $_[0]: If the current buffer is altbuffer it is 1 otherwise 0.
+event_key_input              $_[0]: Key, $_[1]: Key modifier.
+event_char_input             $_[0]: Character.
+event_win_resized            $_[0]: New window width, $_[1]: New window height.
+event_term_buffer_changed    $_[0]: 1 if terminal altbuffer is active otherwise 0.
 event_keybind_press          $_[0]: Keybind event name.
 event_render                 < No arguments >
 ```
@@ -122,7 +122,8 @@ nemi::term_clear_cell_custom_bg    (column, row)
 nemi::term_clear_cell_custom_attrs (column, row)
 nemi::term_copy_to_clipboard       (start_column, start_row, end_column, end_row) 
 nemi::term_exec                    (command)
-
+nemi::term_pty_write               (string)
+nemi::term_is_altbuffer_active     < No arguments >
 
 ////  Rendering  ////
 

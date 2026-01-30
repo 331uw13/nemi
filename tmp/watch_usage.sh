@@ -2,5 +2,5 @@
 
 
 
-htop --filter nemi
+htop --tree --filter nemi
 

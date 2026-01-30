@@ -34,6 +34,14 @@
 
 // TODO: Add error checking..
 
+XS(xsw_term_is_altbuffer_active) {
+    dXSARGS;
+    (void)items;
+    struct nemi* st = get_state();
+
+    XSRETURN_IV(st->terminal->is_altbuffer_active);
+}
+
 XS(xsw_list_scripts) {
     dXSARGS;
     (void)items;
@@ -120,7 +128,7 @@ XS(xsw_term_exec) {
     struct terminal* term = NULL;
     for(uint16_t i = 0; i < st->num_terminals; i++) {
         struct terminal* candidate = &st->terminals[i];
-        if(!candidate->is_altscreen && candidate->type == SHELL_TERMINAL) {
+        if(!candidate->is_altbuffer_active && candidate->type == SHELL_TERMINAL) {
             term = candidate;
             break;
         }
@@ -137,6 +145,21 @@ XS(xsw_term_exec) {
     if(cmd[cmd_len-1] != '\n') {
         write(st->terminal->master_fd, "\n", 1);
     }
+    XSRETURN_EMPTY;
+}
+
+XS(xsw_term_pty_write) {
+    dXSARGS;
+    (void)items;
+    STRLEN str_len;
+    char* str = SvPV(ST(0), str_len);
+    struct nemi* st = get_state();
+ 
+    if(str_len == 0) {
+        XSRETURN_EMPTY;
+    }
+
+    write(st->terminal->master_fd, str, str_len);
     XSRETURN_EMPTY;
 }
 
@@ -324,9 +347,11 @@ XS(xsw_term_copy_to_clipboard) {
     STRLEN type_len;
     char* type = SvPV(ST(4), type_len);
     struct nemi* st = get_state();
-    terminal_copy_to_clipboard(st, st->terminal, 
-            start_col, start_row,
-            end_col, end_row, type);
+    terminal_copy_to_clipboard(st, st->terminal, type,
+            start_col, 
+            start_row,
+            end_col,
+            end_row);
     XSRETURN_EMPTY;
 }
 
@@ -449,7 +474,7 @@ XS(xsw_term_yscroll) {
     int offset = SvIV(ST(0));
 
     struct nemi* st = get_state();
-    st->terminal->yscroll += offset;
+    terminal_yscroll(st, st->terminal, offset);
     XSRETURN_EMPTY;
 }
 

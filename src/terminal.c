@@ -30,20 +30,6 @@ const char* get_terminaltype_shell(struct nemi* st, enum terminal_type term_type
 }
 
 
-static
-void clear_cell(VTermScreenCell* cell) {
-    if(!cell) {
-        return;
-    }
-
-    memset(cell->chars, 0, sizeof(cell->chars));
-    cell->width = 0;
-    cell->attrs = (VTermScreenCellAttrs){ 0 };
-
-    memset(&cell->fg, 0, sizeof(VTermColor));
-    memset(&cell->bg, 0, sizeof(VTermColor));
-}
-
 
 static
 void copy_cell(VTermScreenCell* src, VTermScreenCell* dest) {
@@ -71,11 +57,9 @@ bool do_vterm_colors_match(VTermColor* color_a, VTermColor* color_b) {
 
     if(VTERM_COLOR_IS_RGB(color_a)
     && VTERM_COLOR_IS_RGB(color_b)) {
-        if(
-               color_a->rgb.red   != color_b->rgb.red 
-            || color_a->rgb.green != color_b->rgb.green
-            || color_a->rgb.blue  != color_b->rgb.blue
-        ) {
+        if(color_a->rgb.red   != color_b->rgb.red 
+        || color_a->rgb.green != color_b->rgb.green
+        || color_a->rgb.blue  != color_b->rgb.blue) {
             return false;
         }
     }
@@ -95,7 +79,6 @@ bool do_cells_match(VTermScreenCell* cell_a, VTermScreenCell* cell_b) {
     if(cell_a->width != cell_b->width) {
         return false;
     }
-
 
     if(cell_a->attrs.bold      != cell_b->attrs.bold 
     || cell_a->attrs.underline != cell_b->attrs.underline
@@ -130,6 +113,7 @@ bool do_cells_match(VTermScreenCell* cell_a, VTermScreenCell* cell_b) {
 }
 static 
 void resize_terminal_cell_buffers(struct terminal* term) {
+    
     // TODO: Add error checking.
 
     size_t buffer_size = (term->cols * term->rows) * sizeof(VTermScreenCell);
@@ -137,13 +121,12 @@ void resize_terminal_cell_buffers(struct terminal* term) {
     term->back_cell_buffer = realloc(term->back_cell_buffer, buffer_size);
 
 
-    for(int row = 0; row < term->rows; row++) {
-        for(int col = 0; col < term->cols; col++) {
-        
-            clear_cell(&term->front_cell_buffer[col + row * term->cols]);
-            clear_cell(&term->back_cell_buffer[col + row * term->cols]);
-        }
-    }
+    const size_t dirty_rows_size = term->rows * sizeof *term->dirty_rows;
+
+    term->dirty_rows = realloc(term->dirty_rows, dirty_rows_size);
+    
+    // Set all rows as "dirty" to re-render the whole terminal.
+    memset(term->dirty_rows, 1, dirty_rows_size);
 }
 
 struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, enum terminal_type term_type) {
@@ -174,6 +157,9 @@ struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, enum termin
 
     term->rows = rows;
     term->cols = cols;
+    term->front_cell_buffer = NULL;
+    term->back_cell_buffer = NULL;
+    term->dirty_rows = NULL;
     term->cursor_col = 0;
     term->cursor_row = 0;
     term->cursor_old_col = 0;
@@ -182,7 +168,7 @@ struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, enum termin
     term->yscroll = 0;
     term->line_height = st->font.char_height + st->cfg.main.line_padding;
     term->blink_timer = 0;
-    term->is_altscreen = false;
+    term->is_altbuffer_active = false;
 
     term->hidden_cells = calloc(term->cols * term->rows, sizeof *term->hidden_cells);
 
@@ -199,11 +185,9 @@ struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, enum termin
     vterm_screen_enable_altscreen(term->vtscrn, true);
     vterm_screen_reset(term->vtscrn, true);
 
-    term->is_altscreen = false;
+    term->is_altbuffer_active = false;
     terminal_init_palette(st, term);
 
-    term->front_cell_buffer = NULL;
-    term->back_cell_buffer = NULL;
     resize_terminal_cell_buffers(term);
    
     logprintf(LOG_INFO, "Created %s terminal (%ix%i)", 
@@ -233,7 +217,7 @@ void close_terminal(struct terminal* term) {
 }
 
 
-void read_terminal(struct nemi* st, struct terminal* term) {
+void terminal_read(struct nemi* st, struct terminal* term) {
     if(!term) {
         return;
     }
@@ -267,10 +251,10 @@ void read_terminal(struct nemi* st, struct terminal* term) {
     }
 
 
-    bool now_altscreen = vterm_screen_is_altscreen(term->vtscrn);
-    if(now_altscreen != term->is_altscreen) {
-        term->is_altscreen = now_altscreen;
-        terminal_handle_altscreen_change_event(st, term);
+    bool current_altbuffer_status = vterm_screen_is_altscreen(term->vtscrn);
+    if(current_altbuffer_status != term->is_altbuffer_active) {
+        term->is_altbuffer_active = current_altbuffer_status;
+        terminal_handle_altbuffer_change_event(st, term);
     }
 }
 
@@ -319,9 +303,9 @@ bool render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, 
 
     // Unicode is not supported at least for now.
     // So just skip anything that is not ascii character.
-    /*if(cell->chars[0] <= 0x20 || cell->chars[0] > 0x7E) {
+    if(cell->chars[0] < 0x20 || cell->chars[0] > 0x7E) {
         return false;
-    }*/
+    }
 
     // User maybe want to disable some cells from being rendered.
     bool* is_hidden = get_hidden_cell_status(term, pos.col, pos.row);
@@ -375,6 +359,7 @@ bool render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, 
         fg_color = leaf_color_lerp(fg_color, bg_color, term->blink_timer);
     }
 
+
     st->font.italic = (cell->attrs.italic) ? st->cfg.font.italic_tilt : 0.0f;
 
     leaf_set_font_color(&st->font, fg_color);
@@ -390,32 +375,51 @@ bool render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, 
                 fg_color);
     }
 
-
-
+    st->font.italic = 0.0f;
     return true;
 }
 
 
 static
-void render_terminal_cursor(struct nemi* st, struct terminal* term) {
+void clear_cell(struct nemi* st, int col, int row) {
+    int x = coltox(st, col) * st->cfg.font.char_spacing;
+    int y = rowtoy(st, row);
+    clear_region(st, x, y, 
+            st->font.char_width,
+            st->font.char_height); 
+}
+
+static
+void terminal_render_cursor(struct nemi* st, struct terminal* term) {
     VTermPos vtcurs_pos = (VTermPos){ 0, 0 };
     vterm_state_get_cursorpos(term->vtstate, &vtcurs_pos);
 
-    int cursor_draw_x = coltox(st, vtcurs_pos.col) * st->cfg.font.char_spacing;
-    int cursor_draw_y = rowtoy(st, vtcurs_pos.row - term->yscroll);
 
-    //int cursor_old_draw_x = coltox(st, term->cursor_old_col) * st->cfg.font.char_spacing;
-    //int cursor_old_draw_y = rowtoy(st, term->cursor_old_row - term->yscroll);
-    //clear_region(st, cursor_old_draw_x, cursor_old_draw_y, st->font.char_width, st->font.char_height);
- 
+    int cursor_draw_row = vtcurs_pos.row - term->yscroll;
+    int cursor_draw_col = vtcurs_pos.col;
+
+    if(cursor_draw_row < 0 || cursor_draw_row >= term->rows) {
+        return;
+    }
+    if(cursor_draw_col < 0 || cursor_draw_col >= term->cols) {
+        return;
+    }
+
+    int cursor_draw_x = coltox(st, cursor_draw_col) * st->cfg.font.char_spacing;
+    int cursor_draw_y = rowtoy(st, cursor_draw_row);
+
     VTermScreenCell old_cursor_cell;
     VTermPos old_cursor_pos = (VTermPos){
         term->cursor_old_row,
         term->cursor_old_col
     };
+
     if(vterm_screen_get_cell(term->vtscrn, old_cursor_pos, &old_cursor_cell)) {
+        old_cursor_pos.row -= term->yscroll;
         render_cell(st, term, &old_cursor_cell, old_cursor_pos);
     }
+
+    clear_cell(st, term->cursor_old_col, term->cursor_old_row - term->yscroll);
 
     leaf_draw_rect(
             cursor_draw_x,
@@ -423,15 +427,35 @@ void render_terminal_cursor(struct nemi* st, struct terminal* term) {
             st->font.char_width,
             st->font.char_height,
             (struct color_t) { 60, 60, 60 });
+    
+
+    term->cursor_old_row = term->cursor_row;
+    term->cursor_old_col = term->cursor_col;
 
     term->cursor_row = vtcurs_pos.row;
     term->cursor_col = vtcurs_pos.col;
 
-    term->cursor_old_row = term->cursor_row;
-    term->cursor_old_col = term->cursor_col;
+    /*
+    printf("Cursor moved! Old(%i, %i) -> New(%i, %i)\n",
+            term->cursor_old_col,
+            term->cursor_old_row,
+            term->cursor_col,
+            term->cursor_row);*/
 }
 
-void render_terminal(struct nemi* st, struct terminal* term) {
+
+void terminal_set_row_dirty(struct terminal* term, int row) {
+    if(row < 0) {
+        return;
+    }
+    if(row >= term->rows) {
+        return;
+    }
+
+    term->dirty_rows[row] = true;
+}
+
+void terminal_render(struct nemi* st, struct terminal* term) {
     vterm_get_size(term->vt, &term->rows, &term->cols);
     if(vterm_screen_is_altscreen(term->vtscrn)) {
         term->yscroll = 0;
@@ -440,32 +464,11 @@ void render_terminal(struct nemi* st, struct terminal* term) {
     uint32_t num_rendered_cells = 0; 
 
 
-    /*
-    for(int row = 0; row < term->rows; row++) {
-        for(int col = 0; col < term->cols; col++) {
-            int actual_row = row + term->yscroll;
+    //terminal_set_row_dirty(term, term->cursor_row);
+    //terminal_set_row_dirty(term, term->cursor_old_row);
 
-            VTermScreenCell cell;
- 
-            if(!vterm_screen_get_cell(term->vtscrn, (VTermPos){ actual_row, col }, &cell)) {
-                continue;
-            }
-
-
-            render_cell(st, term, &cell, (VTermPos){ row, col });
-       }
-    }*/
-
-    
-    bool dirty_rows[term->rows];
-    for(int row = 0; row < term->rows; row++) {
-        dirty_rows[row] = false;
-    }
-
-    dirty_rows[term->cursor_row] = true;
 
     // Update front buffer.
-
     for(int row = 0; row < term->rows; row++) {
         for(int col = 0; col < term->cols; col++) {
             int actual_row = row + term->yscroll;
@@ -478,8 +481,8 @@ void render_terminal(struct nemi* st, struct terminal* term) {
                 continue;
             }
 
-            if(!do_cells_match(front_cell, back_cell)) {
-                dirty_rows[row] = true;
+            if(!term->dirty_rows[row] && !do_cells_match(front_cell, back_cell)) {
+                term->dirty_rows[row] = true;
             }
             
             copy_cell(front_cell, back_cell);
@@ -490,7 +493,7 @@ void render_terminal(struct nemi* st, struct terminal* term) {
     int cleared_rows = 0;
 
     for(int row = 0; row < term->rows; row++) {
-        if(!dirty_rows[row]) {
+        if(!term->dirty_rows[row]) {
             continue;
         }
 
@@ -516,8 +519,10 @@ void render_terminal(struct nemi* st, struct terminal* term) {
     //printf("Cleared rows: %i\n", cleared_rows);
 
     if(term->type != ECHO_TERMINAL) {
-        render_terminal_cursor(st, term);
+        terminal_render_cursor(st, term);
     }
+    
+    memset(term->dirty_rows, 0, term->rows * sizeof *term->dirty_rows);
 }
 
 void update_terminal_blink_timer(struct nemi* st, struct terminal* term) {
@@ -532,7 +537,7 @@ void update_terminal_blink_timer(struct nemi* st, struct terminal* term) {
     }
 }
 
-void write_term(struct terminal* term, enum term_write_target target, char* fmt, ...) {
+void terminal_write(struct terminal* term, enum term_write_target target, char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
 
@@ -615,35 +620,35 @@ void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
 
         case GLFW_KEY_ENTER:
             term->yscroll = 0;
-            write_term(term, TERM_WRITE_PTY, "\r");
+            terminal_write(term, TERM_WRITE_PTY, "\r");
             break; 
 
         case GLFW_KEY_ESCAPE:
-            write_term(term, TERM_WRITE_PTY, "\x1b");
+            terminal_write(term, TERM_WRITE_PTY, "\x1b");
             break;
 
         case GLFW_KEY_TAB:
-            write_term(term, TERM_WRITE_PTY, "\x09");
+            terminal_write(term, TERM_WRITE_PTY, "\x09");
             break;
 
         case GLFW_KEY_BACKSPACE:
-            write_term(term, TERM_WRITE_PTY, "\x08");
+            terminal_write(term, TERM_WRITE_PTY, "\x08");
             break;
 
         case GLFW_KEY_UP:
-            write_term(term, TERM_WRITE_PTY, "\x1b[A");
+            terminal_write(term, TERM_WRITE_PTY, "\x1b[A");
             break;
 
         case GLFW_KEY_DOWN:
-            write_term(term, TERM_WRITE_PTY, "\x1b[B");
+            terminal_write(term, TERM_WRITE_PTY, "\x1b[B");
             break;
 
         case GLFW_KEY_RIGHT:
-            write_term(term, TERM_WRITE_PTY, "\x1b[C");
+            terminal_write(term, TERM_WRITE_PTY, "\x1b[C");
             break;
 
         case GLFW_KEY_LEFT:
-            write_term(term, TERM_WRITE_PTY, "\x1b[D");
+            terminal_write(term, TERM_WRITE_PTY, "\x1b[D");
             break;
     }
 
@@ -679,18 +684,19 @@ void terminal_handle_resize_event(struct nemi* st, struct terminal* term) {
         term->hidden_cells[i] = false;
     }
 
+    // This function will also cause the terminal to be re-rendered.
     resize_terminal_cell_buffers(term);
 }
 
 
-void terminal_handle_altscreen_change_event(struct nemi* st, struct terminal* term) {
+void terminal_handle_altbuffer_change_event(struct nemi* st, struct terminal* term) {
     term->yscroll = 0;
     trigger_event_for_scripts(st, REG_EVENT_TERM_BUFFER_CHANGED,
             "i",
-            term->is_altscreen);
+            term->is_altbuffer_active);
 }
 
-static
+static inline 
 VTermColor get_vtcolor(struct nemi* st, int cfgcol_idx) {
     return (VTermColor) {
         .type = VTERM_COLOR_RGB,
@@ -701,7 +707,7 @@ VTermColor get_vtcolor(struct nemi* st, int cfgcol_idx) {
     };
 }
 
-static
+static inline 
 void set_term_color(struct nemi* st, struct terminal* term, int idx, int cfgcol_idx) {
     VTermColor color = get_vtcolor(st, cfgcol_idx);
     vterm_state_set_palette_color(term->vtstate, idx, &color);
@@ -802,8 +808,8 @@ void swap_int(int* a, int* b) {
     *b = tmp;
 }
 
-void terminal_copy_to_clipboard(struct nemi* st, struct terminal* term, 
-        int start_col, int start_row, int end_col, int end_row, const char* type) {
+void terminal_copy_to_clipboard(struct nemi* st, struct terminal* term, const char* type,
+        int start_col, int start_row, int end_col, int end_row) {
     struct string_t buffer = string_create(0);
     end_row++;
 
@@ -871,5 +877,15 @@ void terminal_copy_to_clipboard(struct nemi* st, struct terminal* term,
     */
 
     free_string(&buffer);
+}
+
+void terminal_yscroll(struct nemi* st, struct terminal* term, int offset) {
+    terminal_set_row_dirty(term, term->cursor_row - term->yscroll);
+    term->yscroll += offset;
+}
+
+void terminal_yscroll_to(struct nemi* st, struct terminal* term, int point) {
+    terminal_set_row_dirty(term, term->cursor_row - term->yscroll);
+    term->yscroll = point;
 }
 

@@ -113,7 +113,7 @@ struct nemi* start_session(struct nemi_filepaths filepaths) {
     st->messages = spawn_terminal(st, st->win_rows, st->win_cols, ECHO_TERMINAL);
     st->terminal_prev = st->terminal;
     
-    write_term(st->messages, TERM_WRITE_VTERM, 
+    terminal_write(st->messages, TERM_WRITE_VTERM, 
             "\033[2J\033[H\033[0m\033[90m(start of messages. press ctrl+space to go back)\033[0m\n\r");
 
     for(size_t i = 0; i < ARRAY_LEN(st->scripts); i++) {
@@ -221,19 +221,22 @@ void switch_terminal_ptr(struct nemi* st, struct terminal* term) {
 }
 
 
-void clear_color_buffer_bit(struct nemi* st) {
+
+#define CLEAR_COLOR_NO_ALPHA 0.0f
+#define CLEAR_COLOR_INCLUDE_ALPHA 1.0f
+void clear_color_buffer_bit(struct nemi* st, float clear_color_alpha) {
     glClearColor(
             (float)st->cfg.colors[NEMI_COLOR_BG].r / 255.0f,
             (float)st->cfg.colors[NEMI_COLOR_BG].g / 255.0f,
             (float)st->cfg.colors[NEMI_COLOR_BG].b / 255.0f,
-            0.0f);
+            clear_color_alpha);
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
 void clear_region(struct nemi* st, int x, int y, int w, int h) {
     glEnable(GL_SCISSOR_TEST);
     glScissor(x, (st->lfctx->win_height - h) - y, w, h);
-    clear_color_buffer_bit(st);
+    clear_color_buffer_bit(st, CLEAR_COLOR_NO_ALPHA);
     glDisable(GL_SCISSOR_TEST);
 }
 
@@ -254,7 +257,18 @@ void altrender(struct nemi* st) {
     }
 
 
-    leaf_draw_text_fmt(&st->font, 100, 100, "HELLO FRAMEBUFFERS!");
+
+
+    /*
+    struct terminal* term = st->terminal;
+    leaf_draw_rect(
+            coltox(st, term->cursor_old_col),
+            rowtoy(st, term->cursor_old_row - term->yscroll),
+            st->font.char_width,
+            st->font.char_height,
+            (struct color_t) { 255, 30, 30 }
+            );*/
+    //leaf_draw_text_fmt(&st->font, 100, 100, "HELO FRAMEBUFFERS!");
 }
 
 void update_frame(struct nemi* st) {
@@ -264,30 +278,34 @@ void update_frame(struct nemi* st) {
     // Render terminal cells to 'term_cells_framebuffer'
     leaf_use_framebuffer(&st->term_cells_framebuffer);
     {
-        read_terminal(st, st->terminal);
-        render_terminal(st, st->terminal);
+        // We are not going to clear the color buffer bit here
+        // for the whole framebuffer before rendering, because
+        // the terminal's keep track of what is needed to be rendered again.
+        // And saves the result to the framebuffer's texture so it can be reused.
+        terminal_read(st, st->terminal);
+        terminal_render(st, st->terminal);
 
         leaf_font_render(&st->font);
         leaf_renderer_flush(st->lfctx);
     }
-
+ 
     // Render anything else to 'altrender_framebuffer'
     leaf_use_framebuffer(&st->altrender_framebuffer);
     {
-        clear_color_buffer_bit(st);
+        // For alternative framebuffer the whole screen is cleared
+        // before rendering again, because the scripts can render
+        // to arbitrary coordinates and not just cell coordinates
+        // so it is more harder to keep track of what has changed.
+        // So... it will be bit slower at least for now.
+        clear_color_buffer_bit(st, CLEAR_COLOR_NO_ALPHA);
         altrender(st);
         leaf_font_render(&st->font);
         leaf_renderer_flush(st->lfctx);
     }
 
 
-
     leaf_use_framebuffer(NULL);
-    glClearColor(
-            (float)st->cfg.colors[NEMI_COLOR_BG].r / 255.0f,
-            (float)st->cfg.colors[NEMI_COLOR_BG].g / 255.0f,
-            (float)st->cfg.colors[NEMI_COLOR_BG].b / 255.0f,
-            1.0f);
+    clear_color_buffer_bit(st, CLEAR_COLOR_INCLUDE_ALPHA);
     glClear(GL_COLOR_BUFFER_BIT);
 
 
@@ -305,7 +323,6 @@ void update_frame(struct nemi* st) {
             st->altrender_framebuffer.texture,
             (struct color_t){ 255, 255, 255 },
             LEAF_TEXTURE_NOFLIP);
-
 
     //leaf_renderer_flush(st->lfctx);
     //leaf_font_render(&st->font);
@@ -360,8 +377,10 @@ void init_default_config(struct nemi* st) {
 
 
 // 'event_num' corresponds to REG_EVENT... defined in "script.h"
-void trigger_event_for_scripts(struct nemi* st, int event_num, 
-        const char* arg_types, ...) {
+// 'arg_types' tells what are the variadic argument types.
+//             For example: "ii" tells that there are 2 integers.
+//             See all supported types in the switch statement.
+void trigger_event_for_scripts(struct nemi* st, int event_num, const char* arg_types, ...) {
     
     size_t num_args = strlen(arg_types);
 
@@ -381,7 +400,7 @@ void trigger_event_for_scripts(struct nemi* st, int event_num,
         va_start(args, arg_types);
         for(size_t i = 0; i < num_args; i++) {
             char* buf = args_str[i];
-            size_t buf_memsize = sizeof(args_str[i])-1;
+            const size_t buf_memsize = sizeof(args_str[i])-1;
             
             switch(arg_types[i]) {
                 case 'i':
@@ -392,6 +411,8 @@ void trigger_event_for_scripts(struct nemi* st, int event_num,
                     snprintf(buf, buf_memsize, "%f", va_arg(args, double));
                     break;
 
+
+                // ... More can be added later if needed ...
             }
 
             func_args[i] = args_str[i];
@@ -421,9 +442,7 @@ void trigger_event_for_scripts(struct nemi* st, int event_num,
 }
 
 void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    (void)scancode;
-
-        
+    (void)scancode; 
     
     if(action != GLFW_PRESS && action != GLFW_REPEAT) {
         return;
@@ -570,8 +589,8 @@ void create_msg(struct nemi* st, const char* msg, ...) {
     char buffer[1024 * 4] = { 0 };
     vsnprintf(buffer, sizeof(buffer)-1, msg, args);
 
-    write_term(st->messages, TERM_WRITE_VTERM, buffer);
-    write_term(st->messages, TERM_WRITE_VTERM, "\n\r");
+    terminal_write(st->messages, TERM_WRITE_VTERM, buffer);
+    terminal_write(st->messages, TERM_WRITE_VTERM, "\n\r");
     switch_terminal_ptr(st, st->messages);
 
     logprintf(LOG_INFO, buffer);
