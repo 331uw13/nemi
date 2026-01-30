@@ -14,13 +14,11 @@ or add any kind of new features.
 * Development: https://github.com/331uw13/nemi/tree/main/documentation/development
 
 # Setup for use
-```
-$ perl configure.pl && make -j4 && ./install.sh
-```
-> After `install.sh` is executed. `configs` directory is copied into `/home/$USER/.nemi/`
-
 > [!NOTE]
 > **If you dont want to install** and just want to test. You can run the program with `./nemi -home .`
+```
+$ perl configure.pl && make release && ./install.sh
+```
 
 
 # Default scripts
