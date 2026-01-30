@@ -147,12 +147,16 @@ sub event_keybind_press {
             $cursor_x = 0;
         }
         when("cycle_cmd_suggestions_right") {
-            $cmd_suggestion_cursor++;
-            $cmd_suggestion_cursor %= scalar(@cmd_suggestions);
+            if(scalar(@cmd_suggestions) > 0) {
+                $cmd_suggestion_cursor++;
+                $cmd_suggestion_cursor %= scalar(@cmd_suggestions);
+            }
         }
         when("cycle_cmd_suggestions_left") {
-            $cmd_suggestion_cursor--;
-            $cmd_suggestion_cursor %= scalar(@cmd_suggestions);
+            if(scalar(@cmd_suggestions) > 0) {
+                $cmd_suggestion_cursor--;
+                $cmd_suggestion_cursor %= scalar(@cmd_suggestions);
+            }
         }
     }
 
@@ -176,9 +180,9 @@ sub init_script {
     nemi::add_keybind($script_name, "move_cursor_right", "right");
     nemi::add_keybind($script_name, "execute_cmd", "enter");
     nemi::add_keybind($script_name, "cycle_cmd_suggestions_left", "lctrl + l");
-    nemi::add_keybind($script_name, "cycle_cmd_suggestions_left", "left");
+    nemi::add_keybind($script_name, "cycle_cmd_suggestions_left", "lctrl + left");
     nemi::add_keybind($script_name, "cycle_cmd_suggestions_right", "lctrl + j");
-    nemi::add_keybind($script_name, "cycle_cmd_suggestions_right", "right");
+    nemi::add_keybind($script_name, "cycle_cmd_suggestions_right", "lctrl + right");
     nemi::add_keybind($script_name, "pick_suggestion", "tab");
     foreach my $entry (keys %nemi::) {
         no strict 'refs';

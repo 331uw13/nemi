@@ -217,7 +217,10 @@ void switch_terminal_ptr(struct nemi* st, struct terminal* term) {
     }
     st->terminal_prev = st->terminal;
     st->terminal = term;
-    //clear_region(st, 0, 0, st->lfctx->win_width, st->lfctx->win_height);
+
+    for(int row = 0; row < term->rows; row++) {
+        term->dirty_rows[row] = true;
+    }
 }
 
 
