@@ -1,5 +1,6 @@
 # About the project
 
+
 You can create and modify perl scripts to customize the terminal emulator's behaviour
 or add any kind of new features.
 
@@ -75,7 +76,11 @@ Then configure the project with
 $ perl configure.pl -using_perlbrew
 ```
 
-# Contribute
+
+<h1 style="">
+  Contribute!
+  <img src="https://github.com/331uw13/nemi/blob/main/cat_images/cat_hello.png?raw=true" height="60">
+</h1>
 All kinds of ideas are welcome! Create pull request or open an issue and we can discuss about it.
 
 ----------------
