@@ -13,13 +13,23 @@ or add any kind of new features.
 * Working with scripts: https://github.com/331uw13/nemi/tree/main/documentation/scripts
 * Development: https://github.com/331uw13/nemi/tree/main/documentation/development
 
-# Setup for use
-> [!NOTE]
-> <ins>**If you dont want to install**</ins> and just want to test. You can run the program with `./nemi -home .`
+# Build instructions
+```bash
+# Run this only once, it generates the Makefile
+$ perl configure.pl
+
+# If you need to use perlbrew.
+$ perl configure.pl -using_perlbrew
 ```
-$ perl configure.pl && make release && ./install.sh
+```bash
+# Build with compiler optimizations enabled and debug info disabled.
+$ make release
 ```
-> If your system has older version of perl, read `Troubleshooting` section below if you encounter problems.
+```bash
+# If you dont want to run 'install.sh'
+$ ./nemi -home .
+```
+
 
 # Default scripts
 
