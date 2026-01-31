@@ -67,6 +67,28 @@ sub init_script() {
 ```
 -----------------------------
 
+### Rendering image from script example
+```perl
+use strict;
+use warnings;
+
+our $image_handle;
+
+#!REGISTER_EVENT
+sub event_render {
+    nemi::draw_image($image_handle, 100, 100, 500, 400);
+}
+
+sub init_script() {
+    $image_handle = load_image("cat.png");
+}
+
+# The image is going to be rendered behind terminal text.
+# Images are unloaded automatically.
+```
+-----------------------------
+
+
 ### Loading scripts
 
 You can name your script what ever you want. The script should be available at `/home/$USER/.nemi/scripts` for loading.  
@@ -131,16 +153,18 @@ nemi::draw_rect           (x, y, width, height, hexrgb_color)
 nemi::draw_text           (x, y, text, hexrgb_color)
 nemi::draw_rect_cells     (column, row, width_columns, height_rows, hexrgb_color)
 nemi::draw_text_cells     (column, row, text, hexrgb_color)
+nemi::draw_image          (image_handle, x, y, width, height)
 
 // This function can be used to adjust the drawn objects position
 // to move with terminal scrollback buffer offset.
-// Remember to disable it atleast at end of 'event_draw'
+// Remember to disable it atleast at end of 'event_render'
 nemi::draw_enable_scroll_offset  < No arguments >
 nemi::draw_disable_scroll_offset < No arguments >
 
 
 ////  Misc  ////
 
+nemi::load_image           (filepath)        // Returns handle to image.
 nemi::get_win_width        < No arguments >
 nemi::get_win_height       < No arguments >
 nemi::get_font_charsize    < No arguments >  // Returns int array. [0]: char_width, [1]: char_height.

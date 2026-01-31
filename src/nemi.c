@@ -116,13 +116,17 @@ struct nemi* start_session(struct nemi_filepaths filepaths) {
     terminal_write(st->messages, TERM_WRITE_VTERM, 
             "\033[2J\033[H\033[0m\033[90m(start of messages. press ctrl+space to go back)\033[0m\n\r");
 
-    for(size_t i = 0; i < ARRAY_LEN(st->scripts); i++) {
+    for(size_t i = 0; i < NEMI_SCRIPTS_MAX; i++) {
         st->scripts[i] = (struct perl_script) {
             .perl_interp = NULL,
             .is_loaded   = false
         };
     }
-   
+  
+    for(size_t i = 0; i < NEMI_IMAGES_MAX; i++) {
+        st->images[i].handle = -1;
+    }
+
     /*
     for(size_t i = 0; i < ARRAY_LEN(st->renderbufs); i++) {
         st->renderbufs[i] = (struct render_buffer) {
@@ -182,8 +186,11 @@ void quit_session(struct nemi* st) {
     leaf_free_renderer(st->lfctx);
     leaf_quit(st->lfctx);
 
-    for(size_t i = 0; i < ARRAY_LEN(st->scripts); i++) {
+    for(size_t i = 0; i < NEMI_SCRIPTS_MAX; i++) {
         unload_perl_script(&st->scripts[i]);
+    }
+    for(size_t i = 0; i < NEMI_IMAGES_MAX; i++) {
+        unload_image(&st->images[i]);
     }
 
     leaf_free_framebuffer(&st->term_cells_framebuffer);
@@ -311,21 +318,20 @@ void update_frame(struct nemi* st) {
     clear_color_buffer_bit(st, CLEAR_COLOR_INCLUDE_ALPHA);
     glClear(GL_COLOR_BUFFER_BIT);
 
+    leaf_draw_texture_rect(0, 0,
+            st->altrender_framebuffer.width,
+            st->altrender_framebuffer.height,
+            st->altrender_framebuffer.texture,
+            (struct color_t){ 255, 255, 255 },
+            LEAF_TEXTURE_NO_OPTIONS);
 
     leaf_draw_texture_rect(0, 0,
             st->term_cells_framebuffer.width,
             st->term_cells_framebuffer.height,
             st->term_cells_framebuffer.texture,
             (struct color_t){ 255, 255, 255 },
-            LEAF_TEXTURE_NOFLIP);
+            LEAF_TEXTURE_NO_OPTIONS);
 
-
-    leaf_draw_texture_rect(0, 0,
-            st->altrender_framebuffer.width,
-            st->altrender_framebuffer.height,
-            st->altrender_framebuffer.texture,
-            (struct color_t){ 255, 255, 255 },
-            LEAF_TEXTURE_NOFLIP);
 
     //leaf_renderer_flush(st->lfctx);
     //leaf_font_render(&st->font);
@@ -600,6 +606,40 @@ void create_msg(struct nemi* st, const char* msg, ...) {
     va_end(args);
 }
 
+int load_image(struct nemi* st, const char* filepath) {
+    struct image* img = NULL;
+    size_t img_idx = 0;
+    for(; img_idx < NEMI_IMAGES_MAX; img_idx++) {
+        if(st->images[img_idx].handle < 0) {
+            img = &st->images[img_idx];
+            break;
+        }
+    }
+
+    if(img == NULL) {
+        logprintf(LOG_ERROR, "All spaces have been reserved for images. None are free.");
+        return -1;
+    }
+
+    if((img->texture = leaf_load_texture(filepath, &img->width, &img->height)) == 0) {
+        logprintf(LOG_ERROR, "Failed to load image '%s'", filepath);
+        return -1;
+    }
+
+    img->handle = img_idx;
+    return img->handle;
+}
+
+void unload_image(struct image* img) {
+    if(img->handle < 0 || img->handle >= NEMI_IMAGES_MAX) {
+        return;
+    }
+
+    img->handle = -1;
+    glDeleteTextures(1, &img->texture);
+    img->width = 0;
+    img->height = 0;
+}
 
 
 void nemi_help(struct nemi* st, const char* what) {

@@ -13,7 +13,7 @@
 #include "log.h"
 #include "string.h"
 
-#define NEMI_VERSION_STR "0.01"
+#define NEMI_VERSION_STR "0.00-0"
 
 // Flags for 'struct nemi':
 #define FLG_HOTRELOADING_SUPPORTED   (1 << 1)
@@ -22,6 +22,7 @@
 #define FLG_LOADER_RESTART_SESSION   (1 << 4)
 #define FLG_SCRIPTDRAW_ADJUSTPOS_TO_SCROLL (1 << 5)
 
+// TODO: Add these to config.
 #define NEMI_TERMINALS_MAX 16
 #define NEMI_KEYINBUF_MAX 8
 #define NEMI_CHARINBUF_MAX 8
@@ -29,7 +30,7 @@
 #define NEMI_RENDERBUFS_MAX 32
 #define NEMI_MSG_LINES_MAX 64
 #define NEMI_SCRIPTS_KEYBIND_KEYS_MAX 16
-
+#define NEMI_IMAGES_MAX 32
 
 
 
@@ -45,6 +46,7 @@ struct nemi_filepaths {
 struct image {
     int width;
     int height;
+    int handle; // Index to 'nemi.images' array.
     uint32_t texture;
 };
 
@@ -65,19 +67,19 @@ struct nemi {
     int win_rows;
     int win_cols;
 
-    // User input buffers.
+    // User input.
     int  last_key_in;
     char last_char_in;
     int  last_keymod_in;
    
+    // Input ring buffers
     int  key_inputs  [NEMI_KEYINBUF_MAX];  // TODO: Idk if these are actually needed anyway...
     char char_inputs [NEMI_CHARINBUF_MAX]; // ^
 
     struct perl_script   scripts [NEMI_SCRIPTS_MAX];
     size_t               num_scripts;
 
-    //struct render_buffer renderbufs [NEMI_RENDERBUFS_MAX];
-    //uint32_t             num_renderbufs;
+    struct image         images [NEMI_IMAGES_MAX];
 
     double frame_time;
     double frame_time_begin;
@@ -102,7 +104,7 @@ struct nemi {
     struct framebuffer altrender_framebuffer;  // Anything else is rendered to this framebuffer.
 
 
-    
+
 };
 
 
@@ -120,10 +122,13 @@ void push_char_input(struct nemi* st, char ch);
 void font_scale(struct nemi* st, float offset);
 void set_font_scale(struct nemi* st, float scale);
 void create_msg(struct nemi* st, const char* msg, ...);
+int  load_image(struct nemi* st, const char* filepath);
+void unload_image(struct image* img);
 
 // Switch current terminal.
 void switch_terminal(struct nemi* st, uint32_t index);
 void switch_terminal_ptr(struct nemi* st, struct terminal* term);
+
 
 //void begin_frame(struct nemi* st);
 //void end_frame(struct nemi* st);
@@ -150,9 +155,6 @@ int rowtoy(struct nemi* st, int row);
 //int new_renderbuf(struct nemi* st, int num_nodes_max);
 void init_default_config(struct nemi* st);
 
-//void reload_config(struct nemi* st);
-//void reload_config_now(struct nemi* st);
-
 
 void nemi_help(struct nemi* st, const char* what);
 void nemi_message_script_keybinds(struct nemi* st, const char* script_name);
@@ -160,6 +162,7 @@ void nemi_message_script_keybinds(struct nemi* st, const char* script_name);
 void restart_session(struct nemi* st);
 void hotreload_session(struct nemi* st);
 //void nemi_recompile_src(struct nemi* st);
+
 
 
 

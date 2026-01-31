@@ -182,11 +182,18 @@ void leaf_draw_texture_rect
     float height,
     uint32_t texture,
     struct color_t color,
-    int flip_options
+    int options
 ){
-    //pos_y = g_leaf_ctx->win_height - pos_y;
-    //pos_y -= height;
-    
+    if(options & LEAF_TEXTURE_FLIP_Y_ORIGIN) {
+        pos_y = g_leaf_ctx->win_height - pos_y;
+        pos_y -= height;
+    }
+
+    if(options & LEAF_TEXTURE_FLIP_X_ORIGIN) {
+        pos_x = g_leaf_ctx->win_width - pos_x;
+        pos_x -= width;
+    }
+
     float x = (pos_x / (float)g_leaf_ctx->win_width) * 2.0f - 1.0f;
     float y = (pos_y / (float)g_leaf_ctx->win_height) * 2.0f - 1.0f;
 
@@ -197,14 +204,32 @@ void leaf_draw_texture_rect
     float g = (float)color.g / 255.0f;
     float b = (float)color.b / 255.0f;
 
-    float vertices[] = {
-        x,   y+h, r, g, b,  0.0f, 1.0f,
-        x,   y,   r, g, b,  0.0f, 0.0f,
-        x+w, y,   r, g, b,  1.0f, 0.0f,
 
-        x,   y+h, r, g, b,  0.0f, 1.0f,
-        x+w, y,   r, g, b,  1.0f, 0.0f,
-        x+w, y+h, r, g, b,  1.0f, 1.0f
+    float texc_y_0 = 0.0f;
+    float texc_y_1 = 1.0f;
+
+    float texc_x_0 = 0.0f;
+    float texc_x_1 = 1.0f;
+    
+    if(options & LEAF_TEXTURE_FLIP_VERTICAL) {
+        texc_y_0 = 1.0f;
+        texc_y_1 = 0.0f;
+    }
+
+    if(options & LEAF_TEXTURE_FLIP_HORIZONTAL) {
+        texc_x_0 = 1.0f;
+        texc_x_1 = 0.0f;
+    }
+
+
+    float vertices[] = {
+        x,   y+h, r, g, b,  texc_x_0, texc_y_1,
+        x,   y,   r, g, b,  texc_x_0, texc_y_0,
+        x+w, y,   r, g, b,  texc_x_1, texc_y_0,
+
+        x,   y+h, r, g, b,  texc_x_0, texc_y_1,
+        x+w, y,   r, g, b,  texc_x_1, texc_y_0,
+        x+w, y+h, r, g, b,  texc_x_1, texc_y_1
     };
 
     glUseProgram(g_leaf_ctx->renderer_tex_shader); 

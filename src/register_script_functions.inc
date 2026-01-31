@@ -1,5 +1,7 @@
 // GENERATED CODE. Changes here will be lost when project is compiled.
 // Modify 'nemi_xs_wrappers.h' instead. Then run 'perl genxsfuncreg.pl'.
+newXS("nemi::load_image", xsw_load_image, __FILE__);
+newXS("nemi::draw_image", xsw_draw_image, __FILE__);
 newXS("nemi::term_is_altbuffer_active", xsw_term_is_altbuffer_active, __FILE__);
 newXS("nemi::list_scripts", xsw_list_scripts, __FILE__);
 newXS("nemi::get_win_width", xsw_get_win_width, __FILE__);

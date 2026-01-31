@@ -45,7 +45,7 @@ static const char RENDERER_TEX_VERTEX_SHADER_SRC[] = {
     "    v_tex_coords = tex_coords;\n"
     "    gl_Position = vec4(vertex_pos.x, vertex_pos.y, 0.0, 1.0);\n"
     "    \n"
-    "}\n",
+    "}\n"
 };
 
 static const char RENDERER_TEX_FRAGMENT_SHADER_SRC[] = {
@@ -56,11 +56,10 @@ static const char RENDERER_TEX_FRAGMENT_SHADER_SRC[] = {
     "uniform sampler2D tex;\n"
     "\n"
     "void main() {\n"
-    "    vec4 t = texture(tex, v_tex_coords);"
+    "    vec4 t = texture(tex, vec2(v_tex_coords.x, v_tex_coords.y));"
     "    out_color = vec4(t.rgb * v_color, t.a);\n"
-    "}\n",
+    "}\n"
 };
-
 
 
 struct leaf_ctx_t* leaf_open(const char* title, int width, int height, int flags) {
@@ -279,6 +278,7 @@ uint32_t leaf_load_texture(const char* path, int* width, int* height) {
     uint32_t tex = 0;
     int channels = 0;
 
+    stbi_set_flip_vertically_on_load(true);
     uint8_t* image = stbi_load(path, width, height, &channels, 0);
 
     printf("%s(): %s: %i, %i\n", __func__, path, *width, *height);

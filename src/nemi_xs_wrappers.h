@@ -34,6 +34,44 @@
 
 // TODO: Add error checking..
 
+
+XS(xsw_load_image) {
+    dXSARGS;
+    (void)items;
+    STRLEN filepath_len;
+    char* filepath = SvPV(ST(0), filepath_len);
+    struct nemi* st = get_state();
+ 
+    if(filepath_len == 0) {
+        XSRETURN_EMPTY;
+    }
+
+    int image_handle = load_image(st, filepath);
+    XSRETURN_IV(image_handle);
+}
+
+XS(xsw_draw_image) {
+    dXSARGS;
+    (void)items;
+    int image_handle = SvIV(ST(0));
+    int image_x = SvIV(ST(1));
+    int image_y = SvIV(ST(2));
+    int image_w = SvIV(ST(3));
+    int image_h = SvIV(ST(4));
+    struct nemi* st = get_state();
+
+    if(image_handle < 0) {
+        XSRETURN_EMPTY;
+    }
+
+    uint32_t texture = st->images[image_handle].texture;
+
+    leaf_draw_texture_rect(image_x, image_y, image_w, image_h, texture,
+            (struct color_t){ 255, 255, 255 },
+            LEAF_TEXTURE_FLIP_Y_ORIGIN);
+}
+
+
 XS(xsw_term_is_altbuffer_active) {
     dXSARGS;
     (void)items;

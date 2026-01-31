@@ -7,7 +7,6 @@ our $script_name;
 
 
 
-
 #!REGISTER_EVENT
 sub event_keybind_press {
     my $event_name = $_[0];
@@ -28,7 +27,6 @@ sub init_script {
 
     nemi::add_keybind($script_name, "restart_session", "f1");
     nemi::add_keybind($script_name, "hotreload_session", "f2");
-
 }
 
 
