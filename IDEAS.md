@@ -16,4 +16,8 @@ This allows easy and fast copy of text output in vmode select.
 
 Change current directory to selected path
 
+-------------------
+
+Keybind to append to clipboard.
+
 ```

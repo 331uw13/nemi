@@ -265,20 +265,6 @@ void altrender(struct nemi* st) {
             plscript_call(script, "event_render");
         }
     }
-
-
-
-
-    /*
-    struct terminal* term = st->terminal;
-    leaf_draw_rect(
-            coltox(st, term->cursor_old_col),
-            rowtoy(st, term->cursor_old_row - term->yscroll),
-            st->font.char_width,
-            st->font.char_height,
-            (struct color_t) { 255, 30, 30 }
-            );*/
-    //leaf_draw_text_fmt(&st->font, 100, 100, "HELO FRAMEBUFFERS!");
 }
 
 void update_frame(struct nemi* st) {

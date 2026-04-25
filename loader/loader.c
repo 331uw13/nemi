@@ -13,13 +13,6 @@
 #include "../src/memory.h"
 
 
-
-// If 'NEMI_ASSUME_IN_USERHOMEDIR' is 'true' then
-// "/home/$USER/" is added before 'NEMI_HOMEDIR'.
-#define NEMI_HOMEDIR ".nemi"
-#define NEMI_ASSUME_IN_USERHOMEDIR true
-
-
 struct nemi*(*nemi_start_session)(struct nemi_filepaths);
 void(*nemi_quit_session)(struct nemi*);
 void(*nemi_update_frame)(struct nemi*);
@@ -87,6 +80,7 @@ bool run(struct nemi_filepaths filepaths) {
     return true;
 }
 
+/*
 bool find_home(char** output) {
     bool is_found = false;
     struct string_t path = string_create(0);
@@ -115,7 +109,11 @@ bool find_home(char** output) {
 
     free_string(&path);
     return is_found;
+
+    return false;
 }
+*/
+
 
 static
 bool find_file
@@ -138,6 +136,11 @@ bool find_file
         is_found = true;
         *output = strdup(path.bytes);
     }
+    else {
+        fprintf(stderr, "Could not find configuration file '%s' from directory: '%s'\n",
+                filename,
+                nemi_homedir);
+    }
 
     free_string(&path);
     return is_found;
@@ -149,6 +152,7 @@ int main(int argc, char** argv) {
     struct nemi_filepaths filepaths;
     memset(&filepaths, 0, sizeof(filepaths));
 
+    /*
     for(int i = 0; i < argc; i++) {
         bool last = i+1 >= argc;
         if(strcmp(argv[i], "-home") == 0 && !last) {
@@ -156,7 +160,8 @@ int main(int argc, char** argv) {
             i++;
         }
     }
-
+    */
+    /*
     if(filepaths.nemi_home == NULL) {
         if(!find_home(&filepaths.nemi_home)) {
             fprintf(stderr, "Could not find nemi home directory. Did you run install.sh?\n"
@@ -165,6 +170,10 @@ int main(int argc, char** argv) {
             goto out;
         }
     }
+    */
+
+    // TODO: Allow system wide installing...
+    filepaths.nemi_home = strdup(".");
 
     if(!find_file(filepaths.nemi_home, &filepaths.libnemi, "libnemi.so")) {
         goto out;
@@ -178,16 +187,12 @@ int main(int argc, char** argv) {
     if(!find_file(filepaths.nemi_home, &filepaths.scripts, "scripts")) {
         goto out;
     }
-    if(!find_file(filepaths.nemi_home, &filepaths.colorthemes, "configs/colorthemes")) {
-        goto out;
-    }
 
     printf("Home:    '%s'\n", filepaths.nemi_home);
     printf("Lib:     '%s'\n", filepaths.libnemi);
     printf("Fonts:   '%s'\n", filepaths.fonts);
     printf("Configs: '%s'\n", filepaths.configs);
     printf("Scripts: '%s'\n", filepaths.scripts);
-    printf("Colors:  '%s'\n", filepaths.colorthemes);
 
     while(true) {
         if(!run(filepaths)) {
@@ -206,6 +211,5 @@ out:
     freeif(filepaths.libnemi);
     freeif(filepaths.fonts);
     freeif(filepaths.configs);
-    freeif(filepaths.colorthemes);
     return 0;
 }

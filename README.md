@@ -25,10 +25,6 @@ $ perl configure.pl -using_perlbrew
 # Build with compiler optimizations enabled and debug info disabled.
 $ make release
 ```
-```bash
-# If you dont want to run 'install.sh'
-$ ./nemi -home .
-```
 
 
 # Default scripts

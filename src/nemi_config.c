@@ -19,8 +19,6 @@ bool strtobool(const char* str) {
         || STR_MATCH(str, "YES");
 }
 
-
-
 static
 int config_handler__log_ini
 (
@@ -227,6 +225,201 @@ int config_handler__nemi_ini
 }
 
 
+
+enum colortext_mode {
+    COLORTEXT_MODE_NONE,
+    COLORTEXT_MODE_HEX, // #000000
+    COLORTEXT_MODE_RGB  // ( 0, 0, 0 )
+};
+
+bool colortext_to_values(const char* str, struct color_t* color) {
+    if(!str) {
+        return false;
+    }
+
+
+    char bytebuf[4] = { 0 };
+    size_t bytebuf_index = 0;
+
+    
+    // Get color mode which user wants to use.
+
+    enum colortext_mode mode = COLORTEXT_MODE_NONE;
+    char* ch = str;
+
+    if(*ch == '(') {
+        mode = COLORTEXT_MODE_RGB;
+    }
+    else
+    if(*ch == '#') {
+        mode = COLORTEXT_MODE_HEX;
+    }
+    else {
+        logprintf(LOG_ERROR, "Color mode which starts with '%c' is not recognized. Read the documentation for configs or the source code. To see available modes.\n", *ch);
+        return false;
+    }
+
+    ch++; // Skip first.
+    uint8_t* colorbyte_ptr = &color->r;
+
+    while(ch != NULL && *ch != 0) { 
+
+        if(colorbyte_ptr - &color->r >= (long int)sizeof *colorbyte_ptr * 3) {
+            printf("Too big value for RGB.\n");
+            goto loopout;
+        }
+
+        if(mode == COLORTEXT_MODE_RGB) {
+            if(*ch == ' ') {
+                goto skip;
+            }
+            if(*ch == ',' || *ch == ')') {
+                *colorbyte_ptr = atoi(bytebuf);
+
+                printf("(RGB) %i - %s\n", *colorbyte_ptr, bytebuf);
+                memset(bytebuf, 0, sizeof(bytebuf));
+                bytebuf_index = 0;
+
+                colorbyte_ptr++;
+                goto skip;  
+            }
+
+
+            bytebuf[bytebuf_index++] = *ch;
+        }
+        else
+        if(mode == COLORTEXT_MODE_HEX) {
+
+            bytebuf[bytebuf_index++] = *ch;
+
+            if(bytebuf_index >= 2) { 
+                *colorbyte_ptr = (uint8_t)strtol(bytebuf, NULL, 16);
+
+
+                printf("(HEX) %i - %s\n", *colorbyte_ptr, bytebuf);
+                memset(bytebuf, 0, sizeof(bytebuf));
+                bytebuf_index = 0;
+
+                colorbyte_ptr++;
+            }
+        }
+        else {
+            logprintf(LOG_ERROR, "Color parsing is not implemented for mode.");
+        }
+
+skip:
+        ch++;
+    }
+
+loopout:
+    printf("\n");
+
+    return false;
+}
+
+static
+int config_handler__color_ini
+(
+    void* userptr,
+    const char* section,
+    const char* name,
+    const char* value
+){
+
+    struct color_t* colors = (struct color_t*)userptr;
+
+    printf("Color: %s\n", name);
+    //colortext_to_values(value, &colors[NEMI_COLOR_BLACK]);
+
+    if(STR_MATCH(name, "black")) {
+        colortext_to_values(value, &colors[NEMI_COLOR_BLACK]);
+    }
+    else
+    if(STR_MATCH(name, "red")) {
+        colortext_to_values(value, &colors[NEMI_COLOR_RED]);
+    }
+    else
+    if(STR_MATCH(name, "green")) {
+        colortext_to_values(value, &colors[NEMI_COLOR_GREEN]);
+    }
+    else
+    if(STR_MATCH(name, "yellow")) {
+        colortext_to_values(value, &colors[NEMI_COLOR_YELLOW]);
+    }
+    else
+    if(STR_MATCH(name, "blue")) {
+        colortext_to_values(value, &colors[NEMI_COLOR_BLUE]);
+    }
+    else
+    if(STR_MATCH(name, "magenta")) {
+        colortext_to_values(value, &colors[NEMI_COLOR_MAGENTA]);
+    }
+    else
+    if(STR_MATCH(name, "cyan")) {
+        colortext_to_values(value, &colors[NEMI_COLOR_CYAN]);
+    }
+    else
+    if(STR_MATCH(name, "white")) {
+        colortext_to_values(value, &colors[NEMI_COLOR_WHITE]);
+    }
+    else
+    if(STR_MATCH(name, "bright_black")) {
+        colortext_to_values(value, &colors[NEMI_BRIGHT_COLOR_BLACK]);
+    }
+    else
+    if(STR_MATCH(name, "bright_red")) {
+        colortext_to_values(value, &colors[NEMI_BRIGHT_COLOR_RED]);
+    }
+    else
+    if(STR_MATCH(name, "bright_green")) {
+        colortext_to_values(value, &colors[NEMI_BRIGHT_COLOR_GREEN]);
+    }
+    else
+    if(STR_MATCH(name, "bright_yellow")) {
+        colortext_to_values(value, &colors[NEMI_BRIGHT_COLOR_YELLOW]);
+    }
+    else
+    if(STR_MATCH(name, "bright_blue")) {
+        colortext_to_values(value, &colors[NEMI_BRIGHT_COLOR_BLUE]);
+    }
+    else
+    if(STR_MATCH(name, "bright_magenta")) {
+        colortext_to_values(value, &colors[NEMI_BRIGHT_COLOR_MAGENTA]);
+    }
+    else
+    if(STR_MATCH(name, "bright_cyan")) {
+        colortext_to_values(value, &colors[NEMI_BRIGHT_COLOR_CYAN]);
+    }
+    else
+    if(STR_MATCH(name, "bright_white")) {
+        colortext_to_values(value, &colors[NEMI_BRIGHT_COLOR_WHITE]);
+    }
+    else
+    if(STR_MATCH(name, "bg")) {
+        colortext_to_values(value, &colors[NEMI_COLOR_BG]);
+    }
+    else
+    if(STR_MATCH(name, "fg")) {
+        colortext_to_values(value, &colors[NEMI_COLOR_FG]);
+    }
+    else
+    if(STR_MATCH(name, "messages_fg")) {
+        colortext_to_values(value, &colors[NEMI_COLOR_MESSAGES_FG]);
+    }
+    else
+    if(STR_MATCH(name, "messages_bg")) {
+        colortext_to_values(value, &colors[NEMI_COLOR_MESSAGES_BG]);
+    }
+    else
+    if(STR_MATCH(name, "messages_border")) {
+        colortext_to_values(value, &colors[NEMI_COLOR_MESSAGES_BORDER]);
+    }
+
+
+    return 1; // Continue reading.
+}
+ 
+
 #include <stdio.h>
 
 static
@@ -276,6 +469,10 @@ bool nemi_read_configs(struct nemi* st, char* configs_dir) {
     }
 
     if(!read_config(config_handler__font_ini, &st->cfg, configs_dir, "font.ini")) {
+        return false;
+    }
+
+    if(!read_config(config_handler__color_ini, st->cfg.colors, configs_dir, "color.ini")) {
         return false;
     }
 

@@ -40,7 +40,6 @@ struct nemi_filepaths {
     char* fonts;
     char* configs;
     char* scripts;
-    char* colorthemes;
 };
 
 struct image {
