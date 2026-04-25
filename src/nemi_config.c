@@ -265,7 +265,7 @@ bool colortext_to_values(const char* str, struct color_t* color) {
     while(ch != NULL && *ch != 0) { 
 
         if(colorbyte_ptr - &color->r >= (long int)sizeof *colorbyte_ptr * 3) {
-            printf("Too big value for RGB.\n");
+            //printf("Too big value for RGB.\n");
             goto loopout;
         }
 
@@ -276,7 +276,7 @@ bool colortext_to_values(const char* str, struct color_t* color) {
             if(*ch == ',' || *ch == ')') {
                 *colorbyte_ptr = atoi(bytebuf);
 
-                printf("(RGB) %i - %s\n", *colorbyte_ptr, bytebuf);
+                //printf("(RGB) %i - %s\n", *colorbyte_ptr, bytebuf);
                 memset(bytebuf, 0, sizeof(bytebuf));
                 bytebuf_index = 0;
 
@@ -289,14 +289,12 @@ bool colortext_to_values(const char* str, struct color_t* color) {
         }
         else
         if(mode == COLORTEXT_MODE_HEX) {
-
             bytebuf[bytebuf_index++] = *ch;
-
             if(bytebuf_index >= 2) { 
                 *colorbyte_ptr = (uint8_t)strtol(bytebuf, NULL, 16);
 
 
-                printf("(HEX) %i - %s\n", *colorbyte_ptr, bytebuf);
+                //printf("(HEX) %i - %s\n", *colorbyte_ptr, bytebuf);
                 memset(bytebuf, 0, sizeof(bytebuf));
                 bytebuf_index = 0;
 
@@ -312,7 +310,6 @@ skip:
     }
 
 loopout:
-    printf("\n");
 
     return false;
 }
@@ -327,9 +324,6 @@ int config_handler__color_ini
 ){
 
     struct color_t* colors = (struct color_t*)userptr;
-
-    printf("Color: %s\n", name);
-    //colortext_to_values(value, &colors[NEMI_COLOR_BLACK]);
 
     if(STR_MATCH(name, "black")) {
         colortext_to_values(value, &colors[NEMI_COLOR_BLACK]);
