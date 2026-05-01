@@ -30,7 +30,8 @@ $ make release
 
 # Default scripts
 
-* NOTE: These scripts are just *examples* you can expand them, or create new ones easily (see script documentation)
+> [!NOTE]
+> These scripts are just **examples** you can modify, remove, or create new ones easily (see script documentation)
 
   - ## `cmdl.pl`
     Alternative command line. You can evaluate perl expressions and the output is going to be written into echo terminal.
