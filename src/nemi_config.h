@@ -48,6 +48,7 @@ struct nemi_config {
         float italic_tilt;
         float underline_height;
         float underline_offset;
+        float scale;
     }
     font;
 

@@ -116,6 +116,10 @@ int config_handler__font_ini
     else
     if(STR_MATCH(name, "underline_offset")) {
         cfg->font.underline_offset = atof(value);
+    } 
+    else
+    if(STR_MATCH(name, "scale")) {
+        cfg->font.scale = atof(value);
     }
     else {
         logprintf(LOG_ERROR, "No config entry named '%s' for %s", name, section);

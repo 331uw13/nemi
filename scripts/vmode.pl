@@ -113,7 +113,7 @@ sub update_word_oncursor_highlight {
         $begin++;
     }
     for(my $x = $begin; $x < $end; $x++) {
-        nemi::term_set_cell_custom_attrs($x, $word_oncursor_y, 0x2 | 0x4);
+        nemi::term_set_cell_custom_attrs($x, $word_oncursor_y, 0x2);
     }
 }
 

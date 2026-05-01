@@ -37,7 +37,7 @@ struct nemi* start_session(struct nemi_filepaths filepaths) {
     st->frame_time_begin = 0.0;
     st->flags = 0;
     st->num_scripts = 0;
-    st->lfctx = leaf_open("Nemi - Terminal Emulator", 900, 700, LEAF_NORESIZE);
+    st->lfctx = leaf_open("Nemi - Terminal Emulator", 900, 700, 0);
     st->num_terminals = 0;
     st->term_ignore_char_input_counter = 0;
     st->term_ignore_key_input_counter = 0;
@@ -87,7 +87,7 @@ struct nemi* start_session(struct nemi_filepaths filepaths) {
     st->font.center_char_to_cell = st->cfg.font.center_char_to_cell;
     st->font.spacing = 0.2f;
     leaf_set_font_space_width(&st->font, st->font.max_bitmap_width / 2.0f);
-    leaf_set_font_scale(&st->font, 0.9);
+    leaf_set_font_scale(&st->font, st->cfg.font.scale);
 
 
     leaf_set_font_color(&st->font, (struct color_t) { 255, 200, 150 });
