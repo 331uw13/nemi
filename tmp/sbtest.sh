@@ -1,8 +1,0 @@
-#!/bin/bash
-
-
-
-ls -alh
-ls -alh
-ls -alh
-ls -alh
