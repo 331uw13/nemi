@@ -36,7 +36,7 @@ enum nemi_config_colors {
 
 
 
-struct nemi;
+typedef struct Nemi_t Nemi;
 
 
 struct nemi_config {
@@ -78,9 +78,9 @@ struct nemi_config {
     struct color_t colors [NEMI_COLOR_COUNT];
 };
 
-bool nemi_read_configs(struct nemi* st, char* configs_dir);
-bool nemi_load_scripts(struct nemi* st, char* configs_dir);
-void free_configs(struct nemi* st);
+bool nemi_read_configs(Nemi* st, char* configs_dir);
+bool nemi_load_scripts(Nemi* st, char* configs_dir);
+void free_configs(Nemi* st);
 
 
 #endif

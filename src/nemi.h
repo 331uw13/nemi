@@ -7,9 +7,8 @@
 #include "leaf/leaf.h"
 #include "nemi_config.h"
 #include "terminal.h"
-#include "script.h"
+#include "perl_script.h"
 #include "script_keybinds.h"
-//#include "render_buffer.h"
 #include "log.h"
 #include "string.h"
 
@@ -49,7 +48,7 @@ struct image {
     uint32_t texture;
 };
 
-struct nemi {
+typedef struct Nemi_t {
     int flags;
 
     struct nemi_filepaths filepaths;
@@ -57,10 +56,10 @@ struct nemi {
     struct font_t      font;
     struct nemi_config cfg;
 
-    struct terminal    terminals [NEMI_TERMINALS_MAX];
-    struct terminal*   terminal; // Current terminal.
-    struct terminal*   messages; // Points to terminals[1]
-    struct terminal*   terminal_prev; // Previous current terminal.
+    NTerminal    terminals [NEMI_TERMINALS_MAX];
+    NTerminal*   terminal; // Current terminal.
+    NTerminal*   messages; // Points to terminals[1]
+    NTerminal*   terminal_prev; // Previous current terminal.
     uint16_t           num_terminals;    
 
     int win_rows;
@@ -75,8 +74,8 @@ struct nemi {
     int  key_inputs  [NEMI_KEYINBUF_MAX];  // TODO: Idk if these are actually needed anyway...
     char char_inputs [NEMI_CHARINBUF_MAX]; // ^
 
-    struct perl_script   scripts [NEMI_SCRIPTS_MAX];
-    size_t               num_scripts;
+    PerlScript  scripts [NEMI_SCRIPTS_MAX];
+    size_t      num_scripts;
 
     struct image         images [NEMI_IMAGES_MAX];
 
@@ -102,38 +101,37 @@ struct nemi {
     struct framebuffer term_cells_framebuffer; // Terminals are rendered to this framebuffer.
     struct framebuffer altrender_framebuffer;  // Anything else is rendered to this framebuffer.
 
+}
+Nemi;
 
 
-};
+Nemi* start_session(struct nemi_filepaths filepaths);
+void         quit_session(Nemi* st);
+void         prepare_from_hotreload(Nemi* st); // Some global variables must be set again after hotreloading.
 
+//void         restart_session(Nemi* st);
 
-struct nemi* start_session(struct nemi_filepaths filepaths);
-void         quit_session(struct nemi* st);
-void         prepare_from_hotreload(struct nemi* st); // Some global variables must be set again after hotreloading.
+Nemi* get_state(); 
 
-//void         restart_session(struct nemi* st);
-
-struct nemi* get_state(); 
-
-void zero_input_buffers(struct nemi* st);
-void push_key_input(struct nemi* st, int key);
-void push_char_input(struct nemi* st, char ch);
-void font_scale(struct nemi* st, float offset);
-void set_font_scale(struct nemi* st, float scale);
-void create_msg(struct nemi* st, const char* msg, ...);
-int  load_image(struct nemi* st, const char* filepath);
+void zero_input_buffers(Nemi* st);
+void push_key_input(Nemi* st, int key);
+void push_char_input(Nemi* st, char ch);
+void font_scale(Nemi* st, float offset);
+void set_font_scale(Nemi* st, float scale);
+void create_msg(Nemi* st, const char* msg, ...);
+int  load_image(Nemi* st, const char* filepath);
 void unload_image(struct image* img);
 
 // Switch current terminal.
-void switch_terminal(struct nemi* st, uint32_t index);
-void switch_terminal_ptr(struct nemi* st, struct terminal* term);
+void switch_terminal(Nemi* st, uint32_t index);
+void switch_terminal_ptr(Nemi* st, NTerminal* term);
 
 
-//void begin_frame(struct nemi* st);
-//void end_frame(struct nemi* st);
-void update_frame(struct nemi* st);
+//void begin_frame(Nemi* st);
+//void end_frame(Nemi* st);
+void update_frame(Nemi* st);
 
-bool key_down(struct nemi* st, int key);
+bool key_down(Nemi* st, int key);
 
 
 // 'event_num' corresponds to REG_EVENT... defined in "script.h"
@@ -142,27 +140,27 @@ bool key_down(struct nemi* st, int key);
 // For example if arguments to function is int, int, float, float,
 // then arg_types should be "iiff".
 // TODO: Not all types are currently supported.
-void trigger_event_for_scripts(struct nemi* st, int event_num, const char* arg_types, ...);
+void trigger_event_for_scripts(Nemi* st, int event_num, const char* arg_types, ...);
 
 // Clear rendered pixels.
-void clear_region(struct nemi* st, int x, int y, int w, int h);
+void clear_region(Nemi* st, int x, int y, int w, int h);
 
 // Convert column/row to window x/y position.
-int coltox(struct nemi* st, int col);
-int rowtoy(struct nemi* st, int row);
+int coltox(Nemi* st, int col);
+int rowtoy(Nemi* st, int row);
 
-//int new_renderbuf(struct nemi* st, int num_nodes_max);
-void init_default_config(struct nemi* st);
-
-
-void nemi_help(struct nemi* st, const char* what);
-void nemi_message_script_keybinds(struct nemi* st, const char* script_name);
-
-void restart_session(struct nemi* st);
-void hotreload_session(struct nemi* st);
-//void nemi_recompile_src(struct nemi* st);
+//int new_renderbuf(Nemi* st, int num_nodes_max);
+void init_default_config(Nemi* st);
 
 
+void nemi_help(Nemi* st, const char* what);
+void nemi_message_script_keybinds(Nemi* st, const char* script_name);
+
+void restart_session(Nemi* st);
+void hotreload_session(Nemi* st);
+//void nemi_recompile_src(Nemi* st);
+
+const char* nemi_get_clipboard_content(Nemi* st);
 
 
 #endif

@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <locale.h>
 
 #include "nemi.h"
 #include "nemi_config.h"
@@ -11,7 +12,7 @@
 
 
 
-static struct nemi* g_nemi_state = NULL;
+static Nemi* g_nemi_state = NULL;
 
 
 void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
@@ -19,18 +20,19 @@ void glfw_window_resize_callback(GLFWwindow* window, int width, int height);
 void glfw_scroll_callback(GLFWwindow* window, double x_offset, double y_offset);;
 void glfw_char_callback(GLFWwindow* window, uint32_t codepoint);
 
-struct nemi* get_state() {
+Nemi* get_state() {
     return g_nemi_state;
 }
 
-void prepare_from_hotreload(struct nemi* st) {
+void prepare_from_hotreload(Nemi* st) {
     leaf_set_drawing_context(st->lfctx);
     g_nemi_state = st;
 }
 
 
-struct nemi* start_session(struct nemi_filepaths filepaths) {
-    struct nemi* st = malloc(sizeof *st);
+Nemi* start_session(struct nemi_filepaths filepaths) {
+    setlocale(LC_ALL, "C"); // Restart from loader may mess with locale.
+    Nemi* st = malloc(sizeof *st);
 
     st->filepaths = filepaths; 
     st->frame_time = 0.001;
@@ -89,6 +91,7 @@ struct nemi* start_session(struct nemi_filepaths filepaths) {
     leaf_set_font_space_width(&st->font, st->font.max_bitmap_width / 2.0f);
     leaf_set_font_scale(&st->font, st->cfg.font.scale);
 
+    printf("Setting font scale: %f\n", st->cfg.font.scale);
 
     leaf_set_font_color(&st->font, (struct color_t) { 255, 200, 150 });
 
@@ -117,7 +120,7 @@ struct nemi* start_session(struct nemi_filepaths filepaths) {
             "\033[2J\033[H\033[0m\033[90m(start of messages. press ctrl+space to go back)\033[0m\n\r");
 
     for(size_t i = 0; i < NEMI_SCRIPTS_MAX; i++) {
-        st->scripts[i] = (struct perl_script) {
+        st->scripts[i] = (PerlScript) {
             .perl_interp = NULL,
             .is_loaded   = false
         };
@@ -170,7 +173,7 @@ struct nemi* start_session(struct nemi_filepaths filepaths) {
     return st;
 }
 
-void quit_session(struct nemi* st) {
+void quit_session(Nemi* st) {
     leaf_unload_font(&st->font);
 
     for(uint16_t i = 0; i < st->num_terminals; i++) {
@@ -195,6 +198,7 @@ void quit_session(struct nemi* st) {
 
     leaf_free_framebuffer(&st->term_cells_framebuffer);
 
+    free_configs(st);
     /*
     for(size_t i = 0; i < ARRAY_LEN(st->renderbufs); i++) {
         freeif(st->renderbufs[i].nodes);
@@ -205,7 +209,7 @@ void quit_session(struct nemi* st) {
     freeif(st);
 }
 
-void zero_input_buffers(struct nemi* st) {
+void zero_input_buffers(Nemi* st) {
     for(int i = 0; i < NEMI_KEYINBUF_MAX; i++) {
         st->key_inputs[i] = 0;
     }
@@ -214,11 +218,11 @@ void zero_input_buffers(struct nemi* st) {
     }
 }
 
-void switch_terminal(struct nemi* st, uint32_t index) {
+void switch_terminal(Nemi* st, uint32_t index) {
     switch_terminal_ptr(st, &st->terminals[index]);
 }
 
-void switch_terminal_ptr(struct nemi* st, struct terminal* term) {
+void switch_terminal_ptr(Nemi* st, NTerminal* term) {
     if(st->terminal == term) {
         return;
     }
@@ -234,7 +238,7 @@ void switch_terminal_ptr(struct nemi* st, struct terminal* term) {
 
 #define CLEAR_COLOR_NO_ALPHA 0.0f
 #define CLEAR_COLOR_INCLUDE_ALPHA 1.0f
-void clear_color_buffer_bit(struct nemi* st, float clear_color_alpha) {
+void clear_color_buffer_bit(Nemi* st, float clear_color_alpha) {
     glClearColor(
             (float)st->cfg.colors[NEMI_COLOR_BG].r / 255.0f,
             (float)st->cfg.colors[NEMI_COLOR_BG].g / 255.0f,
@@ -243,31 +247,29 @@ void clear_color_buffer_bit(struct nemi* st, float clear_color_alpha) {
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
-void clear_region(struct nemi* st, int x, int y, int w, int h) {
+void clear_region(Nemi* st, int x, int y, int w, int h) {
     glEnable(GL_SCISSOR_TEST);
     glScissor(x, (st->lfctx->win_height - h) - y, w, h);
     clear_color_buffer_bit(st, CLEAR_COLOR_NO_ALPHA);
     glDisable(GL_SCISSOR_TEST);
 }
 
-static int frame_count = 0;
-
 
 
 // NOTE: 'altrender_framebuffer' is active during this subroutine.
 static
-void altrender(struct nemi* st) {
+void altrender(Nemi* st) {
 
     // Allow scripts to render stuff.
     for(uint32_t i = 0; i < st->num_scripts; i++) {
-        struct perl_script* script = &st->scripts[i];
+        PerlScript* script = &st->scripts[i];
         if(script->reg_events & REG_EVENT_RENDER) {
             plscript_call(script, "event_render");
         }
     }
 }
 
-void update_frame(struct nemi* st) {
+void update_frame(Nemi* st) {
     st->frame_time_begin = glfwGetTime();
 
 
@@ -333,11 +335,11 @@ void update_frame(struct nemi* st) {
 
 }
 
-bool key_down(struct nemi* st, int key) {
+bool key_down(Nemi* st, int key) {
     return (glfwGetKey(st->lfctx->glfw_win, key) == GLFW_PRESS);
 }
 
-void init_default_config(struct nemi* st) {
+void init_default_config(Nemi* st) {
     st->cfg.main.padding_x = 10;
     st->cfg.main.padding_y = 10;
     st->cfg.main.line_padding = 3;
@@ -375,7 +377,7 @@ void init_default_config(struct nemi* st) {
 // 'arg_types' tells what are the variadic argument types.
 //             For example: "ii" tells that there are 2 integers.
 //             See all supported types in the switch statement.
-void trigger_event_for_scripts(struct nemi* st, int event_num, const char* arg_types, ...) {
+void trigger_event_for_scripts(Nemi* st, int event_num, const char* arg_types, ...) {
     
     size_t num_args = strlen(arg_types);
 
@@ -418,7 +420,7 @@ void trigger_event_for_scripts(struct nemi* st, int event_num, const char* arg_t
 
     const char* event_name = plscript_get_event_name(event_num);
     for(size_t i = 0; i < st->num_scripts; i++) {
-        struct perl_script* script = &st->scripts[i];
+        PerlScript* script = &st->scripts[i];
         if(!script->is_loaded) {
             continue;
         }
@@ -444,7 +446,7 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
     }
 
     
-    struct nemi* st = (struct nemi*)glfwGetWindowUserPointer(window);
+    Nemi* st = (Nemi*)glfwGetWindowUserPointer(window);
     push_key_input(st, key);
 
     st->last_key_in = key;
@@ -479,7 +481,7 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
     terminal_handle_key_event(st, st->terminal);
     
     for(size_t i = 0; i < st->num_scripts; i++) {
-        struct perl_script* script = &st->scripts[i];
+        PerlScript* script = &st->scripts[i];
         if(!script->is_loaded) {
             continue;
         }
@@ -489,7 +491,7 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
 }
 
 void glfw_char_callback(GLFWwindow* window, uint32_t codepoint) {
-    struct nemi* st = (struct nemi*)glfwGetWindowUserPointer(window);
+    Nemi* st = (Nemi*)glfwGetWindowUserPointer(window);
     if(codepoint >= 0x20 && codepoint <= 0x7E) {
 
         trigger_event_for_scripts(st, REG_EVENT_CHAR_INPUT,
@@ -504,7 +506,7 @@ void glfw_char_callback(GLFWwindow* window, uint32_t codepoint) {
 }
 
 void glfw_scroll_callback(GLFWwindow* window, double x_offset, double y_offset) {
-    //struct nemi* st = (struct nemi*)glfwGetWindowUserPointer(window);
+    //Nemi* st = (Nemi*)glfwGetWindowUserPointer(window);
 
     (void)window;
     (void)x_offset;
@@ -514,7 +516,7 @@ void glfw_scroll_callback(GLFWwindow* window, double x_offset, double y_offset) 
 }
 
 void glfw_window_resize_callback(GLFWwindow* window, int width, int height) {
-    struct nemi* st = (struct nemi*)glfwGetWindowUserPointer(window);
+    Nemi* st = (Nemi*)glfwGetWindowUserPointer(window);
 
     st->lfctx->win_width = width;
     st->lfctx->win_height = height;
@@ -542,29 +544,29 @@ void glfw_window_resize_callback(GLFWwindow* window, int width, int height) {
             st->win_rows);
 }
 
-void push_key_input(struct nemi* st, int key) {
+void push_key_input(Nemi* st, int key) {
     for(int i = NEMI_KEYINBUF_MAX-1; i > 0; i--) {
         st->key_inputs[i] = st->key_inputs[i-1];
     }
     st->key_inputs[0] = key;
 }
 
-void push_char_input(struct nemi* st, char ch) {
+void push_char_input(Nemi* st, char ch) {
     for(int i = NEMI_CHARINBUF_MAX-1; i > 0; i--) {
         st->char_inputs[i] = st->char_inputs[i-1];
     }
     st->char_inputs[0] = ch;
 }
 
-int coltox(struct nemi* st, int col) {
+int coltox(Nemi* st, int col) {
     return col * st->font.char_width + st->cfg.main.padding_x;
 }
 
-int rowtoy(struct nemi* st, int row) {
+int rowtoy(Nemi* st, int row) {
     return row * (st->font.char_height + st->cfg.main.line_padding) + st->cfg.main.padding_y;
 }
 
-void font_scale(struct nemi* st, float offset) {
+void font_scale(Nemi* st, float offset) {
     leaf_set_font_scale(&st->font, st->font.scale + offset);
 
     // We can call glfw window resize callback here
@@ -572,12 +574,12 @@ void font_scale(struct nemi* st, float offset) {
     glfw_window_resize_callback(st->lfctx->glfw_win, st->lfctx->win_width, st->lfctx->win_height);
 }
 
-void set_font_scale(struct nemi* st, float scale) {
+void set_font_scale(Nemi* st, float scale) {
     leaf_set_font_scale(&st->font, scale);
     glfw_window_resize_callback(st->lfctx->glfw_win, st->lfctx->win_width, st->lfctx->win_height);
 }
 
-void create_msg(struct nemi* st, const char* msg, ...) {
+void create_msg(Nemi* st, const char* msg, ...) {
     va_list args;
     va_start(args, msg);
 
@@ -592,7 +594,7 @@ void create_msg(struct nemi* st, const char* msg, ...) {
     va_end(args);
 }
 
-int load_image(struct nemi* st, const char* filepath) {
+int load_image(Nemi* st, const char* filepath) {
     struct image* img = NULL;
     size_t img_idx = 0;
     for(; img_idx < NEMI_IMAGES_MAX; img_idx++) {
@@ -628,13 +630,13 @@ void unload_image(struct image* img) {
 }
 
 
-void nemi_help(struct nemi* st, const char* what) {
+void nemi_help(Nemi* st, const char* what) {
 
     // Check if the string is equal to any script names
     // the user may be asking information about script.
     
     for(size_t i = 0; i < st->num_scripts; i++) {
-        struct perl_script* script = &st->scripts[i];
+        PerlScript* script = &st->scripts[i];
         if(!script->is_loaded) {
             continue;
         }
@@ -657,8 +659,8 @@ void nemi_help(struct nemi* st, const char* what) {
 }
 
 
-void nemi_message_script_keybinds(struct nemi* st, const char* script_name) {
-    struct perl_script* script = NULL;
+void nemi_message_script_keybinds(Nemi* st, const char* script_name) {
+    PerlScript* script = NULL;
     for(size_t i = 0; i < st->num_scripts; i++) {
         if(st->scripts[i].is_loaded) {
             if(STR_MATCH(script_name, st->scripts[i].name)) {
@@ -699,7 +701,7 @@ void nemi_message_script_keybinds(struct nemi* st, const char* script_name) {
 }
 
 /*
-void nemi_recompile_src(struct nemi* st) {
+void nemi_recompile_src(Nemi* st) {
     if(st->cfg.main.source_dir == NULL
     || (strlen(st->cfg.main.source_dir) == 0)) {
         create_msg(st, "\033[31mRecompiling is disabled from configuration file.\033[0m");
@@ -716,7 +718,7 @@ void nemi_recompile_src(struct nemi* st) {
 }
 */
 
-void restart_session(struct nemi* st) {
+void restart_session(Nemi* st) {
     if(!(st->flags & FLG_RESTARTING_SUPPORTED)) {
         create_msg(st, "\033[31mRestarting is not supported by current loader.\n\r"
                        "or 'FLG_RESTARTING_SUPPORTED' was not set by loader.\033[0m\n\r");
@@ -726,7 +728,7 @@ void restart_session(struct nemi* st) {
     st->flags |= FLG_LOADER_RESTART_SESSION;
 }
 
-void hotreload_session(struct nemi* st) {
+void hotreload_session(Nemi* st) {
     if(!(st->flags & FLG_HOTRELOADING_SUPPORTED)) {
         create_msg(st, "\033[31mHotReloading is not supported by current loader.\n\r"
                        "or 'FLG_RESTARTING_SUPPORTED' was not set by loader.\033[0m\n\r");
@@ -734,5 +736,9 @@ void hotreload_session(struct nemi* st) {
     }
 
     st->flags |= FLG_LOADER_HOTRELOAD_SESSION;
+}
+
+const char* nemi_get_clipboard_content(Nemi* st) {
+    return glfwGetClipboardString(st->lfctx->glfw_win);
 }
 

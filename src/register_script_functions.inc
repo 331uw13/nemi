@@ -24,6 +24,7 @@ newXS("nemi::term_get_yscroll", xsw_term_get_yscroll, __FILE__);
 newXS("nemi::add_keybind", xsw_add_keybind, __FILE__);
 newXS("nemi::script_keybinds", xsw_script_keybinds, __FILE__);
 newXS("nemi::help", xsw_help, __FILE__);
+newXS("nemi::get_clipboard", xsw_get_clipboard, __FILE__);
 newXS("nemi::term_copy_to_clipboard", xsw_term_copy_to_clipboard, __FILE__);
 newXS("nemi::term_set_cell_custom_fg", xsw_term_set_cell_custom_fg, __FILE__);
 newXS("nemi::term_set_cell_custom_bg", xsw_term_set_cell_custom_bg, __FILE__);

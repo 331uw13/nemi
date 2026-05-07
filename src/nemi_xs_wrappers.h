@@ -40,7 +40,7 @@ XS(xsw_load_image) {
     (void)items;
     STRLEN filepath_len;
     char* filepath = SvPV(ST(0), filepath_len);
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
  
     if(filepath_len == 0) {
         XSRETURN_EMPTY;
@@ -58,7 +58,7 @@ XS(xsw_draw_image) {
     int image_y = SvIV(ST(2));
     int image_w = SvIV(ST(3));
     int image_h = SvIV(ST(4));
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
 
     if(image_handle < 0) {
         XSRETURN_EMPTY;
@@ -75,7 +75,7 @@ XS(xsw_draw_image) {
 XS(xsw_term_is_altbuffer_active) {
     dXSARGS;
     (void)items;
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
 
     XSRETURN_IV(st->terminal->is_altbuffer_active);
 }
@@ -83,7 +83,7 @@ XS(xsw_term_is_altbuffer_active) {
 XS(xsw_list_scripts) {
     dXSARGS;
     (void)items;
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
 
     if(st->num_scripts == 0) {
         create_msg(st, "No scripts loaded.");
@@ -91,7 +91,7 @@ XS(xsw_list_scripts) {
     }
 
     for(size_t i = 0; i < st->num_scripts; i++) {
-        struct perl_script* script = &st->scripts[i];
+        PerlScript* script = &st->scripts[i];
         create_msg(st, "%s %s %30s", 
                 (script->is_loaded ? "\033[32m(Loaded)\033[0m" : "\033[31m(Failed to load)\033[0m"),
                 script->name,
@@ -102,21 +102,21 @@ XS(xsw_list_scripts) {
 XS(xsw_get_win_width) {
     dXSARGS;
     (void)items;
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
 
     XSRETURN_IV(st->lfctx->win_width);
 }
 XS(xsw_get_win_height) {
     dXSARGS;
     (void)items;
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     XSRETURN_IV(st->lfctx->win_height);
 }
 
 XS(xsw_get_font_charsize) {
     dXSARGS;
     (void)items;
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
 
     mXPUSHi(st->font.char_width);
     mXPUSHi(st->font.char_height);
@@ -126,7 +126,7 @@ XS(xsw_get_font_charsize) {
 XS(xsw_get_mouse_pos) {
     dXSARGS;
     (void)items;
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
    
     double p[2];
     glfwGetCursorPos(st->lfctx->glfw_win, &p[0], &p[1]);
@@ -139,7 +139,7 @@ XS(xsw_get_mouse_pos) {
 XS(xsw_get_mouse_cellpos) {
     dXSARGS;
     (void)items;
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
    
     double p[2];
     glfwGetCursorPos(st->lfctx->glfw_win, &p[0], &p[1]);
@@ -154,7 +154,7 @@ XS(xsw_term_exec) {
     (void)items;
     STRLEN cmd_len;
     char* cmd = SvPV(ST(0), cmd_len);
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
  
     if(cmd_len == 0) {
         XSRETURN_EMPTY;
@@ -163,9 +163,9 @@ XS(xsw_term_exec) {
     // Need to find some terminal to execute the command.
     // It cannot be echo terminal or one which is in altscreen mode.
     // TODO: This should be made to take in count if the terminal is already executing a command.
-    struct terminal* term = NULL;
+    NTerminal* term = NULL;
     for(uint16_t i = 0; i < st->num_terminals; i++) {
-        struct terminal* candidate = &st->terminals[i];
+        NTerminal* candidate = &st->terminals[i];
         if(!candidate->is_altbuffer_active && candidate->type == SHELL_TERMINAL) {
             term = candidate;
             break;
@@ -191,7 +191,7 @@ XS(xsw_term_pty_write) {
     (void)items;
     STRLEN str_len;
     char* str = SvPV(ST(0), str_len);
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
  
     if(str_len == 0) {
         XSRETURN_EMPTY;
@@ -204,28 +204,28 @@ XS(xsw_term_pty_write) {
 XS(xsw_get_user_texteditor) {
     dXSARGS;
     (void)items;
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     XSRETURN_PV(st->cfg.main.favourite_texteditor);
 }
 
 XS(xsw_draw_enable_scroll_offset) {
     dXSARGS;
     (void)items;
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     st->flags |= FLG_SCRIPTDRAW_ADJUSTPOS_TO_SCROLL;
 }
 
 XS(xsw_draw_disable_scroll_offset) {
     dXSARGS;
     (void)items;
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     st->flags &= ~FLG_SCRIPTDRAW_ADJUSTPOS_TO_SCROLL;
 }
 
 XS(xsw_restart) {
     dXSARGS;
     (void)items;
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     restart_session(st);
     XSRETURN_EMPTY;
 }
@@ -233,7 +233,7 @@ XS(xsw_restart) {
 XS(xsw_hotreload) {
     dXSARGS;
     (void)items;
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     hotreload_session(st);
     XSRETURN_EMPTY;
 }
@@ -246,7 +246,6 @@ XS(xsw_draw_rect) {
     int w = SvIV(ST(2));
     int h = SvIV(ST(3));
     int color = SvIV(ST(4));
-    struct nemi* st = get_state();
     leaf_draw_rect(x, y, w, h, hexrgb_to_color_type(color));
     XSRETURN_EMPTY;
 }
@@ -259,7 +258,7 @@ XS(xsw_draw_rect_cells) {
     int w = SvIV(ST(2));
     int h = SvIV(ST(3));
     int color = SvIV(ST(4));
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
 
     leaf_draw_rect(
             coltox(st, x),
@@ -278,7 +277,7 @@ XS(xsw_draw_text) {
     STRLEN text_len;
     char* text = SvPV(ST(2), text_len);
     int color = SvIV(ST(3));
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     
     struct color_t text_color = hexrgb_to_color_type(color);
     
@@ -305,7 +304,7 @@ XS(xsw_draw_text_cells) {
     STRLEN text_len;
     char* text = SvPV(ST(2), text_len);
     int color = SvIV(ST(3));
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     
     struct color_t text_color = hexrgb_to_color_type(color);
     
@@ -330,7 +329,7 @@ XS(xsw_draw_text_cells) {
 XS(xsw_term_get_yscroll) {
     dXSARGS;
     (void)items;
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     XSRETURN_IV(st->terminal->yscroll);
 }
 
@@ -346,7 +345,7 @@ XS(xsw_add_keybind) {
     STRLEN keybind_str_len;
     char* keybind_str = SvPV(ST(2), keybind_str_len);
 
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     add_script_keybind(st, 
             script_name,
             event_name,
@@ -360,7 +359,7 @@ XS(xsw_script_keybinds) {
     (void)items;
     STRLEN len;
     char*  script_name = SvPV(ST(0), len);
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     nemi_message_script_keybinds(st, script_name);
     XSRETURN_EMPTY;
 }
@@ -370,9 +369,17 @@ XS(xsw_help) {
     (void)items;
     STRLEN len;
     char*  str = SvPV(ST(0), len);
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     nemi_help(st, str);
     XSRETURN_EMPTY;
+}
+
+XS(xsw_get_clipboard) {
+    dXSARGS;
+    (void)items;
+    Nemi* st = get_state();
+    const char* clipboard = nemi_get_clipboard_content(st);
+    XSRETURN_PV(clipboard);
 }
 
 XS(xsw_term_copy_to_clipboard) {
@@ -384,7 +391,7 @@ XS(xsw_term_copy_to_clipboard) {
     int end_row = SvIV(ST(3));
     STRLEN type_len;
     char* type = SvPV(ST(4), type_len);
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     terminal_copy_to_clipboard(st, st->terminal, type,
             start_col, 
             start_row,
@@ -399,7 +406,7 @@ XS(xsw_term_set_cell_custom_fg) {
     int column = SvIV(ST(0));
     int row    = SvIV(ST(1));
     int hex_rgb_color = SvIV(ST(2));
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     terminal_set_cell_custom_fg(st->terminal, (VTermPos){ row, column }, hex_rgb_color);
     XSRETURN_EMPTY;
 }
@@ -410,7 +417,7 @@ XS(xsw_term_set_cell_custom_bg) {
     int column = SvIV(ST(0));
     int row    = SvIV(ST(1));
     int hex_rgb_color = SvIV(ST(2));
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     terminal_set_cell_custom_bg(st->terminal, (VTermPos){ row, column }, hex_rgb_color);
     XSRETURN_EMPTY;
 }
@@ -421,7 +428,7 @@ XS(xsw_term_set_cell_custom_attrs) {
     int column = SvIV(ST(0));
     int row    = SvIV(ST(1));
     int attrs = SvIV(ST(2));
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     terminal_set_cell_custom_attrs(st->terminal, (VTermPos){ row, column }, attrs);
     XSRETURN_EMPTY;
 }
@@ -431,7 +438,7 @@ XS(xsw_term_clear_cell_custom_bg) {
     (void)items;
     int column = SvIV(ST(0));
     int row    = SvIV(ST(1));
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     terminal_clear_cell_custom_bg(st->terminal, (VTermPos){ row, column });
     XSRETURN_EMPTY;
 }
@@ -441,7 +448,7 @@ XS(xsw_term_clear_cell_custom_fg) {
     (void)items;
     int column = SvIV(ST(0));
     int row    = SvIV(ST(1));
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     terminal_clear_cell_custom_fg(st->terminal, (VTermPos){ row, column });
     XSRETURN_EMPTY;
 }
@@ -451,7 +458,7 @@ XS(xsw_term_clear_cell_custom_attrs) {
     (void)items;
     int column = SvIV(ST(0));
     int row    = SvIV(ST(1));
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     terminal_clear_cell_custom_attrs(st->terminal, (VTermPos){ row, column });
     XSRETURN_EMPTY;
 }
@@ -461,7 +468,7 @@ XS(xsw_term_get_char) {
     (void)items;
     int column = SvIV(ST(0));
     int row    = SvIV(ST(1));
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
 
     XSRETURN_IV(terminal_get_char(st->terminal, column, row));
 }
@@ -469,14 +476,14 @@ XS(xsw_term_get_char) {
 XS(xsw_term_get_cursor_x) {
     dXSARGS;
     (void)items;
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     XSRETURN_IV(terminal_get_cursor_x(st->terminal));
 }
 
 XS(xsw_term_get_cursor_y) {
     dXSARGS;
     (void)items;
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     XSRETURN_IV(terminal_get_cursor_y(st->terminal));
 }
 
@@ -488,7 +495,7 @@ XS(xsw_term_hide_cells) {
     int w = SvIV(ST(2));
     int h = SvIV(ST(3));
 
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     terminal_hide_cells(st->terminal, true, x, y, w, h);
     XSRETURN_EMPTY;
 }
@@ -501,7 +508,7 @@ XS(xsw_term_show_cells) {
     int w = SvIV(ST(2));
     int h = SvIV(ST(3));
 
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     terminal_hide_cells(st->terminal, false, x, y, w, h);
     XSRETURN_EMPTY;
 }
@@ -511,8 +518,8 @@ XS(xsw_term_yscroll) {
     (void)items;
     int offset = SvIV(ST(0));
 
-    struct nemi* st = get_state();
-    terminal_yscroll(st, st->terminal, offset);
+    Nemi* st = get_state();
+    terminal_yscroll(st->terminal, offset);
     XSRETURN_EMPTY;
 }
 
@@ -520,7 +527,7 @@ XS(xsw_term_get_rows) {
     dXSARGS;
     (void)items;
 
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     XSRETURN_IV(st->terminal->rows);
 }
 
@@ -528,7 +535,7 @@ XS(xsw_term_get_cols) {
     dXSARGS;
     (void)items;
     
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     XSRETURN_IV(st->terminal->cols);
 }
 
@@ -537,7 +544,7 @@ XS(xsw_keydown) {
     (void)items;
     int key = SvIV(ST(0));
 
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     XSRETURN_IV(key_down(st, key));
 }
 
@@ -545,7 +552,7 @@ XS(xsw_term_ignore_keys) {
     dXSARGS;
     (void)items;
 
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     st->term_ignore_key_input_counter++;
     XSRETURN_EMPTY;
 }
@@ -554,7 +561,7 @@ XS(xsw_term_ignore_chars) {
     dXSARGS;
     (void)items;
     
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     st->term_ignore_char_input_counter++;
     XSRETURN_EMPTY;
 }
@@ -563,7 +570,7 @@ XS(xsw_term_unignore_keys) {
     dXSARGS; 
     (void)items;
     
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     st->term_ignore_key_input_counter--;
     if(st->term_ignore_key_input_counter < 0) {
         st->term_ignore_key_input_counter = 0;
@@ -575,7 +582,7 @@ XS(xsw_term_unignore_chars) {
     dXSARGS;
     (void)items;
     
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
     st->term_ignore_char_input_counter--;
     if(st->term_ignore_char_input_counter < 0) {
         st->term_ignore_char_input_counter = 0;
@@ -589,7 +596,7 @@ XS(xsw_create_msg) {
     
     STRLEN len;
     char*  str = SvPV(ST(0), len);
-    struct nemi* st = get_state();
+    Nemi* st = get_state();
 
     create_msg(st, str);
     XSRETURN_EMPTY;

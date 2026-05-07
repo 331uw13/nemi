@@ -2,20 +2,20 @@
 #define SCRIPT_KEYBINDS_H
 
 
-struct nemi;
-struct perl_script;
+typedef struct Nemi_t Nemi;
+typedef struct PerlScript_t PerlScript;
 
 
 void add_script_keybind
 (
-    struct nemi* st,
+    Nemi* st,
     const char* script_name,
     const char* event_name,
     const char* keybind_str,
     size_t      keybind_str_len
 );
 
-void handle_script_keybind_event(struct nemi* st, struct perl_script* script);
+void handle_script_keybind_event(Nemi* st, PerlScript* script);
 
 
 #endif

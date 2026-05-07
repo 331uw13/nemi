@@ -18,17 +18,18 @@
 #define REG_EVENT_RENDER               (1 << 6)
 
 
-struct script_keybind_value {
+typedef struct {
     char* event_name;  // Keybind event name.
     char* keys_str;
-};
+}
+PerlScriptKeybindValue;
 
 struct script_keybind {
     uint64_t key; // Hash from array of keys which require to trigger event name.
-    struct script_keybind_value* value;
+    PerlScriptKeybindValue* value;
 };
 
-struct perl_script {
+typedef struct PerlScript_t {
     PerlInterpreter* perl_interp;
     char* name;
     char* filepath;
@@ -37,22 +38,24 @@ struct perl_script {
     //int uid; // Unique identitifer.
 
     struct script_keybind* keybind_map;
-};
+}
+PerlScript;
 
 
+typedef struct Nemi_t Nemi;
 
-struct nemi;
 
-bool load_perl_script(struct nemi* st, const char* filepath, const char* name);
-void unload_perl_script(struct perl_script* script);
+bool load_perl_script(Nemi* st, const char* filepath, const char* name);
+void unload_perl_script(PerlScript* script);
 
+// See above event numbers available, defined at top of this file.
 const char* plscript_get_event_name(int event_num);
 
 void plscript_call
-    (struct perl_script* script, const char* func);
+    (PerlScript* script, const char* func);
 
     // NOTE: 'args' must not be NULL
 void plscript_call_args
-    (struct perl_script* script, const char* func, char** args);
+    (PerlScript* script, const char* func, char** args);
 
 #endif

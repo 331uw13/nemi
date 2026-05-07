@@ -17,7 +17,7 @@
 
 
 static
-const char* get_terminaltype_shell(struct nemi* st, enum terminal_type term_type) {
+const char* get_terminaltype_shell(Nemi* st, enum terminal_type term_type) {
     if(term_type == SHELL_TERMINAL) {
         return st->cfg.main.shell;
     }
@@ -112,7 +112,7 @@ bool do_cells_match(VTermScreenCell* cell_a, VTermScreenCell* cell_b) {
     return true;
 }
 static 
-void resize_terminal_cell_buffers(struct terminal* term) {
+void resize_terminal_cell_buffers(NTerminal* term) {
     
     // TODO: Add error checking.
 
@@ -129,7 +129,7 @@ void resize_terminal_cell_buffers(struct terminal* term) {
     memset(term->dirty_rows, 1, dirty_rows_size);
 }
 
-struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, enum terminal_type term_type) {
+NTerminal* spawn_terminal(Nemi* st, int rows, int cols, enum terminal_type term_type) {
     if(st->num_terminals+1 >= NEMI_TERMINALS_MAX) {
         return NULL;
     }
@@ -141,7 +141,7 @@ struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, enum termin
         .ws_ypixel = 0
     };
 
-    struct terminal* term = &st->terminals[st->num_terminals++];
+    NTerminal* term = &st->terminals[st->num_terminals++];
     term->type = term_type;
     term->pid = forkpty(&term->master_fd, NULL, NULL, &ws);
 
@@ -197,7 +197,7 @@ struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, enum termin
     return term;
 }
 
-void close_terminal(struct terminal* term) {
+void close_terminal(NTerminal* term) {
     if(!term) {
         return;
     }
@@ -217,7 +217,7 @@ void close_terminal(struct terminal* term) {
 }
 
 
-void terminal_read(struct nemi* st, struct terminal* term) {
+void terminal_read(Nemi* st, NTerminal* term) {
     if(!term) {
         return;
     }
@@ -232,6 +232,8 @@ void terminal_read(struct nemi* st, struct terminal* term) {
 
     const int timeout_ms = 10;
     ssize_t last_rd_len = sizeof(tmp_buffer);
+
+    int times_read = 0;
 
     while(true) {
         int retv = poll(&pfd, num_fds, timeout_ms);
@@ -248,6 +250,11 @@ void terminal_read(struct nemi* st, struct terminal* term) {
         vterm_input_write(term->vt, tmp_buffer, rd_len);
         vterm_screen_flush_damage(term->vtscrn);
         last_rd_len = rd_len;
+    
+        times_read++;
+        if(times_read > 200) {
+            break;
+        }
     }
 
 
@@ -268,7 +275,7 @@ struct color_t vtermcolor_to_leafcolor(VTermColor* c) {
 }
 
 static
-bool* get_hidden_cell_status(struct terminal* term, int col, int row) {
+bool* get_hidden_cell_status(NTerminal* term, int col, int row) {
     size_t index = row * term->cols + col;
 
     size_t num_cells = term->cols * term->rows;
@@ -279,7 +286,7 @@ bool* get_hidden_cell_status(struct terminal* term, int col, int row) {
     return &term->hidden_cells[index];
 }
 
-void terminal_hide_cells(struct terminal* term, bool hidden, int col, int row, int width, int height) {
+void terminal_hide_cells(NTerminal* term, bool hidden, int col, int row, int width, int height) {
     for(int y = 0; y < height; y++) {
         for(int x = 0; x < width; x++) {
             bool* status = get_hidden_cell_status(term, x + col, y + row);
@@ -295,7 +302,7 @@ void terminal_hide_cells(struct terminal* term, bool hidden, int col, int row, i
 
 
 static
-bool render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, VTermPos pos) {
+bool render_cell(Nemi* st, NTerminal* term, VTermScreenCell* cell, VTermPos pos) {
    
     if(cell->chars[0] == 0) {
         return false;
@@ -381,7 +388,7 @@ bool render_cell(struct nemi* st, struct terminal* term, VTermScreenCell* cell, 
 
 
 static
-void clear_cell(struct nemi* st, int col, int row) {
+void clear_cell(Nemi* st, int col, int row) {
     int x = coltox(st, col) * st->cfg.font.char_spacing;
     int y = rowtoy(st, row);
     clear_region(st, x, y, 
@@ -390,7 +397,7 @@ void clear_cell(struct nemi* st, int col, int row) {
 }
 
 static
-void terminal_render_cursor(struct nemi* st, struct terminal* term) {
+void terminal_render_cursor(Nemi* st, NTerminal* term) {
     VTermPos vtcurs_pos = (VTermPos){ 0, 0 };
     vterm_state_get_cursorpos(term->vtstate, &vtcurs_pos);
 
@@ -444,7 +451,7 @@ void terminal_render_cursor(struct nemi* st, struct terminal* term) {
 }
 
 
-void terminal_set_row_dirty(struct terminal* term, int row) {
+void terminal_set_row_dirty(NTerminal* term, int row) {
     if(row < 0) {
         return;
     }
@@ -455,18 +462,11 @@ void terminal_set_row_dirty(struct terminal* term, int row) {
     term->dirty_rows[row] = true;
 }
 
-void terminal_render(struct nemi* st, struct terminal* term) {
+void terminal_render(Nemi* st, NTerminal* term) {
     vterm_get_size(term->vt, &term->rows, &term->cols);
     if(vterm_screen_is_altscreen(term->vtscrn)) {
         term->yscroll = 0;
     }
-
-    uint32_t num_rendered_cells = 0; 
-
-
-    //terminal_set_row_dirty(term, term->cursor_row);
-    //terminal_set_row_dirty(term, term->cursor_old_row);
-
 
     // Update front buffer.
     for(int row = 0; row < term->rows; row++) {
@@ -506,8 +506,8 @@ void terminal_render(struct nemi* st, struct terminal* term) {
 
         for(int col = 0; col < term->cols; col++) {
 
-            int char_x = coltox(st, col) * st->cfg.font.char_spacing;
-            int char_y = rowtoy(st, row);
+            //int char_x = coltox(st, col) * st->cfg.font.char_spacing;
+            //int char_y = rowtoy(st, row);
         
             VTermScreenCell* front_cell = &term->front_cell_buffer[col + row * term->cols];
             render_cell(st, term, front_cell, (VTermPos){ row, col });
@@ -525,7 +525,7 @@ void terminal_render(struct nemi* st, struct terminal* term) {
     memset(term->dirty_rows, 0, term->rows * sizeof *term->dirty_rows);
 }
 
-void update_terminal_blink_timer(struct nemi* st, struct terminal* term) {
+void update_terminal_blink_timer(Nemi* st, NTerminal* term) {
     // https://en.wikipedia.org/wiki/Triangle_wave
     // Here triangle wave amplitude is 1.0 and lowest point is 0.0
     float tri_wave = 0.5+(1.0/M_PI)*asin(sin(glfwGetTime() * st->cfg.main.blink_speed));
@@ -537,7 +537,7 @@ void update_terminal_blink_timer(struct nemi* st, struct terminal* term) {
     }
 }
 
-void terminal_write(struct terminal* term, enum term_write_target target, char* fmt, ...) {
+void terminal_write(NTerminal* term, enum term_write_target target, char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
 
@@ -557,7 +557,7 @@ void terminal_write(struct terminal* term, enum term_write_target target, char* 
     va_end(args);
 }
 
-void terminal_handle_char_event(struct nemi* st, struct terminal* term) {
+void terminal_handle_char_event(Nemi* st, NTerminal* term) {
     if(st->term_ignore_char_input_counter > 0) {
         return;
     }
@@ -571,7 +571,7 @@ void terminal_handle_char_event(struct nemi* st, struct terminal* term) {
 }
 
 
-void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
+void terminal_handle_key_event(Nemi* st, NTerminal* term) {
     if(st->term_ignore_key_input_counter > 0) {
         return;
     }
@@ -654,7 +654,7 @@ void terminal_handle_key_event(struct nemi* st, struct terminal* term) {
 
 }
 
-void terminal_handle_resize_event(struct nemi* st, struct terminal* term) {
+void terminal_handle_resize_event(Nemi* st, NTerminal* term) {
 
     int old_rows = term->rows;
     int old_cols = term->cols;
@@ -689,7 +689,7 @@ void terminal_handle_resize_event(struct nemi* st, struct terminal* term) {
 }
 
 
-void terminal_handle_altbuffer_change_event(struct nemi* st, struct terminal* term) {
+void terminal_handle_altbuffer_change_event(Nemi* st, NTerminal* term) {
     term->yscroll = 0;
     trigger_event_for_scripts(st, REG_EVENT_TERM_BUFFER_CHANGED,
             "i",
@@ -697,7 +697,7 @@ void terminal_handle_altbuffer_change_event(struct nemi* st, struct terminal* te
 }
 
 static inline 
-VTermColor get_vtcolor(struct nemi* st, int cfgcol_idx) {
+VTermColor get_vtcolor(Nemi* st, int cfgcol_idx) {
     return (VTermColor) {
         .type = VTERM_COLOR_RGB,
         .rgb.type = VTERM_COLOR_RGB,
@@ -708,12 +708,12 @@ VTermColor get_vtcolor(struct nemi* st, int cfgcol_idx) {
 }
 
 static inline 
-void set_term_color(struct nemi* st, struct terminal* term, int idx, int cfgcol_idx) {
+void set_term_color(Nemi* st, NTerminal* term, int idx, int cfgcol_idx) {
     VTermColor color = get_vtcolor(st, cfgcol_idx);
     vterm_state_set_palette_color(term->vtstate, idx, &color);
 }
 
-void terminal_init_palette(struct nemi* st, struct terminal* term) {
+void terminal_init_palette(Nemi* st, NTerminal* term) {
     VTermColor default_fg = get_vtcolor(st, NEMI_COLOR_FG);
     VTermColor default_bg = get_vtcolor(st, NEMI_COLOR_BG);
     vterm_state_set_default_colors(term->vtstate, &default_fg, &default_bg);
@@ -737,7 +737,7 @@ void terminal_init_palette(struct nemi* st, struct terminal* term) {
     set_term_color(st, term, 15, NEMI_BRIGHT_COLOR_WHITE);
 }
 
-char terminal_get_char(struct terminal* term, int column, int row) {
+char terminal_get_char(NTerminal* term, int column, int row) {
     if(column < 0) {
         return 0;        
     }
@@ -751,18 +751,18 @@ char terminal_get_char(struct terminal* term, int column, int row) {
     return cell.chars[0];
 }
 
-int terminal_get_cursor_x(struct terminal* term) {
+int terminal_get_cursor_x(NTerminal* term) {
     VTermPos vtcurs_pos = (VTermPos){ 0, 0 };
     vterm_state_get_cursorpos(term->vtstate, &vtcurs_pos);
     return vtcurs_pos.col;
 }
-int terminal_get_cursor_y(struct terminal* term) {
+int terminal_get_cursor_y(NTerminal* term) {
     VTermPos vtcurs_pos = (VTermPos){ 0, 0 };
     vterm_state_get_cursorpos(term->vtstate, &vtcurs_pos);
     return vtcurs_pos.row;
 }
 
-void terminal_set_cell_custom_bg(struct terminal* term, VTermPos pos, int hex_rgb_color) {
+void terminal_set_cell_custom_bg(NTerminal* term, VTermPos pos, int hex_rgb_color) {
     vterm_screen_set_cell_custom_bg(term->vtscrn, 
             pos,
             (VTermColor) {
@@ -774,7 +774,7 @@ void terminal_set_cell_custom_bg(struct terminal* term, VTermPos pos, int hex_rg
             });
 }
 
-void terminal_set_cell_custom_fg(struct terminal* term, VTermPos pos, int hex_rgb_color) {
+void terminal_set_cell_custom_fg(NTerminal* term, VTermPos pos, int hex_rgb_color) {
     vterm_screen_set_cell_custom_fg(term->vtscrn, 
             pos,
             (VTermColor) {
@@ -786,19 +786,19 @@ void terminal_set_cell_custom_fg(struct terminal* term, VTermPos pos, int hex_rg
             });
 }
 
-void terminal_set_cell_custom_attrs(struct terminal* term, VTermPos pos, int attrs) {
+void terminal_set_cell_custom_attrs(NTerminal* term, VTermPos pos, int attrs) {
     vterm_screen_set_cell_custom_attrs(term->vtscrn, pos, attrs);
 }
 
-void terminal_clear_cell_custom_bg(struct terminal* term, VTermPos pos) {
+void terminal_clear_cell_custom_bg(NTerminal* term, VTermPos pos) {
     vterm_screen_clear_cell_custom_bg(term->vtscrn, pos);
 }
 
-void terminal_clear_cell_custom_fg(struct terminal* term, VTermPos pos) {
+void terminal_clear_cell_custom_fg(NTerminal* term, VTermPos pos) {
     vterm_screen_clear_cell_custom_fg(term->vtscrn, pos);
 }
 
-void terminal_clear_cell_custom_attrs(struct terminal* term, VTermPos pos) {
+void terminal_clear_cell_custom_attrs(NTerminal* term, VTermPos pos) {
     vterm_screen_clear_cell_custom_attrs(term->vtscrn, pos);
 }
 
@@ -808,7 +808,7 @@ void swap_int(int* a, int* b) {
     *b = tmp;
 }
 
-void terminal_copy_to_clipboard(struct nemi* st, struct terminal* term, const char* type,
+void terminal_copy_to_clipboard(Nemi* st, NTerminal* term, const char* type,
         int start_col, int start_row, int end_col, int end_row) {
     struct string_t buffer = string_create(0);
     end_row++;
@@ -870,6 +870,7 @@ void terminal_copy_to_clipboard(struct nemi* st, struct terminal* term, const ch
     string_nullterm(&buffer);
     glfwSetClipboardString(st->lfctx->glfw_win, buffer.bytes);
 
+    printf("%s: copied %li bytes to clipboard.\n", __func__, strlen(buffer.bytes));
     /*
     printf("\033[90m=============================\033[0m\n");
     printf("\033[32m%s\033[0m\n", buffer.bytes);
@@ -879,12 +880,12 @@ void terminal_copy_to_clipboard(struct nemi* st, struct terminal* term, const ch
     free_string(&buffer);
 }
 
-void terminal_yscroll(struct nemi* st, struct terminal* term, int offset) {
+void terminal_yscroll(NTerminal* term, int offset) {
     terminal_set_row_dirty(term, term->cursor_row - term->yscroll);
     term->yscroll += offset;
 }
 
-void terminal_yscroll_to(struct nemi* st, struct terminal* term, int point) {
+void terminal_yscroll_to(NTerminal* term, int point) {
     terminal_set_row_dirty(term, term->cursor_row - term->yscroll);
     term->yscroll = point;
 }

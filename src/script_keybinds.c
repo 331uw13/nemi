@@ -225,13 +225,13 @@ bool parse_keys_from_str(int* keys, size_t* num_keys_out, const char* keys_str, 
 
 void add_script_keybind
 (
-    struct nemi* st,
+    Nemi* st,
     const char* script_name,
     const char* event_name,
     const char* keybind_str,
     size_t      keybind_str_len
 ){
-    struct perl_script* script = NULL;
+    PerlScript* script = NULL;
     for(size_t i = 0; i < st->num_scripts; i++) {
         if(STR_MATCH(script_name, st->scripts[i].name)) {
             script = &st->scripts[i];
@@ -254,14 +254,14 @@ void add_script_keybind
     }
 
 
-    struct script_keybind_value* value = malloc(sizeof *value);
+    PerlScriptKeybindValue* value = malloc(sizeof *value);
     value->keys_str = strdup(keybind_str);
     value->event_name = strdup(event_name);
 
     hmput(script->keybind_map, hash_keys(keys, num_keys), value);
 }
 
-void handle_script_keybind_event(struct nemi* st, struct perl_script* script) {
+void handle_script_keybind_event(Nemi* st, PerlScript* script) {
     if(!(script->reg_events & REG_EVENT_KEYBIND_PRESS)) {
         return;
     }

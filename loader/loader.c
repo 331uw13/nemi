@@ -7,18 +7,20 @@
 #include <sys/types.h>
 #include <pwd.h>
 
-
 #include "../src/nemi.h"
 #include "../src/string.h"
 #include "../src/memory.h"
 
 
-struct nemi*(*nemi_start_session)(struct nemi_filepaths);
-void(*nemi_quit_session)(struct nemi*);
-void(*nemi_update_frame)(struct nemi*);
-void(*nemi_create_msg)(struct nemi*st, const char*, ...);
-void(*nemi_write_term)(struct terminal*, enum term_write_target, char* fmt, ...);
-void(*nemi_prepare_from_hotreload)(struct nemi*);
+typedef struct Nemi_t Nemi;
+typedef struct NTerminal_t NTerminal;
+
+Nemi*(*nemi_start_session)(struct nemi_filepaths);
+void(*nemi_quit_session)(Nemi*);
+void(*nemi_update_frame)(Nemi*);
+void(*nemi_create_msg)(Nemi*st, const char*, ...);
+void(*nemi_write_term)(NTerminal*, enum term_write_target, char* fmt, ...);
+void(*nemi_prepare_from_hotreload)(Nemi*);
 void* libnemi;
 
 static bool do_full_restart = false;
@@ -45,7 +47,7 @@ bool run(struct nemi_filepaths filepaths) {
     load_libnemi(filepaths.libnemi);
   
 
-    struct nemi* st = nemi_start_session(filepaths);
+    Nemi* st = nemi_start_session(filepaths);
     if(!st) {
         return false;
     }

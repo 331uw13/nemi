@@ -2,7 +2,7 @@
 #include <unistd.h>
 
 
-#include "script.h"
+#include "perl_script.h"
 #include "nemi.h"
 #include "common.h"
 #include "memory.h"
@@ -33,8 +33,8 @@ const char* plscript_get_event_name(int event_num) {
 
 /*
 static
-struct perl_script* nemi_find_unloaded_script(struct nemi* st) {
-    struct perl_script* ptr = NULL;
+PerlScript* nemi_find_unloaded_script(Nemi* st) {
+    PerlScript* ptr = NULL;
 
     for(size_t i = 0; i < ARRAY_LEN(st->scripts); i++) {
         if(!st->scripts[i].is_loaded) {
@@ -49,7 +49,7 @@ struct perl_script* nemi_find_unloaded_script(struct nemi* st) {
 
 
 static
-void register_functions(struct perl_script* script) {
+void register_functions(PerlScript* script) {
 
     PerlInterpreter* my_perl = script->perl_interp;
     PERL_SET_CONTEXT(my_perl);
@@ -62,7 +62,7 @@ void register_functions(struct perl_script* script) {
 
 
 static
-void get_script_reg_events(struct perl_script* script, const char* script_filepath) {
+void get_script_reg_events(PerlScript* script, const char* script_filepath) {
     script->reg_events = 0;
 
 
@@ -127,7 +127,7 @@ void get_script_reg_events(struct perl_script* script, const char* script_filepa
     fclose(f);
 }
 
-bool load_perl_script(struct nemi* st, const char* filepath, const char* name) {
+bool load_perl_script(Nemi* st, const char* filepath, const char* name) {
     if(st->num_scripts+1 >= NEMI_SCRIPTS_MAX) {
         logprintf(LOG_ERROR, "Already loaded maximum amount of scripts.");
         return false;
@@ -142,7 +142,7 @@ bool load_perl_script(struct nemi* st, const char* filepath, const char* name) {
         return false;
     }
 
-    struct perl_script* script = &st->scripts[st->num_scripts];
+    PerlScript* script = &st->scripts[st->num_scripts];
     st->num_scripts++;
 
     script->perl_interp = perl_alloc();
@@ -169,7 +169,7 @@ bool load_perl_script(struct nemi* st, const char* filepath, const char* name) {
 }
 
 
-void unload_perl_script(struct perl_script* script) {
+void unload_perl_script(PerlScript* script) {
     if(!script->is_loaded) {
         return;
     }
@@ -194,7 +194,7 @@ void unload_perl_script(struct perl_script* script) {
     script->is_loaded = false;
 }
 
-void plscript_call(struct perl_script* script, const char* func) {
+void plscript_call(PerlScript* script, const char* func) {
     void* old_context = PL_current_context; // Save old context if we are calling functions from scripts.
 
     PERL_SET_CONTEXT(script->perl_interp);
@@ -205,7 +205,7 @@ void plscript_call(struct perl_script* script, const char* func) {
     PERL_SET_CONTEXT(old_context);
 }
 
-void plscript_call_args(struct perl_script* script, const char* func, char** args) {
+void plscript_call_args(PerlScript* script, const char* func, char** args) {
     void* old_context = PL_current_context;
     
     PERL_SET_CONTEXT(script->perl_interp);

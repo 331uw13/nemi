@@ -137,7 +137,7 @@ int config_handler__scripts_ini
     const char* value
 ){
     (void)section;
-    struct nemi* st = (struct nemi*)userptr;
+    Nemi* st = (Nemi*)userptr;
     
     if(access(value, R_OK) == 0) {
         load_perl_script(st, value, name);
@@ -249,7 +249,7 @@ bool colortext_to_values(const char* str, struct color_t* color) {
     // Get color mode which user wants to use.
 
     enum colortext_mode mode = COLORTEXT_MODE_NONE;
-    char* ch = str;
+    char* ch = (char*)str;
 
     if(*ch == '(') {
         mode = COLORTEXT_MODE_RGB;
@@ -270,7 +270,7 @@ bool colortext_to_values(const char* str, struct color_t* color) {
 
         if(colorbyte_ptr - &color->r >= (long int)sizeof *colorbyte_ptr * 3) {
             //printf("Too big value for RGB.\n");
-            goto loopout;
+            break;
         }
 
         if(mode == COLORTEXT_MODE_RGB) {
@@ -313,8 +313,6 @@ skip:
         ch++;
     }
 
-loopout:
-
     return false;
 }
 
@@ -326,6 +324,7 @@ int config_handler__color_ini
     const char* name,
     const char* value
 ){
+    (void)section;
 
     struct color_t* colors = (struct color_t*)userptr;
 
@@ -452,7 +451,7 @@ bool read_config
     return true;
 }
 
-bool nemi_read_configs(struct nemi* st, char* configs_dir) {
+bool nemi_read_configs(Nemi* st, char* configs_dir) {
     struct log_settings log_settings = { 0 };
     log_settings.flags |= LOG_ENABLED;
     if(read_config(config_handler__log_ini, (void*)&log_settings, configs_dir, "log.ini")) {
@@ -461,6 +460,8 @@ bool nemi_read_configs(struct nemi* st, char* configs_dir) {
     else {
         return false;
     }
+
+
 
     if(!read_config(config_handler__nemi_ini, &st->cfg, configs_dir, "nemi.ini")) {
         return false;
@@ -477,11 +478,11 @@ bool nemi_read_configs(struct nemi* st, char* configs_dir) {
     return true;
 }
 
-bool nemi_load_scripts(struct nemi* st, char* configs_dir) {
+bool nemi_load_scripts(Nemi* st, char* configs_dir) {
     return read_config(config_handler__scripts_ini, st, configs_dir, "scripts.ini");
 }
 
-void free_configs(struct nemi* st) {
+void free_configs(Nemi* st) {
     freeif(st->cfg.main.source_dir);
     freeif(st->cfg.main.recompile_num_cores);
     freeif(st->cfg.main.favourite_texteditor);

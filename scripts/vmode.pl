@@ -368,6 +368,11 @@ sub event_keybind_press {
         when("toggle_select_mode") {
             toggle_select_mode();
         } 
+        when("paste_clipboard") {
+            my $clipboard = nemi::get_clipboard();
+            $clipboard =~ s/[\n\r]//g;
+            nemi::term_pty_write($clipboard);
+        }
         when("copy_selected") {
             if($select_mode_enabled) {
                 nemi::term_copy_to_clipboard(
@@ -446,6 +451,7 @@ sub init_script {
     nemi::add_keybind($script_name, "word_jump_right", "lshift + l");
     nemi::add_keybind($script_name, "toggle_select_mode", "s");
     nemi::add_keybind($script_name, "copy_selected", "c");
+    nemi::add_keybind($script_name, "paste_clipboard", "v");
     nemi::add_keybind($script_name, "toggle_block_select", "b");
     nemi::add_keybind($script_name, "select_word_oncursor", "x");
     nemi::add_keybind($script_name, "open_filename_oncursor", "e");

@@ -4,7 +4,6 @@
 #include <pty.h>
 #include "vterm.h"
 
-#include "vec2.h"
 #include "string.h"
 
 
@@ -14,7 +13,7 @@ enum terminal_type {
     SHELL_TERMINAL
 };
 
-struct terminal {
+typedef struct NTerminal_t {
     int          flags;
     int          master_fd;
     pid_t        pid;
@@ -55,7 +54,8 @@ struct terminal {
     // anything they want from scripts without
     // the terminal's cells being in the way.
     bool* hidden_cells;
-};
+}
+NTerminal;
 
 enum term_write_target {
     TERM_WRITE_PTY,
@@ -63,37 +63,39 @@ enum term_write_target {
 };
 
 
-struct nemi;
 
-struct terminal* spawn_terminal(struct nemi* st, int rows, int cols, enum terminal_type term_type);
-void             close_terminal(struct terminal* term);
+typedef struct Nemi_t Nemi;
 
-void terminal_read         (struct nemi* st, struct terminal* term);
-void terminal_render       (struct nemi* st, struct terminal* term);
-void terminal_write        (struct terminal* term, enum term_write_target target, char* fmt, ...);
-void update_terminal_blink_timer  (struct nemi* st, struct terminal* term);
-void terminal_handle_char_event   (struct nemi* st, struct terminal* term);
-void terminal_handle_key_event    (struct nemi* st, struct terminal* term);
-void terminal_handle_resize_event (struct nemi* st, struct terminal* term);
-void terminal_handle_altbuffer_change_event(struct nemi* st, struct terminal* term);
-void terminal_hide_cells          (struct terminal* term, bool hidden, int col, int row, int width, int height);
-void terminal_init_palette        (struct nemi* st, struct terminal* term);
-char terminal_get_char            (struct terminal* term, int column, int row);
-int  terminal_get_cursor_x        (struct terminal* term);
-int  terminal_get_cursor_y        (struct terminal* term);
-void terminal_set_cell_custom_bg  (struct terminal* term, VTermPos pos, int hex_rgb_color);
-void terminal_set_cell_custom_fg  (struct terminal* term, VTermPos pos, int hex_rgb_color);
-void terminal_clear_cell_custom_bg (struct terminal* term, VTermPos pos);
-void terminal_clear_cell_custom_fg (struct terminal* term, VTermPos pos);
-void terminal_set_cell_custom_attrs  (struct terminal* term, VTermPos pos, int attrs);
-void terminal_clear_cell_custom_attrs(struct terminal* term, VTermPos pos);
-void terminal_set_row_dirty       (struct terminal* term, int row); // Causes a row to be re-rendered.
-void terminal_yscroll             (struct nemi* st, struct terminal* term, int offset);
-void terminal_yscroll_to          (struct nemi* st, struct terminal* term, int point);
+NTerminal* spawn_terminal(Nemi* st, int rows, int cols, enum terminal_type term_type);
+void             close_terminal(NTerminal* term);
+
+
+void terminal_read         (Nemi* st, NTerminal* term);
+void terminal_render       (Nemi* st, NTerminal* term);
+void terminal_write        (NTerminal* term, enum term_write_target target, char* fmt, ...);
+void update_terminal_blink_timer  (Nemi* st, NTerminal* term);
+void terminal_handle_char_event   (Nemi* st, NTerminal* term);
+void terminal_handle_key_event    (Nemi* st, NTerminal* term);
+void terminal_handle_resize_event (Nemi* st, NTerminal* term);
+void terminal_handle_altbuffer_change_event(Nemi* st, NTerminal* term);
+void terminal_hide_cells          (NTerminal* term, bool hidden, int col, int row, int width, int height);
+void terminal_init_palette        (Nemi* st, NTerminal* term);
+char terminal_get_char            (NTerminal* term, int column, int row);
+int  terminal_get_cursor_x        (NTerminal* term);
+int  terminal_get_cursor_y        (NTerminal* term);
+void terminal_set_cell_custom_bg  (NTerminal* term, VTermPos pos, int hex_rgb_color);
+void terminal_set_cell_custom_fg  (NTerminal* term, VTermPos pos, int hex_rgb_color);
+void terminal_clear_cell_custom_bg (NTerminal* term, VTermPos pos);
+void terminal_clear_cell_custom_fg (NTerminal* term, VTermPos pos);
+void terminal_set_cell_custom_attrs   (NTerminal* term, VTermPos pos, int attrs);
+void terminal_clear_cell_custom_attrs (NTerminal* term, VTermPos pos);
+void terminal_set_row_dirty           (NTerminal* term, int row); // Causes a row to be re-rendered.
+void terminal_yscroll                 (NTerminal* term, int offset);
+void terminal_yscroll_to              (NTerminal* term, int point);
 // Available type is "block"(block select) or "normal".
 // The reason why the type is string because perl doesnt have enums
 // and writing only integer as the type is not as readable.
-void terminal_copy_to_clipboard(struct nemi* st, struct terminal* term, const char* type,
+void terminal_copy_to_clipboard(Nemi* st, NTerminal* term, const char* type,
                                     int start_col, int start_row, int end_col, int end_row);
 
 
