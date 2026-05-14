@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <stdlib.h>
 
 #include "fileio.h"
 
@@ -159,5 +160,23 @@ close_and_out:
 out:
     return result;
 }
+
+char* file_magic_bytes(const char* path, size_t num_read_bytes) {
+    char* magic_bytes = NULL;
+
+    int fd = open(path, O_RDONLY);
+    if(fd < 0) {
+        fprintf(stderr, "%s: open() | %s\n", __func__, strerror(errno));
+        goto out;
+    }
+
+    magic_bytes = malloc(num_read_bytes * sizeof *magic_bytes);
+    read(fd, magic_bytes, num_read_bytes * sizeof *magic_bytes);
+
+    close(fd);
+out:
+    return magic_bytes;
+}
+
 
 

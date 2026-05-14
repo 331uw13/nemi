@@ -2,11 +2,16 @@
 #include <stdio.h>
 #include <string.h>
 #include <locale.h>
+#include <unistd.h>
+#include <stdarg.h>
+#include <dirent.h>
+#include <sys/types.h>
+#include <errno.h>
 
 #include "nemi.h"
 #include "nemi_config.h"
-#include "common.h"
 #include "memory.h"
+#include "fileio.h"
 
 #include "thirdparty/stb_ds.h"
 
@@ -20,17 +25,17 @@ void glfw_window_resize_callback(GLFWwindow* window, int width, int height);
 void glfw_scroll_callback(GLFWwindow* window, double x_offset, double y_offset);;
 void glfw_char_callback(GLFWwindow* window, uint32_t codepoint);
 
-Nemi* get_state() {
+Nemi* nmt_getst() {
     return g_nemi_state;
 }
 
-void prepare_from_hotreload(Nemi* st) {
+void nmt_prepare_from_hotreload(Nemi* st) {
     leaf_set_drawing_context(st->lfctx);
     g_nemi_state = st;
 }
 
+Nemi* nmt_start_session(NemiFilepaths filepaths) {
 
-Nemi* start_session(struct nemi_filepaths filepaths) {
     setlocale(LC_ALL, "C"); // Restart from loader may mess with locale.
     Nemi* st = malloc(sizeof *st);
 
@@ -38,18 +43,18 @@ Nemi* start_session(struct nemi_filepaths filepaths) {
     st->frame_time = 0.001;
     st->frame_time_begin = 0.0;
     st->flags = 0;
-    st->num_scripts = 0;
-    st->lfctx = leaf_open("Nemi - Terminal Emulator", 900, 700, 0);
+    st->lfctx = leaf_open("Nemi - Terminal Emulator", 900, 700, LEAF_NORESIZE);
     st->num_terminals = 0;
     st->term_ignore_char_input_counter = 0;
     st->term_ignore_key_input_counter = 0;
+    st->term_cells_render_offset_x = 0;
+    st->term_cells_render_offset_y = 0;
+    nmt_zero_input_buffers(st);
+    nmt_init_default_config(st);
 
-    zero_input_buffers(st);
-    init_default_config(st);
-
-    if(!nemi_read_configs(st, st->filepaths.configs)) {
+    if(!nmt_read_configs(st, st->filepaths.configs)) {
         logprintf(LOG_ERROR, "Failed to read configs from '%s'", st->filepaths.configs);
-        quit_session(st);
+        nmt_quit_session(st);
         return NULL;
     }
 
@@ -63,11 +68,11 @@ Nemi* start_session(struct nemi_filepaths filepaths) {
     else {
         // Font was not found, Lets try from 'filepaths.fonts + font.filepath' next. 
         struct string_t font_path = string_create(0);
-        string_append(&font_path, filepaths.fonts, -1);
+        string_append(&font_path, filepaths.fonts, strlen(filepaths.fonts));
         if(string_lastbyte(&font_path) != '/' && st->cfg.font.filepath[0] != '/') {
             string_pushbyte(&font_path, '/');
         }
-        string_append(&font_path, st->cfg.font.filepath, -1);
+        string_append(&font_path, st->cfg.font.filepath, strlen(st->cfg.font.filepath));
 
         if(access(font_path.bytes, R_OK) == 0) {
             leaf_load_font(&st->font, font_path.bytes);
@@ -81,17 +86,16 @@ Nemi* start_session(struct nemi_filepaths filepaths) {
 
     if(!st->font.loaded) {
         logprintf(LOG_ERROR, "Error happened while loading font.");
-        quit_session(st);
+        nmt_quit_session(st);
         return NULL;
     }
    
+    
 
     st->font.center_char_to_cell = st->cfg.font.center_char_to_cell;
     st->font.spacing = 0.2f;
     leaf_set_font_space_width(&st->font, st->font.max_bitmap_width / 2.0f);
     leaf_set_font_scale(&st->font, st->cfg.font.scale);
-
-    printf("Setting font scale: %f\n", st->cfg.font.scale);
 
     leaf_set_font_color(&st->font, (struct color_t) { 255, 200, 150 });
 
@@ -101,7 +105,10 @@ Nemi* start_session(struct nemi_filepaths filepaths) {
     glfwSetCharCallback       (st->lfctx->glfw_win, glfw_char_callback);
     glfwSetScrollCallback     (st->lfctx->glfw_win, glfw_scroll_callback);
     glfwSetWindowSizeCallback (st->lfctx->glfw_win, glfw_window_resize_callback);
+    glfwSetInputMode          (st->lfctx->glfw_win, GLFW_STICKY_KEYS, GLFW_FALSE);
 
+    // This will allocate memory for the renderer's
+    // vertex buffer object. Only one is used. 
     const size_t renderer_memory_size = 1024 * sizeof(float);
     leaf_init_renderer(st->lfctx, renderer_memory_size);
     
@@ -111,42 +118,23 @@ Nemi* start_session(struct nemi_filepaths filepaths) {
     st->win_cols -= 1;
     st->win_rows -= 1;
 
-    // Spawn default terminal.
-    st->terminal = spawn_terminal(st, st->win_rows, st->win_cols, SHELL_TERMINAL);
-    st->messages = spawn_terminal(st, st->win_rows, st->win_cols, ECHO_TERMINAL);
+    // Spawn default terminals.
+    st->messages = nmterm_spawn(st, st->win_rows, st->win_cols, ECHO_TERMINAL);
+    st->terminal = nmterm_spawn(st, st->win_rows, st->win_cols, SHELL_TERMINAL);
     st->terminal_prev = st->terminal;
     
-    terminal_write(st->messages, TERM_WRITE_VTERM, 
-            "\033[2J\033[H\033[0m\033[90m(start of messages. press ctrl+space to go back)\033[0m\n\r");
+    nmterm_write(st->messages, TERM_WRITE_VTERM, 
+            "\033[2J\033[H\033[0m\033[90m(start of messages)\033[0m\n\r");
 
-    for(size_t i = 0; i < NEMI_SCRIPTS_MAX; i++) {
-        st->scripts[i] = (PerlScript) {
-            .perl_interp = NULL,
-            .is_loaded   = false
-        };
-    }
   
     for(size_t i = 0; i < NEMI_IMAGES_MAX; i++) {
         st->images[i].handle = -1;
     }
 
-    /*
-    for(size_t i = 0; i < ARRAY_LEN(st->renderbufs); i++) {
-        st->renderbufs[i] = (struct render_buffer) {
-            .nodes = NULL,
-            .num_nodes_max = 0,
-            .num_nodes = 0
-        };
-    }
-    */
 
-    //plscript_funcs_set_context(st);
     g_nemi_state = st;
 
-
-    if(!nemi_load_scripts(st, st->filepaths.configs)) {
-        logprintf(LOG_ERROR, "Failed to load all scripts.");
-    }
+    logprintf(LOG_INFO, "Global state pointer = %p", g_nemi_state);
 
     /*
     if(!nemi_read_config(st, config_file)) {
@@ -170,10 +158,17 @@ Nemi* start_session(struct nemi_filepaths filepaths) {
     leaf_create_framebuffer(&st->altrender_framebuffer, st->lfctx->win_width, st->lfctx->win_height);
 
     //clear_region(st, 0, 0, st->lfctx->win_width, st->lfctx->win_height);
+    
+    st->num_loaded_modules = 0;
+    st->modules = calloc(NEMI_MODULES_MAX, sizeof *st->modules);
+    nmt_load_all_modules(st);
+    
+
+    logprintf(LOG_INFO, "Session started, Version " NEMI_VERSION_STR);
     return st;
 }
 
-void quit_session(Nemi* st) {
+void nmt_quit_session(Nemi* st) {
     leaf_unload_font(&st->font);
 
     for(uint16_t i = 0; i < st->num_terminals; i++) {
@@ -189,27 +184,93 @@ void quit_session(Nemi* st) {
     leaf_free_renderer(st->lfctx);
     leaf_quit(st->lfctx);
 
-    for(size_t i = 0; i < NEMI_SCRIPTS_MAX; i++) {
-        unload_perl_script(&st->scripts[i]);
-    }
     for(size_t i = 0; i < NEMI_IMAGES_MAX; i++) {
-        unload_image(&st->images[i]);
+        nmt_unload_image(&st->images[i]);
+    }
+
+    for(size_t i = 0; i < NEMI_MODULES_MAX; i++) {
+        nmt_module_quit(&st->modules[i]);
     }
 
     leaf_free_framebuffer(&st->term_cells_framebuffer);
-
-    free_configs(st);
-    /*
-    for(size_t i = 0; i < ARRAY_LEN(st->renderbufs); i++) {
-        freeif(st->renderbufs[i].nodes);
-    }
-    */
+    nmt_free_configs(st);
 
     log_close();
     freeif(st);
 }
 
-void zero_input_buffers(Nemi* st) {
+void nmt_load_all_modules(Nemi* st) {
+    
+    DIR* dir = opendir(st->filepaths.modules);
+    if(!dir) {
+        logprintf(LOG_ERROR, "Failed to open modules directory | %s", 
+                strerror(errno));
+        return;
+    }
+
+    char elf_magic_bytes[4] = {
+        0x7F,
+        0x45,
+        0x4C,
+        0x46
+    };
+
+
+    struct string_t path_str = string_create(0);
+    struct dirent* ent = NULL;
+
+    NModule* module_ptr = &st->modules[0];
+
+    while((ent = readdir(dir)) != NULL) {
+
+        if(ent->d_name[0] == '.') {
+            continue;
+        }
+
+        string_clear(&path_str);
+        string_append(&path_str, st->filepaths.modules, strlen(st->filepaths.modules));
+        if(string_lastbyte(&path_str) != '/') {
+            string_pushbyte(&path_str, '/');
+        }
+        string_append(&path_str, ent->d_name, strlen(ent->d_name));
+        string_nullterm(&path_str);
+
+
+        char* magic_bytes = file_magic_bytes(path_str.bytes, 4*sizeof(char));
+        if(!magic_bytes) {
+            continue;
+        }
+
+        if(memcmp(magic_bytes, elf_magic_bytes, 4) != 0) {
+            continue;
+        }
+
+
+        // This file should be confirmed now.
+        
+        if(nmt_module_load(module_ptr, path_str.bytes)) {
+            // Inform the module it was loaded.
+            // By passing its index it can assign keybinds and in future maybe other things.
+            size_t loaded_module_index = st->num_loaded_modules;
+            module_ptr->fn_loaded(loaded_module_index);
+            
+            st->num_loaded_modules++;
+            module_ptr++;
+        }
+
+        if(st->num_loaded_modules+1 >= NEMI_MODULES_MAX) {
+            logprintf(LOG_WARN, "Reached max amount of loaded modules.");
+            break;
+        }
+    }
+
+    free_string(&path_str);
+    closedir(dir);
+}
+
+
+
+void nmt_zero_input_buffers(Nemi* st) {
     for(int i = 0; i < NEMI_KEYINBUF_MAX; i++) {
         st->key_inputs[i] = 0;
     }
@@ -218,11 +279,11 @@ void zero_input_buffers(Nemi* st) {
     }
 }
 
-void switch_terminal(Nemi* st, uint32_t index) {
-    switch_terminal_ptr(st, &st->terminals[index]);
+void nmt_switch_terminal_idx(Nemi* st, uint32_t index) {
+    nmt_switch_terminal_ptr(st, &st->terminals[index]);
 }
 
-void switch_terminal_ptr(Nemi* st, NTerminal* term) {
+void nmt_switch_terminal_ptr(Nemi* st, NTerminal* term) {
     if(st->terminal == term) {
         return;
     }
@@ -238,7 +299,7 @@ void switch_terminal_ptr(Nemi* st, NTerminal* term) {
 
 #define CLEAR_COLOR_NO_ALPHA 0.0f
 #define CLEAR_COLOR_INCLUDE_ALPHA 1.0f
-void clear_color_buffer_bit(Nemi* st, float clear_color_alpha) {
+void nmt_clear_color_buffer_bit(Nemi* st, float clear_color_alpha) {
     glClearColor(
             (float)st->cfg.colors[NEMI_COLOR_BG].r / 255.0f,
             (float)st->cfg.colors[NEMI_COLOR_BG].g / 255.0f,
@@ -247,30 +308,20 @@ void clear_color_buffer_bit(Nemi* st, float clear_color_alpha) {
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
-void clear_region(Nemi* st, int x, int y, int w, int h) {
+void nmt_clear_region(Nemi* st, int x, int y, int w, int h) {
     glEnable(GL_SCISSOR_TEST);
     glScissor(x, (st->lfctx->win_height - h) - y, w, h);
-    clear_color_buffer_bit(st, CLEAR_COLOR_NO_ALPHA);
+    nmt_clear_color_buffer_bit(st, CLEAR_COLOR_NO_ALPHA);
     glDisable(GL_SCISSOR_TEST);
 }
 
 
 
-// NOTE: 'altrender_framebuffer' is active during this subroutine.
-static
-void altrender(Nemi* st) {
 
-    // Allow scripts to render stuff.
-    for(uint32_t i = 0; i < st->num_scripts; i++) {
-        PerlScript* script = &st->scripts[i];
-        if(script->reg_events & REG_EVENT_RENDER) {
-            plscript_call(script, "event_render");
-        }
-    }
-}
-
-void update_frame(Nemi* st) {
+void nmt_update_frame(Nemi* st) {
     st->frame_time_begin = glfwGetTime();
+
+
 
 
     // Render terminal cells to 'term_cells_framebuffer'
@@ -280,30 +331,37 @@ void update_frame(Nemi* st) {
         // for the whole framebuffer before rendering, because
         // the terminal's keep track of what is needed to be rendered again.
         // And saves the result to the framebuffer's texture so it can be reused.
-        terminal_read(st, st->terminal);
-        terminal_render(st, st->terminal);
+        nmterm_read(st, st->terminal);
+        nmterm_render(st, st->terminal);
 
         leaf_font_render(&st->font);
         leaf_renderer_flush(st->lfctx);
     }
- 
+
     // Render anything else to 'altrender_framebuffer'
     leaf_use_framebuffer(&st->altrender_framebuffer);
     {
         // For alternative framebuffer the whole screen is cleared
-        // before rendering again, because the scripts can render
+        // before rendering again, because the modules can render
         // to arbitrary coordinates and not just cell coordinates
         // so it is more harder to keep track of what has changed.
         // So... it will be bit slower at least for now.
-        clear_color_buffer_bit(st, CLEAR_COLOR_NO_ALPHA);
-        altrender(st);
+        nmt_clear_color_buffer_bit(st, CLEAR_COLOR_NO_ALPHA);
+        
+        for(size_t i = 0; i < st->num_loaded_modules; i++) {
+            NModule* module = &st->modules[i];
+            if(module->events.fn_render) {
+                module->events.fn_render();
+            }
+        }
+
         leaf_font_render(&st->font);
         leaf_renderer_flush(st->lfctx);
     }
 
 
     leaf_use_framebuffer(NULL);
-    clear_color_buffer_bit(st, CLEAR_COLOR_INCLUDE_ALPHA);
+    nmt_clear_color_buffer_bit(st, CLEAR_COLOR_INCLUDE_ALPHA);
     glClear(GL_COLOR_BUFFER_BIT);
 
     leaf_draw_texture_rect(0, 0,
@@ -313,7 +371,9 @@ void update_frame(Nemi* st) {
             (struct color_t){ 255, 255, 255 },
             LEAF_TEXTURE_NO_OPTIONS);
 
-    leaf_draw_texture_rect(0, 0,
+    leaf_draw_texture_rect(
+             st->term_cells_render_offset_x,
+            -st->term_cells_render_offset_y,
             st->term_cells_framebuffer.width,
             st->term_cells_framebuffer.height,
             st->term_cells_framebuffer.texture,
@@ -335,11 +395,11 @@ void update_frame(Nemi* st) {
 
 }
 
-bool key_down(Nemi* st, int key) {
+bool nmt_key_down(Nemi* st, int key) {
     return (glfwGetKey(st->lfctx->glfw_win, key) == GLFW_PRESS);
 }
 
-void init_default_config(Nemi* st) {
+void nmt_init_default_config(Nemi* st) {
     st->cfg.main.padding_x = 10;
     st->cfg.main.padding_y = 10;
     st->cfg.main.line_padding = 3;
@@ -373,67 +433,115 @@ void init_default_config(Nemi* st) {
 }
 
 
-// 'event_num' corresponds to REG_EVENT... defined in "script.h"
-// 'arg_types' tells what are the variadic argument types.
-//             For example: "ii" tells that there are 2 integers.
-//             See all supported types in the switch statement.
-void trigger_event_for_scripts(Nemi* st, int event_num, const char* arg_types, ...) {
-    
-    size_t num_args = strlen(arg_types);
-
-    char* func_args[num_args+1];
-    func_args[num_args] = NULL;
-        
-    char args_str[num_args][16];
+size_t nmt_hash_glfwkeys(const int* keys, size_t num_keys) {
+    size_t hash = 15;
+    for(size_t i = 0; i < num_keys; i++) {
+        hash = hash * 31 ^ keys[i];
+    }
+    return hash;
+}
 
 
-    if(num_args > 0) {
+static
+int p_nmt_qsort_glfwkeys_callback(const void* a, const void* b) {
+    int i_a = *(int*)a;
+    int i_b = *(int*)b;
+    printf("%i, %i\n", i_a, i_b);
+    return i_a >= i_b;
+}
 
-        for(size_t i = 0; i < num_args; i++){
-            memset(args_str[i], 0, sizeof(args_str[i]));
-        }
-
-        va_list args;
-        va_start(args, arg_types);
-        for(size_t i = 0; i < num_args; i++) {
-            char* buf = args_str[i];
-            const size_t buf_memsize = sizeof(args_str[i])-1;
-            
-            switch(arg_types[i]) {
-                case 'i':
-                    snprintf(buf, buf_memsize, "%d", va_arg(args, int));
-                    break;
-
-                case 'f':
-                    snprintf(buf, buf_memsize, "%f", va_arg(args, double));
-                    break;
+void nmt_assign_module_keybind(Nemi* st, size_t module_idx, void(*fnptr)(), const int* keys, size_t num_keys) {
+    NModule* module = &st->modules[module_idx];
 
 
-                // ... More can be added later if needed ...
-            }
-
-            func_args[i] = args_str[i];
-        }
-
-        va_end(args);
+    if(module->num_keybinds+1 >= MODULE_KEYBINDS_MAX) {
+        logprintf(LOG_ERROR, "Module has max amount of keybinds.");
+        return;
     }
 
-    const char* event_name = plscript_get_event_name(event_num);
-    for(size_t i = 0; i < st->num_scripts; i++) {
-        PerlScript* script = &st->scripts[i];
-        if(!script->is_loaded) {
-            continue;
-        }
 
-        if(!(script->reg_events & event_num)) {
-            continue;
+    NModuleKeybind* keybind = &module->keybinds[module->num_keybinds];
+
+
+    int sorted_keys[num_keys];
+    memcpy(sorted_keys, keys, num_keys * sizeof *keys);
+
+    qsort(sorted_keys, num_keys, sizeof(int), p_nmt_qsort_glfwkeys_callback);
+
+
+    keybind->key_hash = nmt_hash_glfwkeys(sorted_keys, num_keys);
+    keybind->fn_ptr = fnptr;
+
+
+    printf("%s: keyhash = %li\n", __func__, keybind->key_hash);
+
+    module->num_keybinds++;
+}
+
+static
+void p_nmt_keyinput_events_for_modules(Nemi* st, int key, int mods) {
+    if(st->num_loaded_modules == 0) {
+        return;
+    }
+
+    int pressed_keys[GLFW_KEY_LAST] = { 0 };
+    size_t num_pressed_keys = 0;
+
+    for(int i = GLFW_KEY_SPACE; i < GLFW_KEY_LAST; i++) {
+        if(glfwGetKey(st->lfctx->glfw_win, i) == GLFW_PRESS) {
+            
+            // There is maybe some issue how glfw resets some key states when glfwGetKey is used...
+            // At least on i3wm, the super key state may never be reset until its pressed again.
+            // That will result the keyhash being "wrong"
+            
+            // Maybe there is some other way to fix this but for now
+            // lets double check the key modifiers.
+
+            if(i == GLFW_KEY_LEFT_ALT || i == GLFW_KEY_RIGHT_ALT) {
+                if(!(mods & GLFW_MOD_ALT)) {
+                    continue;
+                }
+            }
+            else
+            if(i == GLFW_KEY_LEFT_SUPER || i == GLFW_KEY_RIGHT_SUPER) {
+                if(!(mods & GLFW_MOD_SUPER)) {
+                    continue;
+                }
+            }
+            else
+            if(i == GLFW_KEY_LEFT_CONTROL || i == GLFW_KEY_RIGHT_CONTROL) {
+                if(!(mods & GLFW_MOD_CONTROL)) {
+                    continue;
+                }
+            }
+            else
+            if(i == GLFW_KEY_LEFT_SHIFT || i == GLFW_KEY_RIGHT_SHIFT) {
+                if(!(mods & GLFW_MOD_SHIFT)) {
+                    continue;
+                }
+            }
+            
+            pressed_keys[num_pressed_keys] = i;
+            num_pressed_keys++;
         }
-        
-        if(num_args > 0) {
-            plscript_call_args(script, event_name, func_args);
-        }
-        else {
-            plscript_call(script, event_name);
+    }
+
+
+    size_t pressed_keys_hash = nmt_hash_glfwkeys(pressed_keys, num_pressed_keys);
+
+
+    for(size_t i = 0; i < st->num_loaded_modules; i++) {
+        NModule* module = &st->modules[i];
+
+        for(size_t k = 0; k < module->num_keybinds; k++) {
+            NModuleKeybind* keybind = &module->keybinds[k];
+            if(keybind->fn_ptr == NULL) {
+                continue;
+            }
+
+            if(keybind->key_hash == pressed_keys_hash) {
+                keybind->fn_ptr();
+            }
         }
     }
 }
@@ -447,61 +555,61 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
 
     
     Nemi* st = (Nemi*)glfwGetWindowUserPointer(window);
-    push_key_input(st, key);
+    nmt_push_key_input(st, key);
 
     st->last_key_in = key;
     st->last_keymod_in = mods;
-  
-    trigger_event_for_scripts(st, REG_EVENT_KEY_INPUT,
-            "ii",
-            key, 
-            mods);
+    
 
+    nmterm_handle_key_event(st, st->terminal);
+    p_nmt_keyinput_events_for_modules(st, key, mods);
+
+
+    for(size_t i = 0; i < st->num_loaded_modules; i++) {
+        NModule* module = &st->modules[i];
+
+        if(module->events.fn_key_input) {
+            module->events.fn_key_input(key, mods);
+        }
+
+    }
+
+    /*
     if(mods == GLFW_MOD_CONTROL) {
         switch(key) {
-            case GLFW_KEY_1:
-                font_scale(st, -0.1);
-                break;
-
-            case GLFW_KEY_2:
-                font_scale(st, +0.1);
-                break;
-        
+       
             case GLFW_KEY_SPACE:
-                switch_terminal_ptr(st, st->terminal_prev);
+                nmt_switch_terminal_ptr(st, st->terminal_prev);
                 break;
 
             case GLFW_KEY_X:
-                switch_terminal_ptr(st, st->messages);
+                nmt_switch_terminal_ptr(st, st->messages);
                 break;
 
+                //...
         }    
     }
+    */
 
-    terminal_handle_key_event(st, st->terminal);
-    
-    for(size_t i = 0; i < st->num_scripts; i++) {
-        PerlScript* script = &st->scripts[i];
-        if(!script->is_loaded) {
-            continue;
-        }
-
-        handle_script_keybind_event(st, script);
-    }
 }
 
 void glfw_char_callback(GLFWwindow* window, uint32_t codepoint) {
     Nemi* st = (Nemi*)glfwGetWindowUserPointer(window);
     if(codepoint >= 0x20 && codepoint <= 0x7E) {
 
-        trigger_event_for_scripts(st, REG_EVENT_CHAR_INPUT,
-            "i",
-            codepoint);
-
-        push_char_input(st, codepoint);
+        nmt_push_char_input(st, codepoint);
         st->last_char_in = codepoint;
     
-        terminal_handle_char_event(st, st->terminal);
+        nmterm_handle_char_event(st, st->terminal);
+   
+        for(size_t i = 0; i < st->num_loaded_modules; i++) {
+            NModule* module = &st->modules[i];
+
+            if(module->events.fn_char_input) {
+                module->events.fn_char_input((char)codepoint);
+            }
+
+        }
     }
 }
 
@@ -530,7 +638,7 @@ void glfw_window_resize_callback(GLFWwindow* window, int width, int height) {
     st->win_rows -= 1;
 
     for(size_t i = 0; i < st->num_terminals; i++) {
-        terminal_handle_resize_event(st, &st->terminals[i]);
+        nmterm_handle_resize_event(st, &st->terminals[i]);
     }
 
     leaf_free_framebuffer(&st->term_cells_framebuffer);
@@ -538,35 +646,31 @@ void glfw_window_resize_callback(GLFWwindow* window, int width, int height) {
     leaf_create_framebuffer(&st->term_cells_framebuffer, st->lfctx->win_width, st->lfctx->win_height);
     leaf_create_framebuffer(&st->altrender_framebuffer, st->lfctx->win_width, st->lfctx->win_height);
     //clear_region(st, 0, 0, st->lfctx->win_width, st->lfctx->win_height);
-    trigger_event_for_scripts(st, REG_EVENT_WIN_RESIZED,
-            "ii",
-            st->win_cols,
-            st->win_rows);
 }
 
-void push_key_input(Nemi* st, int key) {
+void nmt_push_key_input(Nemi* st, int key) {
     for(int i = NEMI_KEYINBUF_MAX-1; i > 0; i--) {
         st->key_inputs[i] = st->key_inputs[i-1];
     }
     st->key_inputs[0] = key;
 }
 
-void push_char_input(Nemi* st, char ch) {
+void nmt_push_char_input(Nemi* st, char ch) {
     for(int i = NEMI_CHARINBUF_MAX-1; i > 0; i--) {
         st->char_inputs[i] = st->char_inputs[i-1];
     }
     st->char_inputs[0] = ch;
 }
 
-int coltox(Nemi* st, int col) {
+int nmt_coltox(Nemi* st, int col) {
     return col * st->font.char_width + st->cfg.main.padding_x;
 }
 
-int rowtoy(Nemi* st, int row) {
+int nmt_rowtoy(Nemi* st, int row) {
     return row * (st->font.char_height + st->cfg.main.line_padding) + st->cfg.main.padding_y;
 }
 
-void font_scale(Nemi* st, float offset) {
+void nmt_font_scale(Nemi* st, float offset) {
     leaf_set_font_scale(&st->font, st->font.scale + offset);
 
     // We can call glfw window resize callback here
@@ -574,27 +678,28 @@ void font_scale(Nemi* st, float offset) {
     glfw_window_resize_callback(st->lfctx->glfw_win, st->lfctx->win_width, st->lfctx->win_height);
 }
 
-void set_font_scale(Nemi* st, float scale) {
+void nmt_set_font_scale(Nemi* st, float scale) {
     leaf_set_font_scale(&st->font, scale);
     glfw_window_resize_callback(st->lfctx->glfw_win, st->lfctx->win_width, st->lfctx->win_height);
 }
 
-void create_msg(Nemi* st, const char* msg, ...) {
+void nmt_create_msg(Nemi* st, const char* msg, ...) {
     va_list args;
     va_start(args, msg);
 
     char buffer[1024 * 4] = { 0 };
     vsnprintf(buffer, sizeof(buffer)-1, msg, args);
 
-    terminal_write(st->messages, TERM_WRITE_VTERM, buffer);
-    terminal_write(st->messages, TERM_WRITE_VTERM, "\n\r");
-    switch_terminal_ptr(st, st->messages);
+    nmterm_write(st->messages, TERM_WRITE_VTERM, buffer);
+    nmterm_write(st->messages, TERM_WRITE_VTERM, "\n\r");
+    nmt_switch_terminal_ptr(st, st->messages);
+
 
     logprintf(LOG_INFO, buffer);
     va_end(args);
 }
 
-int load_image(Nemi* st, const char* filepath) {
+int nmt_load_image(Nemi* st, const char* filepath) {
     struct image* img = NULL;
     size_t img_idx = 0;
     for(; img_idx < NEMI_IMAGES_MAX; img_idx++) {
@@ -618,7 +723,7 @@ int load_image(Nemi* st, const char* filepath) {
     return img->handle;
 }
 
-void unload_image(struct image* img) {
+void nmt_unload_image(struct image* img) {
     if(img->handle < 0 || img->handle >= NEMI_IMAGES_MAX) {
         return;
     }
@@ -630,6 +735,7 @@ void unload_image(struct image* img) {
 }
 
 
+/*
 void nemi_help(Nemi* st, const char* what) {
 
     // Check if the string is equal to any script names
@@ -657,8 +763,10 @@ void nemi_help(Nemi* st, const char* what) {
 
     create_msg(st, "Sorry, didnt know how to help. Input: \"%s\"", what);
 }
+*/
 
 
+/*
 void nemi_message_script_keybinds(Nemi* st, const char* script_name) {
     PerlScript* script = NULL;
     for(size_t i = 0; i < st->num_scripts; i++) {
@@ -699,6 +807,7 @@ void nemi_message_script_keybinds(Nemi* st, const char* script_name) {
 
     free_string(&tmpkey_str);
 }
+*/
 
 /*
 void nemi_recompile_src(Nemi* st) {
@@ -718,6 +827,7 @@ void nemi_recompile_src(Nemi* st) {
 }
 */
 
+/*
 void restart_session(Nemi* st) {
     if(!(st->flags & FLG_RESTARTING_SUPPORTED)) {
         create_msg(st, "\033[31mRestarting is not supported by current loader.\n\r"
@@ -741,4 +851,5 @@ void hotreload_session(Nemi* st) {
 const char* nemi_get_clipboard_content(Nemi* st) {
     return glfwGetClipboardString(st->lfctx->glfw_win);
 }
+*/
 

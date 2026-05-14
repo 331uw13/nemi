@@ -8,14 +8,15 @@
 #include <pwd.h>
 
 #include "../src/nemi.h"
-#include "../src/string.h"
+#include "../src/nmt_string.h"
 #include "../src/memory.h"
 
 
 typedef struct Nemi_t Nemi;
+typedef struct NemiFilepaths_t NemiFilepaths;
 typedef struct NTerminal_t NTerminal;
 
-Nemi*(*nemi_start_session)(struct nemi_filepaths);
+Nemi*(*nemi_start_session)(NemiFilepaths filepaths);
 void(*nemi_quit_session)(Nemi*);
 void(*nemi_update_frame)(Nemi*);
 void(*nemi_create_msg)(Nemi*st, const char*, ...);
@@ -32,18 +33,18 @@ bool load_libnemi(const char* libpath) {
         return false;
     }
 
-    nemi_start_session = dlsym(libnemi, "start_session");
-    nemi_quit_session = dlsym(libnemi, "quit_session");
-    nemi_update_frame = dlsym(libnemi, "update_frame");
-    nemi_create_msg   = dlsym(libnemi, "create_msg");
-    nemi_write_term   = dlsym(libnemi, "write_term");
+    nemi_start_session = dlsym(libnemi, "nmt_start_session");
+    nemi_quit_session = dlsym(libnemi,  "nmt_quit_session");
+    nemi_update_frame = dlsym(libnemi,  "nmt_update_frame");
+    nemi_create_msg   = dlsym(libnemi,  "nmt_create_msg");
+    nemi_write_term   = dlsym(libnemi,  "write_term");
     nemi_prepare_from_hotreload = dlsym(libnemi, "prepare_from_hotreload");
-    // TODO: Add more error checking.
+    // TODO: Add error checking.
 
     return true;
 }
 
-bool run(struct nemi_filepaths filepaths) {
+bool run(NemiFilepaths filepaths) {
     load_libnemi(filepaths.libnemi);
   
 
@@ -127,11 +128,12 @@ bool find_file
     bool is_found = false;
     struct string_t path = string_create(0);
 
-    string_append(&path, nemi_homedir, -1);
+    string_append(&path, nemi_homedir, strlen(nemi_homedir));
     if(string_lastbyte(&path) != '/' && filename[0] != '/') {
         string_pushbyte(&path, '/');
     }
-    string_append(&path, filename, -1);
+
+    string_append(&path, filename, strlen(filename));
     string_nullterm(&path);
 
     if(access(path.bytes, R_OK) == 0) {
@@ -151,8 +153,8 @@ bool find_file
 int main(int argc, char** argv) {
     libnemi = NULL;
     
-    struct nemi_filepaths filepaths;
-    memset(&filepaths, 0, sizeof(filepaths));
+    NemiFilepaths filepaths = { 0 };
+//    memset(&filepaths, 0, sizeof(filepaths));
 
     /*
     for(int i = 0; i < argc; i++) {
@@ -186,16 +188,17 @@ int main(int argc, char** argv) {
     if(!find_file(filepaths.nemi_home, &filepaths.configs, "configs")) {
         goto out;
     }
-    if(!find_file(filepaths.nemi_home, &filepaths.scripts, "scripts")) {
+    if(!find_file(filepaths.nemi_home, &filepaths.modules, "modules")) {
         goto out;
     }
 
+    printf("NemiFilepaths:\n");
     printf("Home:    '%s'\n", filepaths.nemi_home);
     printf("Lib:     '%s'\n", filepaths.libnemi);
     printf("Fonts:   '%s'\n", filepaths.fonts);
     printf("Configs: '%s'\n", filepaths.configs);
-    printf("Scripts: '%s'\n", filepaths.scripts);
-
+    printf("Modules: '%s'\n", filepaths.modules);
+    printf("\n");
     while(true) {
         if(!run(filepaths)) {
             break;
@@ -213,5 +216,6 @@ out:
     freeif(filepaths.libnemi);
     freeif(filepaths.fonts);
     freeif(filepaths.configs);
+    freeif(filepaths.modules);
     return 0;
 }

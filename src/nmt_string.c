@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <errno.h>
 
-#include "string.h"
+#include "nmt_string.h"
 
 
 #define STR_DEFMEMSIZE 64
@@ -12,12 +12,12 @@
 
 
 // Allocates more memory for string if needed.
-static bool string_memcheck(struct string_t* str, uint32_t size_add) {
+static bool string_memcheck(struct string_t* str, size_t size_add) {
     if(str->bytes && (str->size + size_add < str->mem_size)) {
         return true;
     }
 
-    uint32_t new_size = str->mem_size + size_add + STR_REALLOC_BYTES;
+    size_t new_size = str->mem_size + size_add + STR_REALLOC_BYTES;
     char* new_ptr = realloc(str->bytes, new_size);
     
     if(!new_ptr) {
@@ -36,7 +36,7 @@ static bool string_memcheck(struct string_t* str, uint32_t size_add) {
 }
 
 
-struct string_t string_create(uint32_t initial_size) {
+struct string_t string_create(size_t initial_size) {
     struct string_t str;
 
     str.mem_size = (initial_size == 0) ? STR_DEFMEMSIZE : initial_size;
@@ -70,11 +70,7 @@ void string_nullterm(struct string_t* str) {
     str->bytes[str->size] = '\0';
 }
 
-void string_move(struct string_t* str, char* data, int32_t size) {
-    if(size < 0) {
-        size = strlen(data);
-    }
-
+void string_move(struct string_t* str, char* data, size_t size) {
     if(!string_memcheck(str, size)) {
         return;
     }
@@ -93,6 +89,37 @@ void string_pushbyte(struct string_t* str, char ch) {
     str->size += 1;
 }
 
+void string_addbyte(struct string_t* str, char ch, size_t index) {
+    if(!string_memcheck(str, 1)) {
+        return;
+    }
+
+    if(index >= str->size) {
+        string_append(str, &ch, 1);
+        return;
+    }
+
+
+    for(size_t i = str->size; i > index; i--) {
+        str->bytes[i] = str->bytes[i-1];
+    }
+
+    str->bytes[index] = ch;
+    str->size++;
+}
+
+void string_delbyte(struct string_t* str, size_t index) {    
+    if(str->size == 0) {
+        return;
+    }
+
+    for(size_t i = index; i < str->size-1; i++) {
+        str->bytes[i] = str->bytes[i+1];
+    }
+
+    str->size--;
+}
+
 void string_clear(struct string_t* str) {
     if(!str->bytes) {
         return;
@@ -102,7 +129,7 @@ void string_clear(struct string_t* str) {
     str->size = 0;
 }
 
-void string_reserve(struct string_t* str, uint32_t size) {
+void string_reserve(struct string_t* str, size_t size) {
     string_memcheck(str, size);
 }
 
@@ -121,18 +148,13 @@ char string_lastbyte(struct string_t* str) {
     return str->bytes[(str->size > 0) ? str->size-1 : 0];
 }
 
-bool string_append(struct string_t* str, char* data, int32_t size) {
-    if(size < 0) {
-        size = strlen(data);
-    }
-
+bool string_append(struct string_t* str, char* data, size_t size) {
     if(!string_memcheck(str, size)) {
         return false;
     }
 
     memmove(str->bytes + str->size, data, size);
     str->size += size;
-    
     return true;
 }
 

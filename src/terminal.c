@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <math.h>
 
 #include "terminal.h"
 #include "nemi.h"
@@ -112,7 +113,7 @@ bool do_cells_match(VTermScreenCell* cell_a, VTermScreenCell* cell_b) {
     return true;
 }
 static 
-void resize_terminal_cell_buffers(NTerminal* term) {
+void resize_nmterm_cell_buffers(NTerminal* term) {
     
     // TODO: Add error checking.
 
@@ -129,7 +130,7 @@ void resize_terminal_cell_buffers(NTerminal* term) {
     memset(term->dirty_rows, 1, dirty_rows_size);
 }
 
-NTerminal* spawn_terminal(Nemi* st, int rows, int cols, enum terminal_type term_type) {
+NTerminal* nmterm_spawn(Nemi* st, int rows, int cols, enum terminal_type term_type) {
     if(st->num_terminals+1 >= NEMI_TERMINALS_MAX) {
         return NULL;
     }
@@ -169,8 +170,8 @@ NTerminal* spawn_terminal(Nemi* st, int rows, int cols, enum terminal_type term_
     term->line_height = st->font.char_height + st->cfg.main.line_padding;
     term->blink_timer = 0;
     term->is_altbuffer_active = false;
-
-    term->hidden_cells = calloc(term->cols * term->rows, sizeof *term->hidden_cells);
+    
+    //term->hidden_cells = calloc(term->cols * term->rows, sizeof *term->uhidden_cells);
 
     //init_scrollback_buffer(term);
     term->vt = vterm_new(rows, cols);
@@ -186,9 +187,9 @@ NTerminal* spawn_terminal(Nemi* st, int rows, int cols, enum terminal_type term_
     vterm_screen_reset(term->vtscrn, true);
 
     term->is_altbuffer_active = false;
-    terminal_init_palette(st, term);
+    nmterm_init_palette(st, term);
 
-    resize_terminal_cell_buffers(term);
+    resize_nmterm_cell_buffers(term);
    
     logprintf(LOG_INFO, "Created %s terminal (%ix%i)", 
             (term_type == SHELL_TERMINAL) ? "shell" : "echo",
@@ -205,7 +206,7 @@ void close_terminal(NTerminal* term) {
         return;
     }
 
-    freeif(term->hidden_cells);
+    //freeif(term->hidden_cells);
     freeif(term->front_cell_buffer);
     freeif(term->back_cell_buffer);
 
@@ -217,7 +218,7 @@ void close_terminal(NTerminal* term) {
 }
 
 
-void terminal_read(Nemi* st, NTerminal* term) {
+void nmterm_read(Nemi* st, NTerminal* term) {
     if(!term) {
         return;
     }
@@ -261,7 +262,7 @@ void terminal_read(Nemi* st, NTerminal* term) {
     bool current_altbuffer_status = vterm_screen_is_altscreen(term->vtscrn);
     if(current_altbuffer_status != term->is_altbuffer_active) {
         term->is_altbuffer_active = current_altbuffer_status;
-        terminal_handle_altbuffer_change_event(st, term);
+        nmterm_handle_altbuffer_change_event(st, term);
     }
 }
 
@@ -274,6 +275,7 @@ struct color_t vtermcolor_to_leafcolor(VTermColor* c) {
     };
 }
 
+/*
 static
 bool* get_hidden_cell_status(NTerminal* term, int col, int row) {
     size_t index = row * term->cols + col;
@@ -285,8 +287,9 @@ bool* get_hidden_cell_status(NTerminal* term, int col, int row) {
 
     return &term->hidden_cells[index];
 }
-
-void terminal_hide_cells(NTerminal* term, bool hidden, int col, int row, int width, int height) {
+*/
+/*
+void nmterm_hide_cells(NTerminal* term, bool hidden, int col, int row, int width, int height) {
     for(int y = 0; y < height; y++) {
         for(int x = 0; x < width; x++) {
             bool* status = get_hidden_cell_status(term, x + col, y + row);
@@ -298,6 +301,7 @@ void terminal_hide_cells(NTerminal* term, bool hidden, int col, int row, int wid
         }
     }
 }
+*/
 
 
 
@@ -314,17 +318,9 @@ bool render_cell(Nemi* st, NTerminal* term, VTermScreenCell* cell, VTermPos pos)
         return false;
     }
 
-    // User maybe want to disable some cells from being rendered.
-    bool* is_hidden = get_hidden_cell_status(term, pos.col, pos.row);
-    if(is_hidden && *is_hidden) {
-        return false;
-    }
-
-    int char_x = coltox(st, pos.col) * st->cfg.font.char_spacing;
-    int char_y = rowtoy(st, pos.row);
-
-    //clear_region(st, char_x, char_y, st->font.char_width, st->font.char_height);
-   
+    int char_x = nmt_coltox(st, pos.col) * st->cfg.font.char_spacing;
+    int char_y = nmt_rowtoy(st, pos.row);
+ 
 
     // Cell background.
 
@@ -350,6 +346,7 @@ bool render_cell(Nemi* st, NTerminal* term, VTermScreenCell* cell, VTermPos pos)
     }
 
     // Cell foreground.
+    // And attributes.
 
     struct color_t fg_color = st->cfg.colors[NEMI_COLOR_FG];
 
@@ -389,15 +386,15 @@ bool render_cell(Nemi* st, NTerminal* term, VTermScreenCell* cell, VTermPos pos)
 
 static
 void clear_cell(Nemi* st, int col, int row) {
-    int x = coltox(st, col) * st->cfg.font.char_spacing;
-    int y = rowtoy(st, row);
-    clear_region(st, x, y, 
+    int x = nmt_coltox(st, col) * st->cfg.font.char_spacing;
+    int y = nmt_rowtoy(st, row);
+    nmt_clear_region(st, x, y, 
             st->font.char_width,
             st->font.char_height); 
 }
 
 static
-void terminal_render_cursor(Nemi* st, NTerminal* term) {
+void nmterm_render_cursor(Nemi* st, NTerminal* term) {
     VTermPos vtcurs_pos = (VTermPos){ 0, 0 };
     vterm_state_get_cursorpos(term->vtstate, &vtcurs_pos);
 
@@ -412,8 +409,8 @@ void terminal_render_cursor(Nemi* st, NTerminal* term) {
         return;
     }
 
-    int cursor_draw_x = coltox(st, cursor_draw_col) * st->cfg.font.char_spacing;
-    int cursor_draw_y = rowtoy(st, cursor_draw_row);
+    int cursor_draw_x = nmt_coltox(st, cursor_draw_col) * st->cfg.font.char_spacing;
+    int cursor_draw_y = nmt_rowtoy(st, cursor_draw_row);
 
     VTermScreenCell old_cursor_cell;
     VTermPos old_cursor_pos = (VTermPos){
@@ -451,7 +448,7 @@ void terminal_render_cursor(Nemi* st, NTerminal* term) {
 }
 
 
-void terminal_set_row_dirty(NTerminal* term, int row) {
+void nmterm_set_row_dirty(NTerminal* term, int row) {
     if(row < 0) {
         return;
     }
@@ -462,7 +459,7 @@ void terminal_set_row_dirty(NTerminal* term, int row) {
     term->dirty_rows[row] = true;
 }
 
-void terminal_render(Nemi* st, NTerminal* term) {
+void nmterm_render(Nemi* st, NTerminal* term) {
     vterm_get_size(term->vt, &term->rows, &term->cols);
     if(vterm_screen_is_altscreen(term->vtscrn)) {
         term->yscroll = 0;
@@ -497,9 +494,9 @@ void terminal_render(Nemi* st, NTerminal* term) {
             continue;
         }
 
-        clear_region(st,
+        nmt_clear_region(st,
                 0, 
-                rowtoy(st, row),
+                nmt_rowtoy(st, row),
                 st->lfctx->win_width,
                 st->font.char_height + st->cfg.main.line_padding);
 
@@ -519,13 +516,13 @@ void terminal_render(Nemi* st, NTerminal* term) {
     //printf("Cleared rows: %i\n", cleared_rows);
 
     if(term->type != ECHO_TERMINAL) {
-        terminal_render_cursor(st, term);
+        nmterm_render_cursor(st, term);
     }
     
     memset(term->dirty_rows, 0, term->rows * sizeof *term->dirty_rows);
 }
 
-void update_terminal_blink_timer(Nemi* st, NTerminal* term) {
+void nmterm_update_blink_timer(Nemi* st, NTerminal* term) {
     // https://en.wikipedia.org/wiki/Triangle_wave
     // Here triangle wave amplitude is 1.0 and lowest point is 0.0
     float tri_wave = 0.5+(1.0/M_PI)*asin(sin(glfwGetTime() * st->cfg.main.blink_speed));
@@ -537,7 +534,7 @@ void update_terminal_blink_timer(Nemi* st, NTerminal* term) {
     }
 }
 
-void terminal_write(NTerminal* term, enum term_write_target target, char* fmt, ...) {
+void nmterm_write(NTerminal* term, enum term_write_target target, char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
 
@@ -557,7 +554,7 @@ void terminal_write(NTerminal* term, enum term_write_target target, char* fmt, .
     va_end(args);
 }
 
-void terminal_handle_char_event(Nemi* st, NTerminal* term) {
+void nmterm_handle_char_event(Nemi* st, NTerminal* term) {
     if(st->term_ignore_char_input_counter > 0) {
         return;
     }
@@ -571,7 +568,7 @@ void terminal_handle_char_event(Nemi* st, NTerminal* term) {
 }
 
 
-void terminal_handle_key_event(Nemi* st, NTerminal* term) {
+void nmterm_handle_key_event(Nemi* st, NTerminal* term) {
     if(st->term_ignore_key_input_counter > 0) {
         return;
     }
@@ -620,44 +617,42 @@ void terminal_handle_key_event(Nemi* st, NTerminal* term) {
 
         case GLFW_KEY_ENTER:
             term->yscroll = 0;
-            terminal_write(term, TERM_WRITE_PTY, "\r");
+            nmterm_write(term, TERM_WRITE_PTY, "\r");
             break; 
 
         case GLFW_KEY_ESCAPE:
-            terminal_write(term, TERM_WRITE_PTY, "\x1b");
+            nmterm_write(term, TERM_WRITE_PTY, "\x1b");
             break;
 
         case GLFW_KEY_TAB:
-            terminal_write(term, TERM_WRITE_PTY, "\x09");
+            nmterm_write(term, TERM_WRITE_PTY, "\x09");
             break;
 
         case GLFW_KEY_BACKSPACE:
-            terminal_write(term, TERM_WRITE_PTY, "\x08");
+            nmterm_write(term, TERM_WRITE_PTY, "\x08");
             break;
 
         case GLFW_KEY_UP:
-            terminal_write(term, TERM_WRITE_PTY, "\x1b[A");
+            nmterm_write(term, TERM_WRITE_PTY, "\x1b[A");
             break;
 
         case GLFW_KEY_DOWN:
-            terminal_write(term, TERM_WRITE_PTY, "\x1b[B");
+            nmterm_write(term, TERM_WRITE_PTY, "\x1b[B");
             break;
 
         case GLFW_KEY_RIGHT:
-            terminal_write(term, TERM_WRITE_PTY, "\x1b[C");
+            nmterm_write(term, TERM_WRITE_PTY, "\x1b[C");
             break;
 
         case GLFW_KEY_LEFT:
-            terminal_write(term, TERM_WRITE_PTY, "\x1b[D");
+            nmterm_write(term, TERM_WRITE_PTY, "\x1b[D");
             break;
     }
 
 }
 
-void terminal_handle_resize_event(Nemi* st, NTerminal* term) {
-
-    int old_rows = term->rows;
-    int old_cols = term->cols;
+void nmterm_handle_resize_event(Nemi* st, NTerminal* term) {
+    //const size_t old_num_cells = term->cols * term->rows;
 
     term->cols = st->win_cols;
     term->rows = st->win_rows;
@@ -674,26 +669,31 @@ void terminal_handle_resize_event(Nemi* st, NTerminal* term) {
     ioctl(term->master_fd, TIOCSWINSZ, &ws);
 
 
-    size_t old_num_cells = old_rows * old_cols;
-
-    term->hidden_cells = realloc(term->hidden_cells, 
-            (term->cols * term->rows) * sizeof *term->hidden_cells);
+    /*
+    term->hidden_cells = 
+        realloc
+        (
+            term->hidden_cells, 
+            (term->cols * term->rows) * sizeof *term->hidden_cells
+        );
 
     size_t num_curr_cells = term->rows * term->cols;
+
     for(size_t i = old_num_cells; i < num_curr_cells; i++) {
         term->hidden_cells[i] = false;
     }
+    */
 
     // This function will also cause the terminal to be re-rendered.
-    resize_terminal_cell_buffers(term);
+    resize_nmterm_cell_buffers(term);
+
+    logprintf(LOG_INFO, "Terminal resized. to %ix%i", term->cols, term->rows);
 }
 
 
-void terminal_handle_altbuffer_change_event(Nemi* st, NTerminal* term) {
+// TODO: needed?
+void nmterm_handle_altbuffer_change_event(Nemi* st, NTerminal* term) {
     term->yscroll = 0;
-    trigger_event_for_scripts(st, REG_EVENT_TERM_BUFFER_CHANGED,
-            "i",
-            term->is_altbuffer_active);
 }
 
 static inline 
@@ -713,7 +713,7 @@ void set_term_color(Nemi* st, NTerminal* term, int idx, int cfgcol_idx) {
     vterm_state_set_palette_color(term->vtstate, idx, &color);
 }
 
-void terminal_init_palette(Nemi* st, NTerminal* term) {
+void nmterm_init_palette(Nemi* st, NTerminal* term) {
     VTermColor default_fg = get_vtcolor(st, NEMI_COLOR_FG);
     VTermColor default_bg = get_vtcolor(st, NEMI_COLOR_BG);
     vterm_state_set_default_colors(term->vtstate, &default_fg, &default_bg);
@@ -737,7 +737,7 @@ void terminal_init_palette(Nemi* st, NTerminal* term) {
     set_term_color(st, term, 15, NEMI_BRIGHT_COLOR_WHITE);
 }
 
-char terminal_get_char(NTerminal* term, int column, int row) {
+char nmterm_get_char(NTerminal* term, int column, int row) {
     if(column < 0) {
         return 0;        
     }
@@ -751,18 +751,18 @@ char terminal_get_char(NTerminal* term, int column, int row) {
     return cell.chars[0];
 }
 
-int terminal_get_cursor_x(NTerminal* term) {
+int nmterm_get_cursor_x(NTerminal* term) {
     VTermPos vtcurs_pos = (VTermPos){ 0, 0 };
     vterm_state_get_cursorpos(term->vtstate, &vtcurs_pos);
     return vtcurs_pos.col;
 }
-int terminal_get_cursor_y(NTerminal* term) {
+int nmterm_get_cursor_y(NTerminal* term) {
     VTermPos vtcurs_pos = (VTermPos){ 0, 0 };
     vterm_state_get_cursorpos(term->vtstate, &vtcurs_pos);
     return vtcurs_pos.row;
 }
 
-void terminal_set_cell_custom_bg(NTerminal* term, VTermPos pos, int hex_rgb_color) {
+void nmterm_set_cell_custom_bg(NTerminal* term, VTermPos pos, int hex_rgb_color) {
     vterm_screen_set_cell_custom_bg(term->vtscrn, 
             pos,
             (VTermColor) {
@@ -774,7 +774,7 @@ void terminal_set_cell_custom_bg(NTerminal* term, VTermPos pos, int hex_rgb_colo
             });
 }
 
-void terminal_set_cell_custom_fg(NTerminal* term, VTermPos pos, int hex_rgb_color) {
+void nmterm_set_cell_custom_fg(NTerminal* term, VTermPos pos, int hex_rgb_color) {
     vterm_screen_set_cell_custom_fg(term->vtscrn, 
             pos,
             (VTermColor) {
@@ -786,19 +786,19 @@ void terminal_set_cell_custom_fg(NTerminal* term, VTermPos pos, int hex_rgb_colo
             });
 }
 
-void terminal_set_cell_custom_attrs(NTerminal* term, VTermPos pos, int attrs) {
+void nmterm_set_cell_custom_attrs(NTerminal* term, VTermPos pos, int attrs) {
     vterm_screen_set_cell_custom_attrs(term->vtscrn, pos, attrs);
 }
 
-void terminal_clear_cell_custom_bg(NTerminal* term, VTermPos pos) {
+void nmterm_clear_cell_custom_bg(NTerminal* term, VTermPos pos) {
     vterm_screen_clear_cell_custom_bg(term->vtscrn, pos);
 }
 
-void terminal_clear_cell_custom_fg(NTerminal* term, VTermPos pos) {
+void nmterm_clear_cell_custom_fg(NTerminal* term, VTermPos pos) {
     vterm_screen_clear_cell_custom_fg(term->vtscrn, pos);
 }
 
-void terminal_clear_cell_custom_attrs(NTerminal* term, VTermPos pos) {
+void nmterm_clear_cell_custom_attrs(NTerminal* term, VTermPos pos) {
     vterm_screen_clear_cell_custom_attrs(term->vtscrn, pos);
 }
 
@@ -808,7 +808,7 @@ void swap_int(int* a, int* b) {
     *b = tmp;
 }
 
-void terminal_copy_to_clipboard(Nemi* st, NTerminal* term, const char* type,
+void nmterm_copy_to_clipboard(Nemi* st, NTerminal* term, const char* type,
         int start_col, int start_row, int end_col, int end_row) {
     struct string_t buffer = string_create(0);
     end_row++;
@@ -827,7 +827,7 @@ void terminal_copy_to_clipboard(Nemi* st, NTerminal* term, const char* type,
             int ln_x_stop = last_row ? end_col : term->cols;
             for(int x = start_col; x < ln_x_stop; x++) {
             
-                char ch = terminal_get_char(term, x, y);
+                char ch = nmterm_get_char(term, x, y);
                 if(ch == 0) {
                     continue;
                 }
@@ -840,10 +840,10 @@ void terminal_copy_to_clipboard(Nemi* st, NTerminal* term, const char* type,
     }
     else
     if(STR_MATCH(type, "block")) {
-        int sx = MIN(start_col, end_col);
-        int sy = MIN(start_row, end_row);
-        int ex = MAX(start_col, end_col);
-        int ey = MAX(start_row, end_row);
+        int sx = MIN_VALUE(start_col, end_col);
+        int sy = MIN_VALUE(start_row, end_row);
+        int ex = MAX_VALUE(start_col, end_col);
+        int ey = MAX_VALUE(start_row, end_row);
 
         if(start_row > end_row) {
             sy--;
@@ -852,7 +852,7 @@ void terminal_copy_to_clipboard(Nemi* st, NTerminal* term, const char* type,
 
         for(int y = sy; y < ey; y++) {
             for(int x = sx; x < ex; x++) {
-                char ch = terminal_get_char(term, x, y);
+                char ch = nmterm_get_char(term, x, y);
                 if(ch == 0) {
                     continue;
                 }
@@ -880,13 +880,13 @@ void terminal_copy_to_clipboard(Nemi* st, NTerminal* term, const char* type,
     free_string(&buffer);
 }
 
-void terminal_yscroll(NTerminal* term, int offset) {
-    terminal_set_row_dirty(term, term->cursor_row - term->yscroll);
+void nmterm_yscroll(NTerminal* term, int offset) {
+    nmterm_set_row_dirty(term, term->cursor_row - term->yscroll);
     term->yscroll += offset;
 }
 
-void terminal_yscroll_to(NTerminal* term, int point) {
-    terminal_set_row_dirty(term, term->cursor_row - term->yscroll);
+void nmterm_yscroll_to(NTerminal* term, int point) {
+    nmterm_set_row_dirty(term, term->cursor_row - term->yscroll);
     term->yscroll = point;
 }
 

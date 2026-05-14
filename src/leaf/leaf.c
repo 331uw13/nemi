@@ -94,8 +94,7 @@ struct leaf_ctx_t* leaf_open(const char* title, int width, int height, int flags
         glfwSetWindowSizeLimits(ctx->glfw_win, width, height, GLFW_DONT_CARE, GLFW_DONT_CARE);
     }
     else {
-        printf("!\n");
-        glfwSetWindowSizeLimits(ctx->glfw_win, 500, 500, width*10, height*10);
+        glfwSetWindowSizeLimits(ctx->glfw_win, 500, 500, 6000, 3000);
     }
 
     glfwMakeContextCurrent(ctx->glfw_win);

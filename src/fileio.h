@@ -25,5 +25,10 @@ bool write_file(const char* path, void* data, size_t size);
 // On error returns -1 otherwise the file size.
 ssize_t file_size(const char* path);
 
+// 'NULL' is returned if no such file was opened succesfully.
+// Otherwise returned address must be freed.
+char* file_magic_bytes(const char* path, size_t num_read_bytes);
+
+
 
 #endif

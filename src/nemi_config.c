@@ -1,4 +1,8 @@
 #include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+
 #include "thirdparty/ini.h"
 
 #include "nemi.h"
@@ -128,36 +132,6 @@ int config_handler__font_ini
     return 1; // Continue reading.
 }
 
-static
-int config_handler__scripts_ini
-(
-    void* userptr,
-    const char* section,
-    const char* name,
-    const char* value
-){
-    (void)section;
-    Nemi* st = (Nemi*)userptr;
-    
-    if(access(value, R_OK) == 0) {
-        load_perl_script(st, value, name);
-        return 1;
-    }
-
-    struct string_t path = string_create(0);
-
-    string_append(&path, st->filepaths.scripts, -1);
-    if(string_lastbyte(&path) != '/' && value[0] != '/') {
-        string_pushbyte(&path, '/');
-    }
-    string_append(&path, (char*)value, -1);
-    string_nullterm(&path);
-
-    load_perl_script(st, path.bytes, name);
-    free_string(&path);
-
-    return 1; // Continue reading.
-}
 
 static
 int config_handler__nemi_ini
@@ -429,11 +403,11 @@ bool read_config
 ){
     struct string_t path = string_create(0);
 
-    string_append(&path, configs_dir, -1);
+    string_append(&path, configs_dir, strlen(configs_dir));
     if(string_lastbyte(&path) != '/') {
         string_pushbyte(&path, '/');
     }
-    string_append(&path, config_file, -1);
+    string_append(&path, config_file, strlen(config_file));
     string_nullterm(&path);
 
 
@@ -451,7 +425,7 @@ bool read_config
     return true;
 }
 
-bool nemi_read_configs(Nemi* st, char* configs_dir) {
+bool nmt_read_configs(Nemi* st, char* configs_dir) {
     struct log_settings log_settings = { 0 };
     log_settings.flags |= LOG_ENABLED;
     if(read_config(config_handler__log_ini, (void*)&log_settings, configs_dir, "log.ini")) {
@@ -460,8 +434,6 @@ bool nemi_read_configs(Nemi* st, char* configs_dir) {
     else {
         return false;
     }
-
-
 
     if(!read_config(config_handler__nemi_ini, &st->cfg, configs_dir, "nemi.ini")) {
         return false;
@@ -478,11 +450,7 @@ bool nemi_read_configs(Nemi* st, char* configs_dir) {
     return true;
 }
 
-bool nemi_load_scripts(Nemi* st, char* configs_dir) {
-    return read_config(config_handler__scripts_ini, st, configs_dir, "scripts.ini");
-}
-
-void free_configs(Nemi* st) {
+void nmt_free_configs(Nemi* st) {
     freeif(st->cfg.main.source_dir);
     freeif(st->cfg.main.recompile_num_cores);
     freeif(st->cfg.main.favourite_texteditor);

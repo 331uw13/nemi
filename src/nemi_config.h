@@ -68,19 +68,12 @@ struct nemi_config {
         char* shell;
     }
     main;
-
-    // Scripts are loaded when their config is read.
-    // Log settings are passed to log when they are read.
-
-    bool scripts_loaded; // For now scripts cant be re-loaded, 
-                         // but will work on that in the future..
-    
+   
     struct color_t colors [NEMI_COLOR_COUNT];
 };
 
-bool nemi_read_configs(Nemi* st, char* configs_dir);
-bool nemi_load_scripts(Nemi* st, char* configs_dir);
-void free_configs(Nemi* st);
+bool nmt_read_configs(Nemi* st, char* configs_dir);
+void nmt_free_configs(Nemi* st);
 
 
 #endif

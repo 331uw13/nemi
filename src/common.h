@@ -5,14 +5,13 @@
 #include <stdbool.h>
 
 #define ARRAY_LEN(arr) (sizeof(arr) / sizeof(*arr))
-#define STR_MATCH(A, B) (strcmp(A, B) == 0)
-//#define MIN_VALUE(a, b) (((a) < (b)) ? (a) : (b))
-//#define MAX_VALUE(a, b) (((a) > (b)) ? (a) : (b))
+#define STR_MATCH(a, b) (strcmp(a, b) == 0)
+#define MIN_VALUE(a, b) (((a) < (b)) ? (a) : (b))
+#define MAX_VALUE(a, b) (((a) > (b)) ? (a) : (b))
 
 #define HEX2RED_CHANNEL(num) (((num) & 0xFF0000) >> 16)
 #define HEX2GRN_CHANNEL(num) (((num) & 0x00FF00) >> 8)
 #define HEX2BLU_CHANNEL(num)  ((num) & 0x0000FF)
-
 
 
 

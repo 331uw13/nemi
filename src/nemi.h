@@ -7,10 +7,10 @@
 #include "leaf/leaf.h"
 #include "nemi_config.h"
 #include "terminal.h"
-#include "perl_script.h"
-#include "script_keybinds.h"
 #include "log.h"
-#include "string.h"
+#include "nmt_string.h"
+#include "module.h"
+#include "common.h"
 
 #define NEMI_VERSION_STR "0.00-0"
 
@@ -30,16 +30,17 @@
 #define NEMI_MSG_LINES_MAX 64
 #define NEMI_SCRIPTS_KEYBIND_KEYS_MAX 16
 #define NEMI_IMAGES_MAX 32
+#define NEMI_MODULES_MAX 64
 
 
-
-struct nemi_filepaths {
+typedef struct NemiFilepaths_t {
     char* nemi_home;
     char* libnemi;
     char* fonts;
     char* configs;
-    char* scripts;
-};
+    char* modules;
+}
+NemiFilepaths;
 
 struct image {
     int width;
@@ -51,16 +52,19 @@ struct image {
 typedef struct Nemi_t {
     int flags;
 
-    struct nemi_filepaths filepaths;
+    NemiFilepaths filepaths;
     struct leaf_ctx_t* lfctx;    
     struct font_t      font;
     struct nemi_config cfg;
 
     NTerminal    terminals [NEMI_TERMINALS_MAX];
     NTerminal*   terminal; // Current terminal.
-    NTerminal*   messages; // Points to terminals[1]
+    NTerminal*   messages; // Points to terminals[0]
     NTerminal*   terminal_prev; // Previous current terminal.
-    uint16_t           num_terminals;    
+    uint16_t     num_terminals;
+
+    NModule*     modules;
+    size_t       num_loaded_modules;
 
     int win_rows;
     int win_cols;
@@ -74,13 +78,13 @@ typedef struct Nemi_t {
     int  key_inputs  [NEMI_KEYINBUF_MAX];  // TODO: Idk if these are actually needed anyway...
     char char_inputs [NEMI_CHARINBUF_MAX]; // ^
 
-    PerlScript  scripts [NEMI_SCRIPTS_MAX];
-    size_t      num_scripts;
-
     struct image         images [NEMI_IMAGES_MAX];
 
     double frame_time;
     double frame_time_begin;
+
+    int term_cells_render_offset_x;
+    int term_cells_render_offset_y;
 
     // When scripts want to make user input
     // to the terminal ignored we will keep track of
@@ -105,62 +109,50 @@ typedef struct Nemi_t {
 Nemi;
 
 
-Nemi* start_session(struct nemi_filepaths filepaths);
-void         quit_session(Nemi* st);
-void         prepare_from_hotreload(Nemi* st); // Some global variables must be set again after hotreloading.
+Nemi* nmt_start_session(NemiFilepaths filepaths);
+void  nmt_quit_session(Nemi* st);
+void  nmt_prepare_from_hotreload(Nemi* st); // Some global variables must be set again after hotreloading.
 
 //void         restart_session(Nemi* st);
 
-Nemi* get_state(); 
+Nemi* nmt_getst();
 
-void zero_input_buffers(Nemi* st);
-void push_key_input(Nemi* st, int key);
-void push_char_input(Nemi* st, char ch);
-void font_scale(Nemi* st, float offset);
-void set_font_scale(Nemi* st, float scale);
-void create_msg(Nemi* st, const char* msg, ...);
-int  load_image(Nemi* st, const char* filepath);
-void unload_image(struct image* img);
+void nmt_load_all_modules(Nemi* st);
+void nmt_zero_input_buffers(Nemi* st);
+void nmt_push_key_input(Nemi* st, int key);
+void nmt_push_char_input(Nemi* st, char ch);
+void nmt_font_scale(Nemi* st, float offset);
+void nmt_set_font_scale(Nemi* st, float scale);
+void nmt_create_msg(Nemi* st, const char* msg, ...);
+int  nmt_load_image(Nemi* st, const char* filepath);
+void nmt_unload_image(struct image* img);
+bool nmt_key_down(Nemi* st, int key);
 
 // Switch current terminal.
-void switch_terminal(Nemi* st, uint32_t index);
-void switch_terminal_ptr(Nemi* st, NTerminal* term);
+void nmt_switch_terminal_idx(Nemi* st, uint32_t index);
+void nmt_switch_terminal_ptr(Nemi* st, NTerminal* term);
 
 
-//void begin_frame(Nemi* st);
-//void end_frame(Nemi* st);
-void update_frame(Nemi* st);
-
-bool key_down(Nemi* st, int key);
+void nmt_update_frame(Nemi* st);
 
 
-// 'event_num' corresponds to REG_EVENT... defined in "script.h"
-// 'arg_types' should be array of characters matching the variable type's
-// first letter, respectively to variadic arguments.
-// For example if arguments to function is int, int, float, float,
-// then arg_types should be "iiff".
-// TODO: Not all types are currently supported.
-void trigger_event_for_scripts(Nemi* st, int event_num, const char* arg_types, ...);
+size_t nmt_hash_glfwkeys(const int* keys, size_t num_keys);
+void nmt_assign_module_keybind(Nemi* st, size_t module_idx, void(*fnptr)(), const int* keys, size_t num_keys);
+
 
 // Clear rendered pixels.
-void clear_region(Nemi* st, int x, int y, int w, int h);
-
+void nmt_clear_region(Nemi* st, int x, int y, int w, int h);
 // Convert column/row to window x/y position.
-int coltox(Nemi* st, int col);
-int rowtoy(Nemi* st, int row);
+int nmt_coltox(Nemi* st, int col);
+int nmt_rowtoy(Nemi* st, int row);
 
-//int new_renderbuf(Nemi* st, int num_nodes_max);
-void init_default_config(Nemi* st);
+void nmt_init_default_config(Nemi* st);
 
 
-void nemi_help(Nemi* st, const char* what);
-void nemi_message_script_keybinds(Nemi* st, const char* script_name);
-
-void restart_session(Nemi* st);
-void hotreload_session(Nemi* st);
+//void restart_session(Nemi* st);
+//void hotreload_session(Nemi* st);
 //void nemi_recompile_src(Nemi* st);
-
-const char* nemi_get_clipboard_content(Nemi* st);
+//const char* nemi_get_clipboard_content(Nemi* st);
 
 
 #endif
