@@ -5,15 +5,17 @@ Nemi by default is a terminal emulator with only basic essentials.
 But you can easily use modules, to add features which never existed before!
 Modules are dynamically loaded libraries. (read more from documentation)
 ```
+> No AI code is used.
 
 # Documentation
 
+>[!NOTE]
+> Work in progress...
 * Working with modules: https://github.com/331uw13/nemi/tree/main/documentation/modules
 * Development: https://github.com/331uw13/nemi/tree/main/documentation/development
 
 
-
-<h1 style="">
+<h1>
   Contribute!
   <img src="https://github.com/331uw13/nemi/blob/main/cat_images/cat_hello.png?raw=true" height="60">
 </h1>
