@@ -12,14 +12,15 @@ Modules are dynamically loaded libraries. (read more from documentation)
 ## Build instructions
 ```bash
 $ git clone https://github.com/331uw13/nemi.git
+$ cd nemi
 
 # First build the libvterm.
 # It is little bit modified version of: https://www.leonerd.org.uk/code/libvterm/
-$ cd libs/libvterm-0.3.3/
-$ make
+$ (cd libs/libvterm-0.3.3/ && make)
 
 # Then the project can be built with make command
 # in the project root directory.
+$ make
 ```
 
 
