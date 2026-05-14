@@ -75,8 +75,6 @@ void module_quit() {
 
 
 void module_event_render() {
-  Nemi* st = nmt_getst();
-
   // "leaf" is very simple and pretty lightweight OpenGL and freetype2 utility.
   // It was mainly written for this project :)
 
