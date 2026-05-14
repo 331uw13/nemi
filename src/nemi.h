@@ -79,7 +79,7 @@ typedef struct Nemi_t {
     int  key_inputs  [NEMI_KEYINBUF_MAX];  // TODO: Idk if these are actually needed anyway...
     char char_inputs [NEMI_CHARINBUF_MAX]; // ^
 
-    struct image         images [NEMI_IMAGES_MAX];
+    //struct image         images [NEMI_IMAGES_MAX];
 
     double frame_time;
     double frame_time_begin;
@@ -125,8 +125,8 @@ void nmt_push_char_input(Nemi* st, char ch);
 void nmt_font_scale(Nemi* st, float offset);
 void nmt_set_font_scale(Nemi* st, float scale);
 void nmt_create_msg(Nemi* st, const char* msg, ...);
-int  nmt_load_image(Nemi* st, const char* filepath);
-void nmt_unload_image(struct image* img);
+//int  nmt_load_image(Nemi* st, const char* filepath);
+//void nmt_unload_image(struct image* img);
 bool nmt_key_down(Nemi* st, int key);
 
 // Switch current terminal.

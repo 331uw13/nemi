@@ -14,7 +14,6 @@ static struct {
     size_t module_idx;
     int    vcursor_col;
     int    vcursor_row;
-    bool   select_mode;
 }
 g = {
     .module_idx = 0
@@ -69,34 +68,31 @@ void module_event_key_input(int key, int modifiers) {
     bool cursor_moved = false;
     switch(key) {
 
-        case GLFW_KEY_F:
-            g.select_mode = true;
-            nmterm_select_begin(st->terminal, g.vcursor_col, g.vcursor_row);
-            break;
-
-        case GLFW_KEY_E:
-            g.select_mode = false;
-            nmterm_select_end(st->terminal);
-            break;
-
-        case GLFW_KEY_W:
-            nmterm_yscroll(st->terminal, -1);
-            break;
-
         case GLFW_KEY_S:
-            nmterm_yscroll(st->terminal, 1);
+            if(st->terminal->select.active) {
+                nmterm_select_end(st->terminal);
+            }
+            else {
+                nmterm_select_begin(st->terminal, g.vcursor_col, g.vcursor_row);
+            }
             break;
 
         case GLFW_KEY_I:
         case GLFW_KEY_UP:
             g.vcursor_row--;
             cursor_moved = true;
+            if(modifiers & GLFW_MOD_SHIFT) {
+                nmterm_yscroll(st->terminal, -1);
+            }
             break;
 
         case GLFW_KEY_K:
         case GLFW_KEY_DOWN:
             g.vcursor_row++;
             cursor_moved = true;
+            if(modifiers & GLFW_MOD_SHIFT) {
+                nmterm_yscroll(st->terminal, 1);
+            }
             break;
 
         case GLFW_KEY_J:
@@ -113,7 +109,7 @@ void module_event_key_input(int key, int modifiers) {
     }
 
 
-    if(cursor_moved && g.select_mode) {
+    if(cursor_moved && st->terminal->select.active) {
         nmterm_select_update(st->terminal, g.vcursor_col, g.vcursor_row);
     }
 

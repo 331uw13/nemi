@@ -127,10 +127,6 @@ Nemi* nmt_start_session(NemiFilepaths filepaths) {
             "\033[2J\033[H\033[0m\033[90m(start of messages)\033[0m\n\r");
 
   
-    for(size_t i = 0; i < NEMI_IMAGES_MAX; i++) {
-        st->images[i].handle = -1;
-    }
-
 
     g_nemi_state = st;
 
@@ -183,10 +179,6 @@ void nmt_quit_session(Nemi* st) {
 
     leaf_free_renderer(st->lfctx);
     leaf_quit(st->lfctx);
-
-    for(size_t i = 0; i < NEMI_IMAGES_MAX; i++) {
-        nmt_unload_image(&st->images[i]);
-    }
 
     for(size_t i = 0; i < NEMI_MODULES_MAX; i++) {
         nmt_module_quit(&st->modules[i]);
@@ -741,41 +733,6 @@ void nmt_create_msg(Nemi* st, const char* msg, ...) {
 
     logprintf(LOG_INFO, buffer);
     va_end(args);
-}
-
-int nmt_load_image(Nemi* st, const char* filepath) {
-    struct image* img = NULL;
-    size_t img_idx = 0;
-    for(; img_idx < NEMI_IMAGES_MAX; img_idx++) {
-        if(st->images[img_idx].handle < 0) {
-            img = &st->images[img_idx];
-            break;
-        }
-    }
-
-    if(img == NULL) {
-        logprintf(LOG_ERROR, "All spaces have been reserved for images. None are free.");
-        return -1;
-    }
-
-    if((img->texture = leaf_load_texture(filepath, &img->width, &img->height)) == 0) {
-        logprintf(LOG_ERROR, "Failed to load image '%s'", filepath);
-        return -1;
-    }
-
-    img->handle = img_idx;
-    return img->handle;
-}
-
-void nmt_unload_image(struct image* img) {
-    if(img->handle < 0 || img->handle >= NEMI_IMAGES_MAX) {
-        return;
-    }
-
-    img->handle = -1;
-    glDeleteTextures(1, &img->texture);
-    img->width = 0;
-    img->height = 0;
 }
 
 bool nmt_is_module_inputfocus_available(Nemi* st) {
