@@ -180,18 +180,6 @@ int config_handler__nemi_ini
         cfg->main.hide_mouse = strtobool(value);
     }
     else
-    if(STR_MATCH(name, "source_dir")) {
-        cfg->main.source_dir = strdup(value);
-    }
-    else
-    if(STR_MATCH(name, "recompile_num_cores")) {
-        cfg->main.recompile_num_cores = strdup(value);
-    }
-    else
-    if(STR_MATCH(name, "favourite_texteditor")) {
-        cfg->main.favourite_texteditor = strdup(value);
-    }
-    else
     if(STR_MATCH(name, "shell")) {
         cfg->main.shell = strdup(value);
     }
@@ -385,8 +373,14 @@ int config_handler__color_ini
     if(STR_MATCH(name, "messages_border")) {
         colortext_to_values(value, &colors[NEMI_COLOR_MESSAGES_BORDER]);
     }
-
-
+    else
+    if(STR_MATCH(name, "cursor")) {
+        colortext_to_values(value, &colors[NEMI_COLOR_CURSOR]);
+    }
+    else
+    if(STR_MATCH(name, "select")) {
+        colortext_to_values(value, &colors[NEMI_COLOR_TERM_SELECT_REG]);
+    }
     return 1; // Continue reading.
 }
  
@@ -451,9 +445,6 @@ bool nmt_read_configs(Nemi* st, char* configs_dir) {
 }
 
 void nmt_free_configs(Nemi* st) {
-    freeif(st->cfg.main.source_dir);
-    freeif(st->cfg.main.recompile_num_cores);
-    freeif(st->cfg.main.favourite_texteditor);
     freeif(st->cfg.main.shell);
     freeif(st->cfg.font.filepath);
 }

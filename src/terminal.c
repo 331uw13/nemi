@@ -598,12 +598,17 @@ void nmterm_render_cursor(Nemi* st, NTerminal* term) {
 
     clear_cell(st, term->cursor_old_col, term->cursor_old_row - term->yscroll);
 
+
+    struct color_t cursor_color = st->cfg.colors[NEMI_COLOR_CURSOR];
+    cursor_color = leaf_color_lerp(cursor_color, st->cfg.colors[NEMI_COLOR_BG], term->blink_timer);
+
+
     leaf_draw_rect(
             cursor_draw_x,
             cursor_draw_y,
             st->font.char_width,
             st->font.char_height,
-            (struct color_t) { 60, 60, 60 });
+            cursor_color);
     
 
     term->cursor_old_row = term->cursor_row;
@@ -612,12 +617,6 @@ void nmterm_render_cursor(Nemi* st, NTerminal* term) {
     term->cursor_row = vtcurs_pos.row;
     term->cursor_col = vtcurs_pos.col;
 
-    /*
-    printf("Cursor moved! Old(%i, %i) -> New(%i, %i)\n",
-            term->cursor_old_col,
-            term->cursor_old_row,
-            term->cursor_col,
-            term->cursor_row);*/
 }
 
 

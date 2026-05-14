@@ -28,10 +28,6 @@ void module_event_render() {
 
     Nemi* st = nmt_getst();
 
-    if(st->terminal->select.active) {
-        leaf_draw_rect(0, 0, 10, 10, (struct color_t){ 255, 70, 160 });
-    }
-
     leaf_draw_rect(
             nmt_coltox(st, g.vcursor_col),
             nmt_rowtoy(st, g.vcursor_row - st->terminal->yscroll) + st->font.char_height,

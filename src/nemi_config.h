@@ -30,6 +30,8 @@ enum nemi_config_colors {
     NEMI_COLOR_MESSAGES_FG,
     NEMI_COLOR_MESSAGES_BG,
     NEMI_COLOR_MESSAGES_BORDER,
+    NEMI_COLOR_CURSOR,
+    NEMI_COLOR_TERM_SELECT_REG,
     NEMI_COLOR_COUNT
 };
 
@@ -62,9 +64,6 @@ struct nemi_config {
         float blink_speed;
         bool show_frametime;
         bool hide_mouse;
-        char* source_dir;
-        char* recompile_num_cores;
-        char* favourite_texteditor;
         char* shell;
     }
     main;

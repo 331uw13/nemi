@@ -43,7 +43,7 @@ Nemi* nmt_start_session(NemiFilepaths filepaths) {
     st->frame_time = 0.001;
     st->frame_time_begin = 0.0;
     st->flags = 0;
-    st->lfctx = leaf_open("Nemi - Terminal Emulator", 900, 700, LEAF_NORESIZE);
+    st->lfctx = leaf_open("Nemi - Terminal Emulator", 900, 700, 0);
     st->num_terminals = 0;
     st->inputfocus_module_idx = -1;
     st->term_cells_render_offset_x = 0;
@@ -318,9 +318,7 @@ void p_nmt_term_select_process_callback__render(Nemi* st, NTerminal* term, int r
         nmt_rowtoy(st, row - term->yscroll),
         st->font.char_width * row_length,
         st->font.char_height,
-        (struct color_t) {
-            100, 100, 100
-        }
+        st->cfg.colors[NEMI_COLOR_TERM_SELECT_REG]   
     );
 }
 
@@ -329,6 +327,7 @@ void nmt_update_frame(Nemi* st) {
 
 
 
+    nmterm_update_blink_timer(st, st->terminal);
 
     // Render terminal cells to 'term_cells_framebuffer'
     leaf_use_framebuffer(&st->term_cells_framebuffer);

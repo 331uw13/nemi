@@ -20,13 +20,7 @@ if [ -z $module_cfiles ]; then
     exit
 fi
 
-
-
-
 set -xe
-
-
-
 
 # The directory which libnemi.so lives, must be absolute.
 libnemi_dir="$(cd .. && pwd)"
