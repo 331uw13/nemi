@@ -13,6 +13,24 @@ enum terminal_type {
     SHELL_TERMINAL
 };
 
+
+typedef enum NTerminalSelectRegMode_e {
+    SREG_MODE_NORMAL,
+    SREG_MODE_LINE,
+    SREG_MODE_BLOCK
+}
+NTerminalSelectRegMode;
+
+typedef struct NTerminalSelectReg_t {
+    bool active;
+    NTerminalSelectRegMode mode;
+    int col_beg;
+    int row_beg;
+    int col_end;
+    int row_end;
+}
+NTerminalSelectReg;
+
 typedef struct NTerminal_t {
     int          flags;
     int          master_fd;
@@ -45,6 +63,9 @@ typedef struct NTerminal_t {
     int cursor_row;
     int cursor_old_col;
     int cursor_old_row;
+
+
+    NTerminalSelectReg select;
 
     float blink_timer;
 
@@ -80,8 +101,6 @@ void nmterm_handle_altbuffer_change_event(Nemi* st, NTerminal* term);
 //void nmterm_hide_cells          (NTerminal* term, bool hidden, int col, int row, int width, int height);
 void nmterm_init_palette        (Nemi* st, NTerminal* term);
 char nmterm_get_char            (NTerminal* term, int column, int row);
-int  nmterm_get_cursor_x        (NTerminal* term);
-int  nmterm_get_cursor_y        (NTerminal* term);
 void nmterm_set_cell_custom_bg  (NTerminal* term, VTermPos pos, int hex_rgb_color);
 void nmterm_set_cell_custom_fg  (NTerminal* term, VTermPos pos, int hex_rgb_color);
 void nmterm_clear_cell_custom_bg (NTerminal* term, VTermPos pos);
@@ -91,11 +110,21 @@ void nmterm_clear_cell_custom_attrs (NTerminal* term, VTermPos pos);
 void nmterm_set_row_dirty           (NTerminal* term, int row); // Causes a row to be re-rendered.
 void nmterm_yscroll                 (NTerminal* term, int offset);
 void nmterm_yscroll_to              (NTerminal* term, int point);
+void nmterm_select_begin            (NTerminal* term, int col_begin, int row_begin);
+void nmterm_select_update           (NTerminal* term, int col, int row);
+void nmterm_select_end              (NTerminal* term);
+void nmterm_select_process(Nemi* st, NTerminal* term, void(*callback)(Nemi* st, NTerminal* term, int row, int col_beg, int row_length));
+//void nmterm_select_render           (Nemi* st, NTerminal* term);
+int  nmterm_get_row_length          (NTerminal* term, int row);
+
+// TODO: MOve this:
+NTerminalSelectReg nmt_orientate_select_region(const NTerminalSelectReg* reg);
+/*
 // Available type is "block"(block select) or "normal".
 // The reason why the type is string because perl doesnt have enums
 // and writing only integer as the type is not as readable.
 void nmterm_copy_to_clipboard(Nemi* st, NTerminal* term, const char* type,
                                     int start_col, int start_row, int end_col, int end_row);
-
+*/
 
 #endif

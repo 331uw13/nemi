@@ -65,6 +65,7 @@ typedef struct Nemi_t {
 
     NModule*     modules;
     size_t       num_loaded_modules;
+    ssize_t      inputfocus_module_idx; // Negative number means that no module has inputfocus.
 
     int win_rows;
     int win_cols;
@@ -93,8 +94,8 @@ typedef struct Nemi_t {
     // it will not work as expected.
     // FIXME: The counters get confused very rarely and locks the input forever.
     // TODO: Try to create "focus" system for scripts (?)
-    int term_ignore_char_input_counter;
-    int term_ignore_key_input_counter;
+    //int term_ignore_char_input_counter;
+    //int term_ignore_key_input_counter;
 
 
     // Terminal framebuffer is separated
@@ -132,9 +133,16 @@ bool nmt_key_down(Nemi* st, int key);
 void nmt_switch_terminal_idx(Nemi* st, uint32_t index);
 void nmt_switch_terminal_ptr(Nemi* st, NTerminal* term);
 
-
 void nmt_update_frame(Nemi* st);
 
+
+// Inputfocus means that if the module gains it.
+// None of the terminals will receive key or character input events.
+// And only the focused module will receive the input events.
+// The inputfocus must be remembered to be freed.
+bool nmt_is_module_inputfocus_available(Nemi* st);
+bool nmt_module_gain_inputfocus(Nemi* st, size_t module_idx);
+void nmt_module_free_inputfocus(Nemi* st, size_t module_idx);
 
 size_t nmt_hash_glfwkeys(const int* keys, size_t num_keys);
 void nmt_assign_module_keybind(Nemi* st, size_t module_idx, void(*fnptr)(), const int* keys, size_t num_keys);

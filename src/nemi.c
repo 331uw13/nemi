@@ -45,8 +45,7 @@ Nemi* nmt_start_session(NemiFilepaths filepaths) {
     st->flags = 0;
     st->lfctx = leaf_open("Nemi - Terminal Emulator", 900, 700, LEAF_NORESIZE);
     st->num_terminals = 0;
-    st->term_ignore_char_input_counter = 0;
-    st->term_ignore_key_input_counter = 0;
+    st->inputfocus_module_idx = -1;
     st->term_cells_render_offset_x = 0;
     st->term_cells_render_offset_y = 0;
     nmt_zero_input_buffers(st);
@@ -122,7 +121,8 @@ Nemi* nmt_start_session(NemiFilepaths filepaths) {
     st->messages = nmterm_spawn(st, st->win_rows, st->win_cols, ECHO_TERMINAL);
     st->terminal = nmterm_spawn(st, st->win_rows, st->win_cols, SHELL_TERMINAL);
     st->terminal_prev = st->terminal;
-    
+   
+
     nmterm_write(st->messages, TERM_WRITE_VTERM, 
             "\033[2J\033[H\033[0m\033[90m(start of messages)\033[0m\n\r");
 
@@ -317,6 +317,20 @@ void nmt_clear_region(Nemi* st, int x, int y, int w, int h) {
 
 
 
+static
+void p_nmt_term_select_process_callback__render(Nemi* st, NTerminal* term, int row, int col_beg, int row_length) {
+
+    leaf_draw_rect
+    (
+        nmt_coltox(st, col_beg),
+        nmt_rowtoy(st, row - term->yscroll),
+        st->font.char_width * row_length,
+        st->font.char_height,
+        (struct color_t) {
+            100, 100, 100
+        }
+    );
+}
 
 void nmt_update_frame(Nemi* st) {
     st->frame_time_begin = glfwGetTime();
@@ -334,6 +348,7 @@ void nmt_update_frame(Nemi* st) {
         nmterm_read(st, st->terminal);
         nmterm_render(st, st->terminal);
 
+
         leaf_font_render(&st->font);
         leaf_renderer_flush(st->lfctx);
     }
@@ -347,7 +362,13 @@ void nmt_update_frame(Nemi* st) {
         // so it is more harder to keep track of what has changed.
         // So... it will be bit slower at least for now.
         nmt_clear_color_buffer_bit(st, CLEAR_COLOR_NO_ALPHA);
-        
+ 
+        // The select region is needed to render separatly from cells.
+        // because the terminal will only render when cells change and we are not changing cells data.
+        if(st->terminal->select.active) {
+            nmterm_select_process(st, st->terminal, p_nmt_term_select_process_callback__render);
+        }       
+
         for(size_t i = 0; i < st->num_loaded_modules; i++) {
             NModule* module = &st->modules[i];
             if(module->events.fn_render) {
@@ -446,7 +467,6 @@ static
 int p_nmt_qsort_glfwkeys_callback(const void* a, const void* b) {
     int i_a = *(int*)a;
     int i_b = *(int*)b;
-    printf("%i, %i\n", i_a, i_b);
     return i_a >= i_b;
 }
 
@@ -472,10 +492,22 @@ void nmt_assign_module_keybind(Nemi* st, size_t module_idx, void(*fnptr)(), cons
     keybind->key_hash = nmt_hash_glfwkeys(sorted_keys, num_keys);
     keybind->fn_ptr = fnptr;
 
-
-    printf("%s: keyhash = %li\n", __func__, keybind->key_hash);
-
     module->num_keybinds++;
+}
+
+
+static
+void p_nmt_call_matching_module_keybind_funcs(NModule* module, size_t keys_hash) {
+    for(size_t k = 0; k < module->num_keybinds; k++) {
+        NModuleKeybind* keybind = &module->keybinds[k];
+        if(keybind->fn_ptr == NULL) {
+            continue;
+        }
+
+        if(keybind->key_hash == keys_hash) {
+            keybind->fn_ptr();
+        }
+    }
 }
 
 static
@@ -529,19 +561,14 @@ void p_nmt_keyinput_events_for_modules(Nemi* st, int key, int mods) {
 
     size_t pressed_keys_hash = nmt_hash_glfwkeys(pressed_keys, num_pressed_keys);
 
-
-    for(size_t i = 0; i < st->num_loaded_modules; i++) {
-        NModule* module = &st->modules[i];
-
-        for(size_t k = 0; k < module->num_keybinds; k++) {
-            NModuleKeybind* keybind = &module->keybinds[k];
-            if(keybind->fn_ptr == NULL) {
-                continue;
-            }
-
-            if(keybind->key_hash == pressed_keys_hash) {
-                keybind->fn_ptr();
-            }
+    if(st->inputfocus_module_idx >= 0) {
+        NModule* module = &st->modules[st->inputfocus_module_idx];
+        p_nmt_call_matching_module_keybind_funcs(module, pressed_keys_hash);
+    }
+    else {
+        for(size_t i = 0; i < st->num_loaded_modules; i++) {
+            NModule* module = &st->modules[i];
+            p_nmt_call_matching_module_keybind_funcs(module, pressed_keys_hash);
         }
     }
 }
@@ -560,9 +587,17 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
     st->last_key_in = key;
     st->last_keymod_in = mods;
     
+    p_nmt_keyinput_events_for_modules(st, key, mods);
+    
+    if(st->inputfocus_module_idx >= 0) {
+        NModule* module = &st->modules[st->inputfocus_module_idx];
+        if(module->events.fn_key_input) {
+            module->events.fn_key_input(key, mods);
+        }
+        return;
+    }
 
     nmterm_handle_key_event(st, st->terminal);
-    p_nmt_keyinput_events_for_modules(st, key, mods);
 
 
     for(size_t i = 0; i < st->num_loaded_modules; i++) {
@@ -599,7 +634,17 @@ void glfw_char_callback(GLFWwindow* window, uint32_t codepoint) {
 
         nmt_push_char_input(st, codepoint);
         st->last_char_in = codepoint;
-    
+
+
+        if(st->inputfocus_module_idx >= 0) {
+            NModule* module = &st->modules[st->inputfocus_module_idx];
+            if(module->events.fn_char_input) {
+                module->events.fn_char_input((char)codepoint);
+            }
+            return;
+        }
+        
+
         nmterm_handle_char_event(st, st->terminal);
    
         for(size_t i = 0; i < st->num_loaded_modules; i++) {
@@ -608,7 +653,6 @@ void glfw_char_callback(GLFWwindow* window, uint32_t codepoint) {
             if(module->events.fn_char_input) {
                 module->events.fn_char_input((char)codepoint);
             }
-
         }
     }
 }
@@ -734,6 +778,25 @@ void nmt_unload_image(struct image* img) {
     img->height = 0;
 }
 
+bool nmt_is_module_inputfocus_available(Nemi* st) {
+    return st->inputfocus_module_idx < 0;
+}
+
+bool nmt_module_gain_inputfocus(Nemi* st, size_t module_idx) {
+    if(!nmt_is_module_inputfocus_available(st)) {
+        return false;
+    }
+    st->inputfocus_module_idx = module_idx;
+
+    return true;
+}
+
+// Only the module which has gained inputfocus can deactivate it.
+void nmt_module_free_inputfocus(Nemi* st, size_t module_idx) {
+    if(st->inputfocus_module_idx == (ssize_t)module_idx) {
+        st->inputfocus_module_idx = -1;
+    }
+}
 
 /*
 void nemi_help(Nemi* st, const char* what) {

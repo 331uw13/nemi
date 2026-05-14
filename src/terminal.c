@@ -170,7 +170,13 @@ NTerminal* nmterm_spawn(Nemi* st, int rows, int cols, enum terminal_type term_ty
     term->line_height = st->font.char_height + st->cfg.main.line_padding;
     term->blink_timer = 0;
     term->is_altbuffer_active = false;
-    
+    term->select.active = false;
+    term->select.col_beg = 0;
+    term->select.row_beg = 0;
+    term->select.col_end = 0;
+    term->select.row_end = 0;
+    term->select.mode = SREG_MODE_NORMAL;
+
     //term->hidden_cells = calloc(term->cols * term->rows, sizeof *term->uhidden_cells);
 
     //init_scrollback_buffer(term);
@@ -190,11 +196,15 @@ NTerminal* nmterm_spawn(Nemi* st, int rows, int cols, enum terminal_type term_ty
     nmterm_init_palette(st, term);
 
     resize_nmterm_cell_buffers(term);
-   
+
+
     logprintf(LOG_INFO, "Created %s terminal (%ix%i)", 
             (term_type == SHELL_TERMINAL) ? "shell" : "echo",
             term->rows,
             term->cols);
+    
+
+    nmterm_write(term, TERM_WRITE_PTY, "clear\n");
     return term;
 }
 
@@ -304,6 +314,164 @@ void nmterm_hide_cells(NTerminal* term, bool hidden, int col, int row, int width
 */
 
 
+void nmterm_select_begin(NTerminal* term, int col_begin, int row_begin) {
+    term->select.active = true;
+    term->select.col_beg = col_begin;
+    term->select.row_beg = row_begin;
+    term->select.col_end = term->select.col_beg;
+    term->select.row_end = term->select.row_beg;
+}
+
+void nmterm_select_update(NTerminal* term, int col, int row) {
+    if(!term->select.active) {
+        return;
+    }
+
+    term->select.col_end = col;
+    term->select.row_end = row;
+}
+
+void nmterm_select_end(NTerminal* term) {
+    term->select.active = false;
+}
+
+NTerminalSelectReg nmt_orientate_select_region(const NTerminalSelectReg* reg) {
+    /*return (NTerminalSelectReg) {
+        .active = reg->active,
+        .mode = reg->mode,
+        .col_beg = reg->col_beg,
+        .col_end = reg->col_end,
+        .row_beg = MIN_VALUE(reg->row_beg, reg->row_end),
+        .row_end = MAX_VALUE(reg->row_beg, reg->row_end)
+    };
+    */
+
+    NTerminalSelectReg o_reg;
+    o_reg.active = reg->active;
+    o_reg.mode = reg->mode;
+
+
+
+    if(reg->row_beg > reg->row_end) {
+        o_reg.row_beg = reg->row_end;
+        o_reg.row_end = reg->row_beg;
+
+        o_reg.col_end = reg->col_beg;
+        o_reg.col_beg = reg->col_end;
+    }
+    else {
+        o_reg.row_beg = reg->row_beg;
+        o_reg.row_end = reg->row_end;
+        o_reg.col_beg = reg->col_beg;
+        o_reg.col_end = reg->col_end;
+    }
+
+
+
+    return o_reg;
+}
+
+
+void nmterm_select_process(Nemi* st, NTerminal* term, void(*callback)(Nemi* st, NTerminal* term, int row, int col_beg, int row_length)) {
+    
+    struct color_t color = (struct color_t) { 100, 100, 100 };
+
+    const int cw = st->font.char_width;
+    const int ch = st->font.char_height;
+
+
+    NTerminalSelectReg reg = nmt_orientate_select_region(&term->select);
+
+    for(int row = reg.row_beg; row <= reg.row_end; row++) {
+
+        switch(reg.mode) {
+        
+
+            case SREG_MODE_NORMAL:
+                {
+                    int real_row_length = nmterm_get_row_length(term, row);
+                    int row_length = real_row_length;
+                    if(row_length == 0) {
+                        break;
+                    }
+
+                    int col_beg = 0;
+
+                    if(row == reg.row_beg && row == reg.row_end) {
+                        if(reg.col_beg < reg.col_end) {
+                            col_beg = reg.col_beg;
+                            row_length = reg.col_end - reg.col_beg;
+                        }   
+                        else {
+                            col_beg = reg.col_end;
+                            row_length = reg.col_beg - reg.col_end;
+                        }
+                    }
+                    else
+                    if(row == reg.row_beg) {
+                        col_beg = reg.col_beg;
+                        row_length -= col_beg;
+                    }
+                    else
+                    if(row == reg.row_end) {
+                        row_length -= (row_length - reg.col_end);
+                    }
+
+                    if(row_length <= 0) {
+                        break;
+                    }
+
+                    if(row_length > real_row_length) {
+                        row_length = real_row_length;
+                    }
+
+                    callback(st, term, row, col_beg, row_length);
+                }
+                break;
+            
+            case SREG_MODE_LINE:
+                {
+                    int row_length = nmterm_get_row_length(term, row);
+                    int col_beg = 0;
+
+                    callback(st, term, row, col_beg, row_length);
+                }
+                break;
+
+            case SREG_MODE_BLOCK:
+                {
+                    int row_length = 0; 
+                    int col_beg = 0;
+                    if(reg.col_beg < reg.col_end) {
+                        col_beg = reg.col_beg;
+                        row_length = reg.col_end - reg.col_beg;
+                    }   
+                    else {
+                        col_beg = reg.col_end;
+                        row_length = reg.col_beg - reg.col_end;
+                    }
+
+                    callback(st, term, row, col_beg, row_length);
+                }
+                break;
+        }
+
+    }
+
+}
+
+int nmterm_get_row_length(NTerminal* term, int row) {
+    int len = 0;
+    for(int i = 0; i < term->cols; i++) {
+        char ch = nmterm_get_char(term, i, row);
+        if(ch < 0x20 || ch > 0x7E) {
+            break;
+        }
+        len++;
+    }
+
+    return len;
+}
 
 static
 bool render_cell(Nemi* st, NTerminal* term, VTermScreenCell* cell, VTermPos pos) {
@@ -321,6 +489,10 @@ bool render_cell(Nemi* st, NTerminal* term, VTermScreenCell* cell, VTermPos pos)
     int char_x = nmt_coltox(st, pos.col) * st->cfg.font.char_spacing;
     int char_y = nmt_rowtoy(st, pos.row);
  
+
+
+
+
 
     // Cell background.
 
@@ -344,6 +516,7 @@ bool render_cell(Nemi* st, NTerminal* term, VTermScreenCell* cell, VTermPos pos)
                     bg_color);
         }
     }
+
 
     // Cell foreground.
     // And attributes.
@@ -518,7 +691,7 @@ void nmterm_render(Nemi* st, NTerminal* term) {
     if(term->type != ECHO_TERMINAL) {
         nmterm_render_cursor(st, term);
     }
-    
+   
     memset(term->dirty_rows, 0, term->rows * sizeof *term->dirty_rows);
 }
 
@@ -555,10 +728,6 @@ void nmterm_write(NTerminal* term, enum term_write_target target, char* fmt, ...
 }
 
 void nmterm_handle_char_event(Nemi* st, NTerminal* term) {
-    if(st->term_ignore_char_input_counter > 0) {
-        return;
-    }
-
     if(term == st->messages) {
         return; 
     }
@@ -569,10 +738,6 @@ void nmterm_handle_char_event(Nemi* st, NTerminal* term) {
 
 
 void nmterm_handle_key_event(Nemi* st, NTerminal* term) {
-    if(st->term_ignore_key_input_counter > 0) {
-        return;
-    }
- 
     if(term == st->messages) {
         return; 
     }  
@@ -751,16 +916,6 @@ char nmterm_get_char(NTerminal* term, int column, int row) {
     return cell.chars[0];
 }
 
-int nmterm_get_cursor_x(NTerminal* term) {
-    VTermPos vtcurs_pos = (VTermPos){ 0, 0 };
-    vterm_state_get_cursorpos(term->vtstate, &vtcurs_pos);
-    return vtcurs_pos.col;
-}
-int nmterm_get_cursor_y(NTerminal* term) {
-    VTermPos vtcurs_pos = (VTermPos){ 0, 0 };
-    vterm_state_get_cursorpos(term->vtstate, &vtcurs_pos);
-    return vtcurs_pos.row;
-}
 
 void nmterm_set_cell_custom_bg(NTerminal* term, VTermPos pos, int hex_rgb_color) {
     vterm_screen_set_cell_custom_bg(term->vtscrn, 
