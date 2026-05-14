@@ -11,7 +11,8 @@ Modules are dynamically loaded libraries. (read more from documentation)
 
 >[!NOTE]
 > Work in progress...
-* Working with modules: https://github.com/331uw13/nemi/tree/main/documentation/modules
+* Modules: https://github.com/331uw13/nemi/tree/main/documentation/modules
+* Configuration: https://github.com/331uw13/nemi/tree/main/documentation/configuration
 * Development: https://github.com/331uw13/nemi/tree/main/documentation/development
 
 
