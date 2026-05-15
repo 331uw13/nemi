@@ -3,7 +3,7 @@
 * You can find all the configuration files from `./congfigs` directory.
 
 ## nemi.ini
-```
+```ini
 [MAIN_SETTINGS]
 shell = /bin/bash
 padding_x = 10.0
@@ -17,15 +17,6 @@ soft_blink_pow = 1.0
 blink_speed = 9.0
 show_frametime = false
 hide_mouse = false
-
-# If this is set to something you
-# have installed, you can open files with it from scripts.
-favourite_texteditor = vim
-
-# This is the directory where the source code for Nemi is.
-# Set empty if you dont need it.
-source_dir = .
-recompile_num_cores = 8
 ```
 
 
@@ -33,7 +24,7 @@ recompile_num_cores = 8
 
 * Font `filepath` is searched from `./fonts` directory.
 
-```
+```ini
 [FONT_SETTINGS]     
 filepath = Topaz-8.ttf
 center_char_to_cell = true
@@ -50,7 +41,7 @@ underline_offset = 1.3
 * If `include_callee` is set to "true" the log includes the function location in the source code where the message came from.
 
 
-```
+```ini
 [NEMI_LOG_CONFIG]   
 enabled = true
 output = <print>    
@@ -65,32 +56,35 @@ enable_errors = true
 
 * Color theme allows for hexadecimal color code and RGB code.
 
-```
+```ini
 [COLOR_THEME]
-                    
-black = #000000     
-red = ( 180, 30, 30 )
-green = ( 30, 180, 30 )
-yellow = ( 180, 180, 30 )
-blue = ( 30, 30, 180 )
-magenta = ( 180, 30, 180 )
-cyan = ( 30, 180, 180 )
+
+black = #000000
+red = ( 180, 50, 50 )
+green = ( 50, 180, 50 )
+yellow = ( 180, 180, 50 )
+blue = ( 50, 50, 180 )
+magenta = ( 180, 50, 180 )
+cyan = ( 50, 180, 180 )
 white = ( 180, 180, 180 )
 
 bright_black = ( 70, 70, 70 )
-bright_red = ( 255, 30, 30 )
-bright_green = ( 30, 255, 30 )
-bright_yellow = ( 255, 255, 30 )
-bright_blue = ( 30, 30, 255 )
-bright_magenta = ( 255, 30, 255 )
-bright_cyan = ( 30, 255, 255 )
+bright_red = ( 255, 50, 50 )
+bright_green = ( 50, 255, 50 )
+bright_yellow = ( 255, 255, 50 )
+bright_blue = ( 50, 50, 255 )
+bright_magenta = ( 255, 50, 255 )
+bright_cyan = ( 50, 255, 255 )
 bright_white = ( 255, 255, 255 )
 
-bg = ( 4, 4, 10 )
+bg = ( 10, 10, 10 )
 fg = ( 200, 180, 160 )
 
 messages_fg = #A5FFA5
 messages_bg = #151515
 messages_border = #FF0000
+
+cursor = ( 30, 70, 30 )
+select = ( 60, 60, 60 )
 ```
 
