@@ -9,7 +9,7 @@ Modules are dynamically loaded libraries. (read more from documentation)
 
 
 
-## Build instructions
+# Build instructions
 ```bash
 $ git clone https://github.com/331uw13/nemi.git
 $ cd nemi
@@ -22,7 +22,12 @@ $ (cd libs/libvterm-0.3.3/ && make)
 # in the project root directory.
 $ make
 ```
-
+### External Dependencies
+```bash
+GLFW
+GLEW
+freetype2
+```
 
 # Documentation
 
