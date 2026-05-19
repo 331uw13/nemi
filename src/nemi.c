@@ -681,6 +681,17 @@ void glfw_window_resize_callback(GLFWwindow* window, int width, int height) {
     leaf_create_framebuffer(&st->term_cells_framebuffer, st->lfctx->win_width, st->lfctx->win_height);
     leaf_create_framebuffer(&st->altrender_framebuffer, st->lfctx->win_width, st->lfctx->win_height);
     //clear_region(st, 0, 0, st->lfctx->win_width, st->lfctx->win_height);
+
+
+    // Inform modules.
+
+    for(size_t i = 0; i < st->num_loaded_modules; i++) {
+        NModule* module = &st->modules[i];
+
+        if(module->events.fn_window_resized) {
+            module->events.fn_window_resized();
+        }
+    }
 }
 
 void nmt_push_key_input(Nemi* st, int key) {

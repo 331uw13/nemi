@@ -203,8 +203,9 @@ NTerminal* nmterm_spawn(Nemi* st, int rows, int cols, enum terminal_type term_ty
             term->rows,
             term->cols);
     
-
-    nmterm_write(term, TERM_WRITE_PTY, "clear\n");
+    if(term_type != ECHO_TERMINAL) {
+        nmterm_write(term, TERM_WRITE_PTY, "clear\n");
+    }
     return term;
 }
 
@@ -642,15 +643,15 @@ void nmterm_render(Nemi* st, NTerminal* term) {
         for(int col = 0; col < term->cols; col++) {
             int actual_row = row + term->yscroll;
            
-            VTermScreenCell* back_cell  = &term->back_cell_buffer[col + row * term->cols];
-            VTermScreenCell* front_cell = &term->front_cell_buffer[col + row * term->cols];
+            VTermScreenCell* back_cell  = &term->back_cell_buffer  [col + row * term->cols];
+            VTermScreenCell* front_cell = &term->front_cell_buffer [col + row * term->cols];
 
             // Get up to date cell to 'front_cell'
             if(!vterm_screen_get_cell(term->vtscrn, (VTermPos){ actual_row, col }, front_cell)) {
                 continue;
             }
 
-            if(!term->dirty_rows[row] && !do_cells_match(front_cell, back_cell)) {
+            if(!do_cells_match(front_cell, back_cell)) {
                 term->dirty_rows[row] = true;
             }
             
@@ -962,6 +963,7 @@ void swap_int(int* a, int* b) {
     *b = tmp;
 }
 
+/*
 void nmterm_copy_to_clipboard(Nemi* st, NTerminal* term, const char* type,
         int start_col, int start_row, int end_col, int end_row) {
     struct string_t buffer = string_create(0);
@@ -1025,14 +1027,10 @@ void nmterm_copy_to_clipboard(Nemi* st, NTerminal* term, const char* type,
     glfwSetClipboardString(st->lfctx->glfw_win, buffer.bytes);
 
     printf("%s: copied %li bytes to clipboard.\n", __func__, strlen(buffer.bytes));
-    /*
-    printf("\033[90m=============================\033[0m\n");
-    printf("\033[32m%s\033[0m\n", buffer.bytes);
-    printf("\033[2;90m=============================\033[0m\n");
-    */
 
     free_string(&buffer);
 }
+*/
 
 void nmterm_yscroll(NTerminal* term, int offset) {
     nmterm_set_row_dirty(term, term->cursor_row - term->yscroll);
@@ -1043,4 +1041,41 @@ void nmterm_yscroll_to(NTerminal* term, int point) {
     nmterm_set_row_dirty(term, term->cursor_row - term->yscroll);
     term->yscroll = point;
 }
+
+
+
+
+
+void nmterm_clear(NTerminal* term) {
+    nmterm_write(term, TERM_WRITE_VTERM, "\033[2J\033[H\033[0m");
+}
+
+void nmterm_clear_row(NTerminal* term, int row) {
+    nmterm_mv_cursor(term, row, 0);
+    nmterm_write(term, TERM_WRITE_VTERM, "\033[2K");
+}
+
+void nmterm_mv_cursor(NTerminal* term, int row, int column) {
+    nmterm_write(term, TERM_WRITE_VTERM, "\033[%i;%iH", row+1, column+1);
+}
+
+void nmterm_mv_putchr(NTerminal* term, int row, int column, char chr) {
+    nmterm_mv_cursor(term, row, column);
+    nmterm_write(term, TERM_WRITE_VTERM, "%c", chr);
+}
+
+void nmterm_mv_putstr_nullterm(NTerminal* term, int row, int column, char* str) {
+    nmterm_mv_cursor(term, row, column);
+    nmterm_write(term, TERM_WRITE_VTERM, "%s", row, column, str);
+}
+
+void nmterm_mv_putstrn(NTerminal* term, int row, int column, char* str, size_t len) {
+    nmterm_mv_cursor(term, row, column);
+    vterm_input_write(term->vt, str, len);
+}
+
+
+
+
+
 

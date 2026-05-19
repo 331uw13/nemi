@@ -30,7 +30,7 @@ bool nmt_module_load(NModule* module, const char* path) {
     }
 
 
-    dlerror(); // Clear any existing error.
+    //dlerror(); // Clear any existing error.
     char* error = NULL;
 
 
@@ -58,9 +58,10 @@ bool nmt_module_load(NModule* module, const char* path) {
     module->fn_quit = dlsym(module->address, "module_quit");
     
     // Events are optional.
-    module->events.fn_render     = dlsym(module->address, "module_event_render");
-    module->events.fn_char_input = dlsym(module->address, "module_event_char_input");
-    module->events.fn_key_input  = dlsym(module->address, "module_event_key_input");
+    module->events.fn_render          = dlsym(module->address, "module_event_render");
+    module->events.fn_char_input      = dlsym(module->address, "module_event_char_input");
+    module->events.fn_key_input       = dlsym(module->address, "module_event_key_input");
+    module->events.fn_window_resized  = dlsym(module->address, "module_event_window_resized");
 
     return true;
 }

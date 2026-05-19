@@ -127,4 +127,14 @@ void nmterm_copy_to_clipboard(Nemi* st, NTerminal* term, const char* type,
                                     int start_col, int start_row, int end_col, int end_row);
 */
 
+
+void nmterm_clear        (NTerminal* term);
+void nmterm_clear_row    (NTerminal* term, int row);
+void nmterm_mv_cursor    (NTerminal* term, int row, int column);
+void nmterm_mv_putchr    (NTerminal* term, int row, int column, char chr);
+void nmterm_mv_putstr_nullterm  (NTerminal* term, int row, int column, char* str);
+void nmterm_mv_putstrn          (NTerminal* term, int row, int column, char* str, size_t len);
+
+
+
 #endif

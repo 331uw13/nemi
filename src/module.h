@@ -40,6 +40,7 @@ typedef struct NModule_t {
         void(*fn_render)();
         void(*fn_char_input)(char c);
         void(*fn_key_input)(int key, int modifiers);
+        void(*fn_window_resized)();
         // ...
 
     }
