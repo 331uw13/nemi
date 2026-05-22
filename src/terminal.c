@@ -182,7 +182,11 @@ NTerminal* nmterm_spawn(Nemi* st, int rows, int cols, enum terminal_type term_ty
     //init_scrollback_buffer(term);
     term->vt = vterm_new(rows, cols);
     
+    // Even tho UTF-8 is not supported by font renderer
+    // at the moment. Some applications are *completely* unusable
+    // if this is set to 'false'
     vterm_set_utf8(term->vt, true);
+
     term->vtscrn = vterm_obtain_screen(term->vt);
     term->vtstate = vterm_obtain_state(term->vt);
 
@@ -265,7 +269,9 @@ void nmterm_read(Nemi* st, NTerminal* term) {
     
         times_read++;
         if(times_read > 200) {
-            break;
+            // Continue later.
+            // We would otherwise block all input and rendering for a while.
+            break; 
         }
     }
 
@@ -279,12 +285,14 @@ void nmterm_read(Nemi* st, NTerminal* term) {
 
 
 
+/*
 static
-struct color_t vtermcolor_to_leafcolor(VTermColor* c) {
+void vtermcolor_to_leafcolor(VTermColor* c) {
     return (struct color_t) {
         c->rgb.red, c->rgb.green, c->rgb.blue
     };
 }
+*/
 
 /*
 static
@@ -474,6 +482,23 @@ int nmterm_get_row_length(NTerminal* term, int row) {
     return len;
 }
 
+
+static
+struct color_t convert_cell_color_or_default(NTerminal* term, VTermColor* vtcolor, struct color_t default_color) {
+    struct color_t ret_color = default_color;
+    if(VTERM_COLOR_IS_INDEXED(vtcolor)) {
+        vterm_state_convert_color_to_rgb(term->vtstate, vtcolor);
+    }
+
+    if(VTERM_COLOR_IS_RGB(vtcolor)) {
+        ret_color.r = vtcolor->rgb.red;
+        ret_color.g = vtcolor->rgb.green;
+        ret_color.b = vtcolor->rgb.blue;
+    }
+
+    return ret_color;
+}
+
 static
 bool render_cell(Nemi* st, NTerminal* term, VTermScreenCell* cell, VTermPos pos) {
    
@@ -481,11 +506,13 @@ bool render_cell(Nemi* st, NTerminal* term, VTermScreenCell* cell, VTermPos pos)
         return false;
     }
 
+    /*
     // Unicode is not supported at least for now.
     // So just skip anything that is not ascii character.
     if(cell->chars[0] < 0x20 || cell->chars[0] > 0x7E) {
         return false;
     }
+    */
 
     int char_x = nmt_coltox(st, pos.col) * st->cfg.font.char_spacing;
     int char_y = nmt_rowtoy(st, pos.row);
@@ -493,55 +520,56 @@ bool render_cell(Nemi* st, NTerminal* term, VTermScreenCell* cell, VTermPos pos)
 
 
 
-
-
-    // Cell background.
-
-    struct color_t bg_color = st->cfg.colors[NEMI_COLOR_BG];
-
-    if(VTERM_COLOR_IS_INDEXED(&cell->bg)) {
-        vterm_state_convert_color_to_rgb(term->vtstate, &cell->bg);
-    }
-
-    if(VTERM_COLOR_IS_RGB(&cell->bg)) {
-        bg_color = vtermcolor_to_leafcolor(&cell->bg);
-        if(bg_color.r != st->cfg.colors[NEMI_COLOR_BG].r
-        || bg_color.g != st->cfg.colors[NEMI_COLOR_BG].g
-        || bg_color.b != st->cfg.colors[NEMI_COLOR_BG].b) {
-            
-            leaf_draw_rect(
-                    char_x, 
-                    char_y,
-                    st->font.char_width,
-                    st->font.char_height,
-                    bg_color);
-        }
-    }
-
-
-    // Cell foreground.
-    // And attributes.
-
-    struct color_t fg_color = st->cfg.colors[NEMI_COLOR_FG];
-
-
-    if(VTERM_COLOR_IS_INDEXED(&cell->fg)) {
-        vterm_state_convert_color_to_rgb(term->vtstate, &cell->fg);
-    }
-
-    if(VTERM_COLOR_IS_RGB(&cell->fg)) {
-        fg_color = vtermcolor_to_leafcolor(&cell->fg);    
-    }
     
+    bool draw_bg = false;
+
+    struct color_t fg_color = convert_cell_color_or_default(term, &cell->fg, st->cfg.colors[NEMI_COLOR_FG]);
+    struct color_t bg_color = convert_cell_color_or_default(term, &cell->bg, st->cfg.colors[NEMI_COLOR_BG]);
+
+
+    if(bg_color.r != st->cfg.colors[NEMI_COLOR_BG].r
+    || bg_color.g != st->cfg.colors[NEMI_COLOR_BG].g
+    || bg_color.b != st->cfg.colors[NEMI_COLOR_BG].b) {
+        draw_bg = true;
+    }
+
+   
+
     if(cell->attrs.blink) {
         fg_color = leaf_color_lerp(fg_color, bg_color, term->blink_timer);
     }
 
+    if(cell->attrs.reverse) {
+        struct color_t tmp = fg_color;
+        fg_color = bg_color;
+        bg_color = tmp;
+
+        draw_bg = true;
+    }
 
     st->font.italic = (cell->attrs.italic) ? st->cfg.font.italic_tilt : 0.0f;
 
+
+
+    // Font renderer dont support UTF-8 at the moment.
+    char cell_char = cell->chars[0];
+    if(cell_char < 0x20 || cell_char > 0x7E) {
+        fg_color = (struct color_t) { 255, 20, 20 };
+        cell_char = '?';
+    }
+
+
+    if(draw_bg) {
+        leaf_draw_rect(
+                char_x, 
+                char_y,
+                st->font.char_width,
+                st->font.char_height + st->cfg.main.line_padding,
+                bg_color);
+    }
+
     leaf_set_font_color(&st->font, fg_color);
-    leaf_draw_char(&st->font, char_x, char_y, cell->chars[0]);
+    leaf_draw_char(&st->font, char_x, char_y, cell_char);
 
 
     if(cell->attrs.underline) {
@@ -648,14 +676,16 @@ void nmterm_render(Nemi* st, NTerminal* term) {
 
             // Get up to date cell to 'front_cell'
             if(!vterm_screen_get_cell(term->vtscrn, (VTermPos){ actual_row, col }, front_cell)) {
+                printf("WHAT?\n");
                 continue;
             }
 
             if(!do_cells_match(front_cell, back_cell)) {
                 term->dirty_rows[row] = true;
+                copy_cell(front_cell, back_cell);
             }
-            
-            copy_cell(front_cell, back_cell);
+
+            //copy_cell(front_cell, back_cell);
         }
     }
 
@@ -1074,7 +1104,11 @@ void nmterm_mv_putstrn(NTerminal* term, int row, int column, char* str, size_t l
     vterm_input_write(term->vt, str, len);
 }
 
-
+void nmterm_clear_row_part(NTerminal* term, int row, int column_begin, int column_end) {
+    for(int i = column_begin; i < column_end; i++) {
+        nmterm_mv_putchr(term, row, i, ' ');
+    }
+}
 
 
 

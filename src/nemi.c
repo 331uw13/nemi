@@ -12,6 +12,7 @@
 #include "nemi_config.h"
 #include "memory.h"
 #include "fileio.h"
+#include "glfw_callbacks.h"
 
 #include "thirdparty/stb_ds.h"
 
@@ -20,10 +21,6 @@
 static Nemi* g_nemi_state = NULL;
 
 
-void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
-void glfw_window_resize_callback(GLFWwindow* window, int width, int height);
-void glfw_scroll_callback(GLFWwindow* window, double x_offset, double y_offset);;
-void glfw_char_callback(GLFWwindow* window, uint32_t codepoint);
 
 Nemi* nmt_getst() {
     return g_nemi_state;
@@ -100,11 +97,13 @@ Nemi* nmt_start_session(NemiFilepaths filepaths) {
 
 
     glfwSetWindowUserPointer(st->lfctx->glfw_win, st);
+    glfwSetInputMode          (st->lfctx->glfw_win, GLFW_STICKY_KEYS, GLFW_FALSE);
     glfwSetKeyCallback        (st->lfctx->glfw_win, glfw_key_callback);
     glfwSetCharCallback       (st->lfctx->glfw_win, glfw_char_callback);
     glfwSetScrollCallback     (st->lfctx->glfw_win, glfw_scroll_callback);
     glfwSetWindowSizeCallback (st->lfctx->glfw_win, glfw_window_resize_callback);
-    glfwSetInputMode          (st->lfctx->glfw_win, GLFW_STICKY_KEYS, GLFW_FALSE);
+    glfwSetCursorPosCallback  (st->lfctx->glfw_win, glfw_cursor_position_callback);
+    glfwSetMouseButtonCallback(st->lfctx->glfw_win, glfw_mouse_button_callback);
 
     // This will allocate memory for the renderer's
     // vertex buffer object. Only one is used. 
@@ -398,10 +397,11 @@ void nmt_update_frame(Nemi* st) {
 
     st->last_char_in = 0;
     st->last_key_in = 0;
+    st->last_mouse_button = 0;
     glfwSwapBuffers(st->lfctx->glfw_win);
     
     glfwPollEvents();
-    usleep(10000);
+    //usleep(10000);
 
     st->frame_time = glfwGetTime() - st->frame_time_begin;
 
@@ -501,8 +501,7 @@ void p_nmt_call_matching_module_keybind_funcs(NModule* module, size_t keys_hash)
     }
 }
 
-static
-void p_nmt_keyinput_events_for_modules(Nemi* st, int key, int mods) {
+void nmt_keyinput_events_for_modules(Nemi* st, int key, int mods) {
     if(st->num_loaded_modules == 0) {
         return;
     }
@@ -560,136 +559,6 @@ void p_nmt_keyinput_events_for_modules(Nemi* st, int key, int mods) {
         for(size_t i = 0; i < st->num_loaded_modules; i++) {
             NModule* module = &st->modules[i];
             p_nmt_call_matching_module_keybind_funcs(module, pressed_keys_hash);
-        }
-    }
-}
-
-void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    (void)scancode; 
-    
-    if(action != GLFW_PRESS && action != GLFW_REPEAT) {
-        return;
-    }
-
-    
-    Nemi* st = (Nemi*)glfwGetWindowUserPointer(window);
-    nmt_push_key_input(st, key);
-
-    st->last_key_in = key;
-    st->last_keymod_in = mods;
-    
-    p_nmt_keyinput_events_for_modules(st, key, mods);
-    
-    if(st->inputfocus_module_idx >= 0) {
-        NModule* module = &st->modules[st->inputfocus_module_idx];
-        if(module->events.fn_key_input) {
-            module->events.fn_key_input(key, mods);
-        }
-        return;
-    }
-
-    nmterm_handle_key_event(st, st->terminal);
-
-
-    for(size_t i = 0; i < st->num_loaded_modules; i++) {
-        NModule* module = &st->modules[i];
-
-        if(module->events.fn_key_input) {
-            module->events.fn_key_input(key, mods);
-        }
-
-    }
-
-    /*
-    if(mods == GLFW_MOD_CONTROL) {
-        switch(key) {
-       
-            case GLFW_KEY_SPACE:
-                nmt_switch_terminal_ptr(st, st->terminal_prev);
-                break;
-
-            case GLFW_KEY_X:
-                nmt_switch_terminal_ptr(st, st->messages);
-                break;
-
-                //...
-        }    
-    }
-    */
-
-}
-
-void glfw_char_callback(GLFWwindow* window, uint32_t codepoint) {
-    Nemi* st = (Nemi*)glfwGetWindowUserPointer(window);
-    if(codepoint >= 0x20 && codepoint <= 0x7E) {
-
-        nmt_push_char_input(st, codepoint);
-        st->last_char_in = codepoint;
-
-
-        if(st->inputfocus_module_idx >= 0) {
-            NModule* module = &st->modules[st->inputfocus_module_idx];
-            if(module->events.fn_char_input) {
-                module->events.fn_char_input((char)codepoint);
-            }
-            return;
-        }
-        
-
-        nmterm_handle_char_event(st, st->terminal);
-   
-        for(size_t i = 0; i < st->num_loaded_modules; i++) {
-            NModule* module = &st->modules[i];
-
-            if(module->events.fn_char_input) {
-                module->events.fn_char_input((char)codepoint);
-            }
-        }
-    }
-}
-
-void glfw_scroll_callback(GLFWwindow* window, double x_offset, double y_offset) {
-    //Nemi* st = (Nemi*)glfwGetWindowUserPointer(window);
-
-    (void)window;
-    (void)x_offset;
-    (void)y_offset;
-
-    // Currently not used...
-}
-
-void glfw_window_resize_callback(GLFWwindow* window, int width, int height) {
-    Nemi* st = (Nemi*)glfwGetWindowUserPointer(window);
-
-    st->lfctx->win_width = width;
-    st->lfctx->win_height = height;
-
-    glViewport(0, 0, width, height);
-
-    st->win_cols = width / st->font.char_width;
-    st->win_rows = height / (st->font.char_height + st->cfg.main.line_padding);
-
-    st->win_cols -= 1;
-    st->win_rows -= 1;
-
-    for(size_t i = 0; i < st->num_terminals; i++) {
-        nmterm_handle_resize_event(st, &st->terminals[i]);
-    }
-
-    leaf_free_framebuffer(&st->term_cells_framebuffer);
-    leaf_free_framebuffer(&st->altrender_framebuffer);
-    leaf_create_framebuffer(&st->term_cells_framebuffer, st->lfctx->win_width, st->lfctx->win_height);
-    leaf_create_framebuffer(&st->altrender_framebuffer, st->lfctx->win_width, st->lfctx->win_height);
-    //clear_region(st, 0, 0, st->lfctx->win_width, st->lfctx->win_height);
-
-
-    // Inform modules.
-
-    for(size_t i = 0; i < st->num_loaded_modules; i++) {
-        NModule* module = &st->modules[i];
-
-        if(module->events.fn_window_resized) {
-            module->events.fn_window_resized();
         }
     }
 }

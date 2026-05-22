@@ -74,7 +74,10 @@ typedef struct Nemi_t {
     int  last_key_in;
     char last_char_in;
     int  last_keymod_in;
-   
+    int  last_mouse_button;
+    float mouse_x;
+    float mouse_y;
+
     // Input ring buffers
     int  key_inputs  [NEMI_KEYINBUF_MAX];  // TODO: Idk if these are actually needed anyway...
     char char_inputs [NEMI_CHARINBUF_MAX]; // ^
@@ -143,6 +146,7 @@ void nmt_update_frame(Nemi* st);
 bool nmt_is_module_inputfocus_available(Nemi* st);
 bool nmt_module_gain_inputfocus(Nemi* st, size_t module_idx);
 void nmt_module_free_inputfocus(Nemi* st, size_t module_idx);
+void nmt_keyinput_events_for_modules(Nemi* st, int key, int mods);
 
 size_t nmt_hash_glfwkeys(const int* keys, size_t num_keys);
 void nmt_assign_module_keybind(Nemi* st, size_t module_idx, void(*fnptr)(), const int* keys, size_t num_keys);
