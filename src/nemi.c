@@ -397,7 +397,7 @@ void nmt_update_frame(Nemi* st) {
 
     st->last_char_in = 0;
     st->last_key_in = 0;
-    st->last_mouse_button = 0;
+    st->last_mouse_button = -1;
     glfwSwapBuffers(st->lfctx->glfw_win);
     
     glfwPollEvents();

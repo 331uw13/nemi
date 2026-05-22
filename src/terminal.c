@@ -676,7 +676,6 @@ void nmterm_render(Nemi* st, NTerminal* term) {
 
             // Get up to date cell to 'front_cell'
             if(!vterm_screen_get_cell(term->vtscrn, (VTermPos){ actual_row, col }, front_cell)) {
-                printf("WHAT?\n");
                 continue;
             }
 
