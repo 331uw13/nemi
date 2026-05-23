@@ -62,8 +62,8 @@ static const char RENDERER_TEX_FRAGMENT_SHADER_SRC[] = {
 };
 
 
-struct leaf_ctx_t* leaf_open(const char* title, int width, int height, int flags) {
-    struct leaf_ctx_t* ctx = malloc(sizeof *ctx);
+LeafCtx* leaf_open(const char* title, int width, int height, int flags) {
+    LeafCtx* ctx = malloc(sizeof *ctx);
     if(!ctx) {
         goto out;
     }
@@ -127,7 +127,7 @@ out:
 }
 
 
-void leaf_quit(struct leaf_ctx_t* ctx) {
+void leaf_quit(LeafCtx* ctx) {
     if(!ctx) {
         return;
     }
@@ -140,7 +140,7 @@ void leaf_quit(struct leaf_ctx_t* ctx) {
     free(ctx);
 }
 
-void leaf_init_renderer(struct leaf_ctx_t* ctx, size_t vbo_memsize) {    
+void leaf_init_renderer(LeafCtx* ctx, size_t vbo_memsize) {    
     glGenVertexArrays(1, &ctx->renderer_vao);
     glBindVertexArray(ctx->renderer_vao);
 
@@ -209,7 +209,7 @@ void leaf_init_renderer(struct leaf_ctx_t* ctx, size_t vbo_memsize) {
         (RENDERER_TEX_VERTEX_SHADER_SRC, RENDERER_TEX_FRAGMENT_SHADER_SRC);
 }
 
-void leaf_free_renderer(struct leaf_ctx_t* ctx) {
+void leaf_free_renderer(LeafCtx* ctx) {
     if(ctx->renderer_vao > 0) {
         glDeleteVertexArrays(1, &ctx->renderer_vao);
         ctx->renderer_vao = 0;
@@ -224,7 +224,7 @@ void leaf_free_renderer(struct leaf_ctx_t* ctx) {
     }
 }
 
-void leaf_render_vertices(struct leaf_ctx_t* ctx, float* vertices, size_t vertices_memsize) {   
+void leaf_render_vertices(LeafCtx* ctx, float* vertices, size_t vertices_memsize) {   
     bool divisible = !(vertices_memsize % 5); // 2(x, y) + 3(r, g, b) = 5
     if(!divisible) {
         fprintf(stderr, "(%s) %s(): Vertex data format is incorrect.\n",
@@ -263,7 +263,7 @@ void leaf_render_vertices(struct leaf_ctx_t* ctx, float* vertices, size_t vertic
     glBindVertexArray(0);
 }
 
-void leaf_renderer_flush(struct leaf_ctx_t* ctx) {
+void leaf_renderer_flush(LeafCtx* ctx) {
 
     glBindBuffer(GL_ARRAY_BUFFER, ctx->renderer_vbo);
     glBindVertexArray(ctx->renderer_vao);
@@ -312,7 +312,7 @@ float lerp(float x, float y, float t) {
     return x + t * (y - x);
 }
 
-struct color_t leaf_color_lerp(struct color_t x, struct color_t y, float t) {
+RGBColor leaf_color_lerp(RGBColor x, RGBColor y, float t) {
 
     float ir = lerp((float)x.r, (float)y.r, t);
     float ig = lerp((float)x.g, (float)y.g, t);
@@ -323,18 +323,18 @@ struct color_t leaf_color_lerp(struct color_t x, struct color_t y, float t) {
     ig = (ig < 0.0f) ? 0.0f : (ig > (float)UINT8_MAX) ? (float)UINT8_MAX : ig;
     ib = (ib < 0.0f) ? 0.0f : (ib > (float)UINT8_MAX) ? (float)UINT8_MAX : ib;
 
-    return (struct color_t) { (uint8_t)ir, (uint8_t)ig, (uint8_t)ib };
+    return (RGBColor) { (uint8_t)ir, (uint8_t)ig, (uint8_t)ib };
 }
 
-struct color_t hexrgb_to_color_type(int hexrgb) {
-    return (struct color_t) {
+RGBColor hexrgb_to_color_type(int hexrgb) {
+    return (RGBColor) {
         (hexrgb & 0xFF0000) >> 16,
         (hexrgb & 0x00FF00) >> 8,
         (hexrgb & 0x0000FF)
     };
 }
 
-bool leaf_create_framebuffer(struct framebuffer* fb, uint32_t width, uint32_t height) {
+bool leaf_create_framebuffer(LeafFramebuffer* fb, uint32_t width, uint32_t height) {
     fb->fbo = 0;
     fb->texture = 0;
     fb->width = 0;
@@ -371,12 +371,12 @@ bool leaf_create_framebuffer(struct framebuffer* fb, uint32_t width, uint32_t he
 }
 
 
-void leaf_free_framebuffer(struct framebuffer* fb) {
+void leaf_free_framebuffer(LeafFramebuffer* fb) {
     glDeleteFramebuffers(1, &fb->fbo);
     glDeleteTextures(1, &fb->texture);
 }
 
-void leaf_use_framebuffer(struct framebuffer* fb) {
+void leaf_use_framebuffer(LeafFramebuffer* fb) {
     if(fb == NULL) {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         return;

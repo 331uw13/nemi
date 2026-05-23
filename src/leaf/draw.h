@@ -10,7 +10,7 @@
 // Returns the drawn character width.
 float leaf_draw_char
 (
-    struct font_t* font,
+    LeafFont* font,
     int pos_x,
     int pos_y,
     char ch
@@ -20,7 +20,7 @@ float leaf_draw_char
 // Returns the drawn text width.
 float leaf_draw_text
 (
-    struct font_t* font,
+    LeafFont* font,
     int pos_x,
     int pos_y,
     char* str,
@@ -29,7 +29,7 @@ float leaf_draw_text
 
 float leaf_draw_text_fmt
 (
-    struct font_t* font,
+    LeafFont* font,
     int pos_x,
     int pos_y,
     const char* fmt,
@@ -42,7 +42,7 @@ void leaf_draw_rect
     float pos_y,
     float width,
     float height,
-    struct color_t color
+    RGBColor color
 );
 
 
@@ -59,7 +59,7 @@ void leaf_draw_texture_rect
     float width,
     float height,
     uint32_t texture,
-    struct color_t color,
+    RGBColor color,
     int options
 );
 
@@ -69,7 +69,7 @@ void leaf_draw_circle
     float pos_y,
     float radius,
     int num_triangles,
-    struct color_t color
+    RGBColor color
 );
 
 #define LEAF_RECT_FADE_HORIZONTAL 0
@@ -80,14 +80,14 @@ void leaf_draw_rect_fade
     float pos_y,
     float width,
     float height,
-    struct color_t color_A,
-    struct color_t color_B,
+    RGBColor color_A,
+    RGBColor color_B,
     int fade_dir
 );
 
 
-struct leaf_ctx_t; // leaf_context
-void leaf_set_drawing_context(struct leaf_ctx_t* leaf_ctx);
+typedef struct LeafCtx_t LeafCtx; // leaf_context
+void leaf_set_drawing_context(LeafCtx* leaf_ctx);
 
 
 #endif

@@ -19,13 +19,13 @@ Available events:
 void module_event_render();
 void module_event_key_input(int key, int key_modifiers);
 void module_event_char_input(char ch);
+void module_event_window_resized();
 ```
 
 # Examples
 ## "Hello world"
 ```c
 #include "nemi.h"
-#include "log.h"
 
 // All modules need this function. It is called when the module has been loaded succesfully.
 // it also gives you the module index.
@@ -42,7 +42,6 @@ void module_quit() {
 ## Keybinds
 ```c
 #include "nemi.h"
-#include "log.h"
 
 // Nemi uses GLFW under the hood,
 // you can find the key definitions from https://www.glfw.org/docs/latest/group__keys.html
@@ -71,7 +70,6 @@ void module_quit() {
 ## Shape Rendering
 ```c
 #include "nemi.h"
-#include "log.h"
 
 
 void module_event_render() {
@@ -88,8 +86,7 @@ void module_event_render() {
   float y = 100.0f;
   float radius = 50.0f;
   int num_triangles = 8;
-  struct color_t color = (struct color_t) { 255, 255, 255 };
-  leaf_draw_circle(x, y, radius, num_triangles, color);
+  leaf_draw_circle(x, y, radius, num_triangles, (RGBColor){ 255, 255, 255 });
 }
 
 void module_load(size_t module_idx) {
@@ -122,7 +119,7 @@ void module_event_render() {
         texture_width,
         texture_height,
         texture,
-        (struct color_t) { 200, 200, 200 }, // Texture tint.
+        (RGBColor) { 200, 200, 200 }, // Texture tint.
         LEAF_TEXTURE_NO_OPTIONS // Read 'src/leaf/draw.h' for available options.
     );
 }

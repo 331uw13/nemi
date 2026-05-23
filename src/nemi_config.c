@@ -96,7 +96,7 @@ int config_handler__font_ini
     const char* value
 ){
     (void)section;
-    struct nemi_config* cfg = (struct nemi_config*)userptr;
+    NemiConfig* cfg = (NemiConfig*)userptr;
 
     if(STR_MATCH(name, "filepath")) {
         cfg->font.filepath = strdup(value);
@@ -142,7 +142,7 @@ int config_handler__nemi_ini
     const char* value
 ){
     (void)section;
-    struct nemi_config* cfg = (struct nemi_config*)userptr;
+    NemiConfig* cfg = (NemiConfig*)userptr;
 
     if(STR_MATCH(name, "padding_x")) {
         cfg->main.padding_x = atof(value);
@@ -198,7 +198,7 @@ enum colortext_mode {
     COLORTEXT_MODE_RGB  // ( 0, 0, 0 )
 };
 
-bool colortext_to_values(const char* str, struct color_t* color) {
+bool colortext_to_values(const char* str, RGBColor* color) {
     if(!str) {
         return false;
     }
@@ -288,7 +288,7 @@ int config_handler__color_ini
 ){
     (void)section;
 
-    struct color_t* colors = (struct color_t*)userptr;
+    RGBColor* colors = (RGBColor*)userptr;
 
     if(STR_MATCH(name, "black")) {
         colortext_to_values(value, &colors[NEMI_COLOR_BLACK]);

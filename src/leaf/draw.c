@@ -9,9 +9,9 @@
 #include "leaf.h"
 #include "shaders.h"
 
-static struct leaf_ctx_t* g_leaf_ctx = NULL;
+static LeafCtx* g_leaf_ctx = NULL;
 
-void leaf_set_drawing_context(struct leaf_ctx_t* leaf_ctx) {
+void leaf_set_drawing_context(LeafCtx* leaf_ctx) {
     g_leaf_ctx = leaf_ctx;
 }
 
@@ -23,7 +23,7 @@ void leaf_normalize_coords(float x_in, float y_in, float* x_out, float* y_out) {
 
 float leaf_draw_char
 (
-    struct font_t* font,
+    LeafFont* font,
     int pos_x,
     int pos_y,
     char chr
@@ -32,7 +32,7 @@ float leaf_draw_char
         return 0.0f; // Not ascii character.
     }
 
-    struct glyph_t* glyph = &font->glyphs[chr - 0x20];
+    LeafFontGlyph* glyph = &font->glyphs[chr - 0x20];
 
    // float ch_width = glyph->width * font->scale;
    // float ch_height = glyph->height * font->scale;
@@ -83,7 +83,7 @@ float leaf_draw_char
 
 float leaf_draw_text
 (
-    struct font_t* font,
+    LeafFont* font,
     int pos_x,
     int pos_y,
     char* str,
@@ -121,7 +121,7 @@ float leaf_draw_text
 
 float leaf_draw_text_fmt
 (
-    struct font_t* font,
+    LeafFont* font,
     int pos_x,
     int pos_y,
     const char* fmt,
@@ -148,7 +148,7 @@ void leaf_draw_rect
     float pos_y,
     float width,
     float height,
-    struct color_t color
+    RGBColor color
 ){
     pos_y = g_leaf_ctx->win_height - pos_y;
     float x = (pos_x / (float)g_leaf_ctx->win_width) * 2.0f - 1.0f;
@@ -181,7 +181,7 @@ void leaf_draw_texture_rect
     float width,
     float height,
     uint32_t texture,
-    struct color_t color,
+    RGBColor color,
     int options
 ){
     if(options & LEAF_TEXTURE_FLIP_Y_ORIGIN) {
@@ -252,7 +252,7 @@ void leaf_draw_circle
     float pos_y,
     float radius,
     int num_triangles,
-    struct color_t color
+    RGBColor color
 ){
     float center_x = 0;
     float center_y = 0;
@@ -304,8 +304,8 @@ void leaf_draw_rect_fade
     float pos_y,
     float width,
     float height,
-    struct color_t color_A,
-    struct color_t color_B,
+    RGBColor color_A,
+    RGBColor color_B,
     int fade_dir
 ){
     pos_y = g_leaf_ctx->win_height - pos_y;

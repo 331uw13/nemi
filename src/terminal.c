@@ -288,7 +288,7 @@ void nmterm_read(Nemi* st, NTerminal* term) {
 /*
 static
 void vtermcolor_to_leafcolor(VTermColor* c) {
-    return (struct color_t) {
+    return (RGBColor) {
         c->rgb.red, c->rgb.green, c->rgb.blue
     };
 }
@@ -383,7 +383,7 @@ NTerminalSelectReg nmt_orientate_select_region(const NTerminalSelectReg* reg) {
 
 void nmterm_select_process(Nemi* st, NTerminal* term, void(*callback)(Nemi* st, NTerminal* term, int row, int col_beg, int row_length)) {
     
-    struct color_t color = (struct color_t) { 100, 100, 100 };
+    RGBColor color = (RGBColor) { 100, 100, 100 };
 
     const int cw = st->font.char_width;
     const int ch = st->font.char_height;
@@ -484,8 +484,8 @@ int nmterm_get_row_length(NTerminal* term, int row) {
 
 
 static
-struct color_t convert_cell_color_or_default(NTerminal* term, VTermColor* vtcolor, struct color_t default_color) {
-    struct color_t ret_color = default_color;
+RGBColor convert_cell_color_or_default(NTerminal* term, VTermColor* vtcolor, RGBColor default_color) {
+    RGBColor ret_color = default_color;
     if(VTERM_COLOR_IS_INDEXED(vtcolor)) {
         vterm_state_convert_color_to_rgb(term->vtstate, vtcolor);
     }
@@ -523,8 +523,8 @@ bool render_cell(Nemi* st, NTerminal* term, VTermScreenCell* cell, VTermPos pos)
     
     bool draw_bg = false;
 
-    struct color_t fg_color = convert_cell_color_or_default(term, &cell->fg, st->cfg.colors[NEMI_COLOR_FG]);
-    struct color_t bg_color = convert_cell_color_or_default(term, &cell->bg, st->cfg.colors[NEMI_COLOR_BG]);
+    RGBColor fg_color = convert_cell_color_or_default(term, &cell->fg, st->cfg.colors[NEMI_COLOR_FG]);
+    RGBColor bg_color = convert_cell_color_or_default(term, &cell->bg, st->cfg.colors[NEMI_COLOR_BG]);
 
 
     if(bg_color.r != st->cfg.colors[NEMI_COLOR_BG].r
@@ -540,7 +540,7 @@ bool render_cell(Nemi* st, NTerminal* term, VTermScreenCell* cell, VTermPos pos)
     }
 
     if(cell->attrs.reverse) {
-        struct color_t tmp = fg_color;
+        RGBColor tmp = fg_color;
         fg_color = bg_color;
         bg_color = tmp;
 
@@ -554,7 +554,7 @@ bool render_cell(Nemi* st, NTerminal* term, VTermScreenCell* cell, VTermPos pos)
     // Font renderer dont support UTF-8 at the moment.
     char cell_char = cell->chars[0];
     if(cell_char < 0x20 || cell_char > 0x7E) {
-        fg_color = (struct color_t) { 255, 20, 20 };
+        fg_color = (RGBColor) { 255, 20, 20 };
         cell_char = '?';
     }
 
@@ -628,7 +628,7 @@ void nmterm_render_cursor(Nemi* st, NTerminal* term) {
     clear_cell(st, term->cursor_old_col, term->cursor_old_row - term->yscroll);
 
 
-    struct color_t cursor_color = st->cfg.colors[NEMI_COLOR_CURSOR];
+    RGBColor cursor_color = st->cfg.colors[NEMI_COLOR_CURSOR];
     cursor_color = leaf_color_lerp(cursor_color, st->cfg.colors[NEMI_COLOR_BG], term->blink_timer);
 
 

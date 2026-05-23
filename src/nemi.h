@@ -42,20 +42,14 @@ typedef struct NemiFilepaths_t {
 }
 NemiFilepaths;
 
-struct image {
-    int width;
-    int height;
-    int handle; // Index to 'nemi.images' array.
-    uint32_t texture;
-};
 
 typedef struct Nemi_t {
     int flags;
 
-    NemiFilepaths filepaths;
-    struct leaf_ctx_t* lfctx;    
-    struct font_t      font;
-    struct nemi_config cfg;
+    NemiFilepaths  filepaths;
+    NemiConfig     cfg;
+    LeafCtx*       lfctx;    
+    LeafFont       font;
 
     NTerminal    terminals [NEMI_TERMINALS_MAX];
     NTerminal*   terminal; // Current terminal.
@@ -106,8 +100,8 @@ typedef struct Nemi_t {
     // to optimize rendering.
     // We dont want to that kind of thing for other stuff
     // because they may not be bound to cell coordinates.
-    struct framebuffer term_cells_framebuffer; // Terminals are rendered to this framebuffer.
-    struct framebuffer altrender_framebuffer;  // Anything else is rendered to this framebuffer.
+    LeafFramebuffer term_cells_framebuffer; // Terminals are rendered to this framebuffer.
+    LeafFramebuffer altrender_framebuffer;  // Anything else is rendered to this framebuffer.
 
 }
 Nemi;

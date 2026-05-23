@@ -69,7 +69,7 @@ static const char FONT_FRAGMENT_SHADER_SRC[] = {
     "}"
 };
 
-void leaf_font_render(struct font_t* font) {
+void leaf_font_render(LeafFont* font) {
 
     glBindVertexArray(font->vao);
     glUseProgram(font->shader);
@@ -96,7 +96,7 @@ void leaf_font_render(struct font_t* font) {
     font->vbo_num_vertices = 0;
 }
 
-bool leaf_load_font(struct font_t* font, const char* filepath) {
+bool leaf_load_font(LeafFont* font, const char* filepath) {
     int res = 0;
 
     FT_Library ft;
@@ -164,8 +164,8 @@ bool leaf_load_font(struct font_t* font, const char* filepath) {
             font->max_bitmap_height = bitmap_height;
         }
 
-        struct glyph_t* glyph = &font->glyphs[c - 0x20];
-        *glyph = (struct glyph_t) {
+        LeafFontGlyph* glyph = &font->glyphs[c - 0x20];
+        *glyph = (LeafFontGlyph) {
             .width = bitmap_width,
             .height = bitmap_height,
             .bearing_x = face->glyph->bitmap_left,
@@ -223,7 +223,7 @@ bool leaf_load_font(struct font_t* font, const char* filepath) {
             }
         }
         
-        struct glyph_t* glyph = &font->glyphs[char_index++];
+        LeafFontGlyph* glyph = &font->glyphs[char_index++];
         glyph->atlas_x = char_index-1;
     }
 
@@ -305,7 +305,7 @@ bool leaf_load_font(struct font_t* font, const char* filepath) {
     font->char_width = 0;
     font->char_height = 0;
     leaf_set_font_scale(font, 4.0f);
-    leaf_set_font_color(font, (struct color_t){ 255, 255, 255 });
+    leaf_set_font_color(font, (RGBColor){ 255, 255, 255 });
   
     // Set default values.
     leaf_set_font_spacing(font, 1.0f);
@@ -313,7 +313,7 @@ bool leaf_load_font(struct font_t* font, const char* filepath) {
     leaf_set_font_tab_width(font, 8*4);
    
 
-    printf("%s: Font texture: %ix%i\n", __FILE__,
+    printf("%s: LeafFont texture: %ix%i\n", __FILE__,
             font->texture_width,
             font->texture_height);
 
@@ -332,14 +332,14 @@ error:
 }
 
 
-void leaf_unload_font(struct font_t* font) {
+void leaf_unload_font(LeafFont* font) {
     if(!font) {
         return;
     }
 
     /*
     for(int i = 0; i < FONT_NUM_CHARS; i++) {
-        struct glyph_t* glyph = &font->glyphs[i];
+        LeafFontGlyph* glyph = &font->glyphs[i];
     }
     */
 
@@ -349,7 +349,7 @@ void leaf_unload_font(struct font_t* font) {
     glDeleteTextures(1, &font->texture);
 }
 
-void leaf_set_font_scale(struct font_t* font, float scale) {
+void leaf_set_font_scale(LeafFont* font, float scale) {
     font->scale = scale;
     font->char_width = (font->max_bitmap_width * scale) / 2;
     font->char_height = (font->max_bitmap_height * scale) / 2;
@@ -358,29 +358,29 @@ void leaf_set_font_scale(struct font_t* font, float scale) {
     leaf_set_font_tab_width(font, font->real_tab_width);
 }
 
-void leaf_set_font_color(struct font_t* font, struct color_t color) {
+void leaf_set_font_color(LeafFont* font, RGBColor color) {
     font->char_color_r = (float)color.r / 255.0f;
     font->char_color_g = (float)color.g / 255.0f;
     font->char_color_b = (float)color.b / 255.0f;
 }
 
-void leaf_set_font_space_width(struct font_t* font, float space_width) {
+void leaf_set_font_space_width(LeafFont* font, float space_width) {
     font->real_space_width = space_width;
     font->space_width = space_width * font->scale;
 }
 
-void leaf_set_font_tab_width(struct font_t* font, float tab_width) {
+void leaf_set_font_tab_width(LeafFont* font, float tab_width) {
     font->real_tab_width = tab_width;
     font->tab_width = tab_width * font->scale;
 }
 
-void leaf_set_font_spacing(struct font_t* font, float spacing) {
+void leaf_set_font_spacing(LeafFont* font, float spacing) {
     font->spacing = spacing * font->scale;
 }
 
 void leaf_measure_text
 (
-    struct font_t* font, 
+    LeafFont* font, 
     int* width_out,
     int* height_out,
     const char* text,
@@ -411,7 +411,7 @@ void leaf_measure_text
             continue;
         }
 
-        struct glyph_t* glyph = &font->glyphs[ch - 0x20];
+        LeafFontGlyph* glyph = &font->glyphs[ch - 0x20];
 
         *width_out += glyph->width * font->scale / 2;
         *width_out += font->spacing;

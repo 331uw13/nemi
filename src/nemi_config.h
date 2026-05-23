@@ -41,7 +41,7 @@ enum nemi_config_colors {
 typedef struct Nemi_t Nemi;
 
 
-struct nemi_config {
+typedef struct NemiConfig_t {
     
     struct {
         char* filepath;
@@ -68,8 +68,10 @@ struct nemi_config {
     }
     main;
    
-    struct color_t colors [NEMI_COLOR_COUNT];
-};
+    RGBColor colors [NEMI_COLOR_COUNT];
+}
+NemiConfig;
+
 
 bool nmt_read_configs(Nemi* st, char* configs_dir);
 void nmt_free_configs(Nemi* st);

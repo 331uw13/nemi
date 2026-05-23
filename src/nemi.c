@@ -93,7 +93,7 @@ Nemi* nmt_start_session(NemiFilepaths filepaths) {
     leaf_set_font_space_width(&st->font, st->font.max_bitmap_width / 2.0f);
     leaf_set_font_scale(&st->font, st->cfg.font.scale);
 
-    leaf_set_font_color(&st->font, (struct color_t) { 255, 200, 150 });
+    leaf_set_font_color(&st->font, (RGBColor) { 255, 200, 150 });
 
 
     glfwSetWindowUserPointer(st->lfctx->glfw_win, st);
@@ -379,7 +379,7 @@ void nmt_update_frame(Nemi* st) {
             st->altrender_framebuffer.width,
             st->altrender_framebuffer.height,
             st->altrender_framebuffer.texture,
-            (struct color_t){ 255, 255, 255 },
+            (RGBColor){ 255, 255, 255 },
             LEAF_TEXTURE_NO_OPTIONS);
 
     leaf_draw_texture_rect(
@@ -388,7 +388,7 @@ void nmt_update_frame(Nemi* st) {
             st->term_cells_framebuffer.width,
             st->term_cells_framebuffer.height,
             st->term_cells_framebuffer.texture,
-            (struct color_t){ 255, 255, 255 },
+            (RGBColor){ 255, 255, 255 },
             LEAF_TEXTURE_NO_OPTIONS);
 
 
@@ -420,28 +420,28 @@ void nmt_init_default_config(Nemi* st) {
     int b_v = 255;  // Bright max.
     int l_v = 30;   // Low value color component.
 
-    st->cfg.colors[NEMI_COLOR_FG] = (struct color_t){ 200, 180, 160 };
-    st->cfg.colors[NEMI_COLOR_BG] = (struct color_t){ 4, 4, 10 };
-    st->cfg.colors[NEMI_COLOR_BLACK]   = (struct color_t){ 0, 0, 0 };
-    st->cfg.colors[NEMI_COLOR_RED]     = (struct color_t){ d_v, l_v, l_v };
-    st->cfg.colors[NEMI_COLOR_GREEN]   = (struct color_t){ l_v, d_v, l_v };
-    st->cfg.colors[NEMI_COLOR_YELLOW]  = (struct color_t){ d_v, d_v, l_v };
-    st->cfg.colors[NEMI_COLOR_BLUE]    = (struct color_t){ l_v + 40, l_v + 40, d_v };
-    st->cfg.colors[NEMI_COLOR_MAGENTA] = (struct color_t){ d_v, l_v, d_v };
-    st->cfg.colors[NEMI_COLOR_CYAN]    = (struct color_t){ l_v, d_v, d_v };
-    st->cfg.colors[NEMI_COLOR_WHITE]   = (struct color_t){ d_v, d_v, d_v };
+    st->cfg.colors[NEMI_COLOR_FG] = (RGBColor){ 200, 180, 160 };
+    st->cfg.colors[NEMI_COLOR_BG] = (RGBColor){ 4, 4, 10 };
+    st->cfg.colors[NEMI_COLOR_BLACK]   = (RGBColor){ 0, 0, 0 };
+    st->cfg.colors[NEMI_COLOR_RED]     = (RGBColor){ d_v, l_v, l_v };
+    st->cfg.colors[NEMI_COLOR_GREEN]   = (RGBColor){ l_v, d_v, l_v };
+    st->cfg.colors[NEMI_COLOR_YELLOW]  = (RGBColor){ d_v, d_v, l_v };
+    st->cfg.colors[NEMI_COLOR_BLUE]    = (RGBColor){ l_v + 40, l_v + 40, d_v };
+    st->cfg.colors[NEMI_COLOR_MAGENTA] = (RGBColor){ d_v, l_v, d_v };
+    st->cfg.colors[NEMI_COLOR_CYAN]    = (RGBColor){ l_v, d_v, d_v };
+    st->cfg.colors[NEMI_COLOR_WHITE]   = (RGBColor){ d_v, d_v, d_v };
 
-    st->cfg.colors[NEMI_BRIGHT_COLOR_BLACK]   = (struct color_t){ 70, 70, 70 };
-    st->cfg.colors[NEMI_BRIGHT_COLOR_RED]     = (struct color_t){ b_v, l_v, l_v };
-    st->cfg.colors[NEMI_BRIGHT_COLOR_GREEN]   = (struct color_t){ l_v, b_v, l_v };
-    st->cfg.colors[NEMI_BRIGHT_COLOR_YELLOW]  = (struct color_t){ b_v, b_v, l_v };
-    st->cfg.colors[NEMI_BRIGHT_COLOR_BLUE]    = (struct color_t){ l_v, l_v, b_v };
-    st->cfg.colors[NEMI_BRIGHT_COLOR_MAGENTA] = (struct color_t){ b_v, l_v, b_v };
-    st->cfg.colors[NEMI_BRIGHT_COLOR_CYAN]    = (struct color_t){ l_v, b_v, b_v };
-    st->cfg.colors[NEMI_BRIGHT_COLOR_WHITE]   = (struct color_t){ b_v, b_v, b_v };
+    st->cfg.colors[NEMI_BRIGHT_COLOR_BLACK]   = (RGBColor){ 70, 70, 70 };
+    st->cfg.colors[NEMI_BRIGHT_COLOR_RED]     = (RGBColor){ b_v, l_v, l_v };
+    st->cfg.colors[NEMI_BRIGHT_COLOR_GREEN]   = (RGBColor){ l_v, b_v, l_v };
+    st->cfg.colors[NEMI_BRIGHT_COLOR_YELLOW]  = (RGBColor){ b_v, b_v, l_v };
+    st->cfg.colors[NEMI_BRIGHT_COLOR_BLUE]    = (RGBColor){ l_v, l_v, b_v };
+    st->cfg.colors[NEMI_BRIGHT_COLOR_MAGENTA] = (RGBColor){ b_v, l_v, b_v };
+    st->cfg.colors[NEMI_BRIGHT_COLOR_CYAN]    = (RGBColor){ l_v, b_v, b_v };
+    st->cfg.colors[NEMI_BRIGHT_COLOR_WHITE]   = (RGBColor){ b_v, b_v, b_v };
 
-    st->cfg.colors[NEMI_COLOR_MESSAGES_FG] = (struct color_t){ 200, 120, 60 };
-    st->cfg.colors[NEMI_COLOR_MESSAGES_BG] = (struct color_t){ 20, 10, 6 };
+    st->cfg.colors[NEMI_COLOR_MESSAGES_FG] = (RGBColor){ 200, 120, 60 };
+    st->cfg.colors[NEMI_COLOR_MESSAGES_BG] = (RGBColor){ 20, 10, 6 };
 }
 
 

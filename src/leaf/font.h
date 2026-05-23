@@ -9,7 +9,7 @@
 #define FONT_NUM_CHARS 95
 
 
-struct glyph_t {
+typedef struct LeafFontGlyph_t {
     int width;
     int height;
 
@@ -17,11 +17,17 @@ struct glyph_t {
     int bearing_y;
 
     int atlas_x;
-};
+}
+LeafFontGlyph;
 
-struct font_t {
+typedef struct LeafFont_t {
+    LeafFontGlyph glyphs[FONT_NUM_CHARS];
     bool loaded;
-    struct glyph_t glyphs[FONT_NUM_CHARS];
+    
+    // By default set to 'false'
+    bool center_char_to_cell;
+    
+
     float scale;
     
     // Space widht and tab width are in scale
@@ -45,8 +51,6 @@ struct font_t {
     // In scale if leaf_set_font_spacing() is used.
     float spacing; 
 
-    // By default set to 'false'
-    bool center_char_to_cell;
 
     uint32_t texture;
     uint32_t texture_width;
@@ -62,27 +66,28 @@ struct font_t {
     float    char_color_g;
     float    char_color_b;
     //int shader_color_uniloc; // Uniform locatio for 'font_color'
-};
+}
+LeafFont;
 
 struct leaf_ctx_t;
-bool leaf_load_font(struct font_t* font, const char* filepath);
-void leaf_unload_font(struct font_t* font);
+bool leaf_load_font(LeafFont* font, const char* filepath);
+void leaf_unload_font(LeafFont* font);
 
-void leaf_set_font_scale(struct font_t* font, float scale);
-void leaf_set_font_color(struct font_t* font, struct color_t color);
-void leaf_set_font_space_width(struct font_t* font, float space_width);
-void leaf_set_font_tab_width(struct font_t* font, float tab_width);
-void leaf_set_font_spacing(struct font_t* font, float spacing);
+void leaf_set_font_scale        (LeafFont* font, float scale);
+void leaf_set_font_color        (LeafFont* font, RGBColor color);
+void leaf_set_font_space_width  (LeafFont* font, float space_width);
+void leaf_set_font_tab_width    (LeafFont* font, float tab_width);
+void leaf_set_font_spacing      (LeafFont* font, float spacing);
 
 void leaf_measure_text
 (
-    struct font_t* font, 
+    LeafFont* font, 
     int* width_out,
     int* height_out,
     const char* text,
     ssize_t text_length
 );
 
-void leaf_font_render(struct font_t* font);
+void leaf_font_render(LeafFont* font);
 
 #endif
