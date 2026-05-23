@@ -46,12 +46,26 @@ typedef struct NModule_t {
     }
     events;
 
+
+    // At module load, this equals to process's current directory.
+    char* current_dir;
 }
 NModule;
 
 bool nmt_module_load(NModule* module, const char* path);
 void nmt_module_quit(NModule* module);
 bool nmt_is_module_loaded(NModule* module);
+
+// This function changes NModule.current_dir, and not the process's current directory.
+// 'relative_path' also can change to parent directories with ".."
+// and they can be concatenated like with cd command: "../.."
+// This was done because if many modules are loaded and they all mess with the process's
+// current directory, can lead to alot of problems.
+//
+// NModule.current_dir is left unchanged if the result directory cannot be accessed.
+bool nmt_module_chdir_rel(NModule* module, const char* relative_path);
+bool nmt_module_chdir_abs(NModule* module, const char* absolute_path);
+
 
 
 #endif 

@@ -120,6 +120,15 @@ void string_delbyte(struct string_t* str, size_t index) {
     str->size--;
 }
 
+void string_poplast(struct string_t* str) {
+    if(str->size == 0) {
+        return;
+    }
+
+    str->bytes[str->size-1] = 0;
+    str->size--;
+}
+
 void string_clear(struct string_t* str) {
     if(!str->bytes) {
         return;

@@ -35,6 +35,9 @@ void string_addbyte(struct string_t* str, char ch, size_t index);
 // Delete byte at index.
 void string_delbyte(struct string_t* str, size_t index);
 
+// Delete last byte.
+void string_poplast(struct string_t* str);
+
 // Sets all 'str->size' bytes to 0
 void string_clear(struct string_t* str);
 
