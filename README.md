@@ -31,9 +31,7 @@ freetype2
 
 >[!NOTE]
 > Work in progress...
-* Modules: https://github.com/331uw13/nemi/tree/main/documentation/modules
-* Configuration: https://github.com/331uw13/nemi/tree/main/documentation/configuration
-* Development: https://github.com/331uw13/nemi/tree/main/documentation/development
+See `documentation` directory.
 
 
 <h1>

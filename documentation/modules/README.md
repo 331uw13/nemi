@@ -28,7 +28,6 @@ void module_event_window_resized();
 #include "nemi.h"
 
 // All modules need this function. It is called when the module has been loaded succesfully.
-// it also gives you the module index.
 void module_load(size_t module_idx) {
   logprintf(LOG_INFO, "Hello world!");
 }
