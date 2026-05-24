@@ -5,7 +5,7 @@
 #include "vterm.h"
 
 #include "string.h"
-
+#include "select_region.h"
 
 
 enum terminal_type {
@@ -13,23 +13,6 @@ enum terminal_type {
     SHELL_TERMINAL
 };
 
-
-typedef enum NTerminalSelectRegMode_e {
-    SREG_MODE_NORMAL,
-    SREG_MODE_LINE,
-    SREG_MODE_BLOCK
-}
-NTerminalSelectRegMode;
-
-typedef struct NTerminalSelectReg_t {
-    bool active;
-    NTerminalSelectRegMode mode;
-    int col_beg;
-    int row_beg;
-    int col_end;
-    int row_end;
-}
-NTerminalSelectReg;
 
 typedef struct NTerminal_t {
     int          flags;
@@ -65,7 +48,7 @@ typedef struct NTerminal_t {
     int cursor_old_row;
 
 
-    NTerminalSelectReg select;
+    NSelectRegion select;
 
     float blink_timer;
 
@@ -110,15 +93,9 @@ void nmterm_clear_cell_custom_attrs (NTerminal* term, VTermPos pos);
 void nmterm_set_row_dirty           (NTerminal* term, int row); // Causes a row to be re-rendered.
 void nmterm_yscroll                 (NTerminal* term, int offset);
 void nmterm_yscroll_to              (NTerminal* term, int point);
-void nmterm_select_begin            (NTerminal* term, int col_begin, int row_begin);
-void nmterm_select_update           (NTerminal* term, int col, int row);
-void nmterm_select_end              (NTerminal* term);
-void nmterm_select_process(Nemi* st, NTerminal* term, void(*callback)(Nemi* st, NTerminal* term, int row, int col_beg, int row_length));
-//void nmterm_select_render           (Nemi* st, NTerminal* term);
+//void nmterm_process_select_region   (Nemi* st, NTerminal* term, void(*callback)(Nemi* st, NTerminal* term, int row, int col_beg, int row_length));
 int  nmterm_get_row_length          (NTerminal* term, int row);
 
-// TODO: MOve this:
-NTerminalSelectReg nmt_orientate_select_region(const NTerminalSelectReg* reg);
 /*
 // Available type is "block"(block select) or "normal".
 // The reason why the type is string because perl doesnt have enums

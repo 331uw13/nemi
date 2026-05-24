@@ -33,7 +33,7 @@ void module_event_render() {
             nmt_rowtoy(st, g.vcursor_row - st->terminal->yscroll) + st->font.char_height,
             st->font.char_width,
             2,
-            (struct color_t){ 10, 160, 10 });
+            (RGBColor){ 10, 160, 10 });
 }
 
 void keybind_toggle_fn() {
@@ -66,10 +66,11 @@ void module_event_key_input(int key, int modifiers) {
 
         case GLFW_KEY_S:
             if(st->terminal->select.active) {
-                nmterm_select_end(st->terminal);
+                st->terminal->select.active = false;
+                //nmt_select_end(st->terminal);
             }
             else {
-                nmterm_select_begin(st->terminal, g.vcursor_col, g.vcursor_row);
+                nmt_select_begin(&st->terminal->select, g.vcursor_col, g.vcursor_row);
             }
             break;
 
@@ -106,7 +107,7 @@ void module_event_key_input(int key, int modifiers) {
 
 
     if(cursor_moved && st->terminal->select.active) {
-        nmterm_select_update(st->terminal, g.vcursor_col, g.vcursor_row);
+        nmt_select_move(&st->terminal->select, g.vcursor_col, g.vcursor_row);
     }
 
 }
@@ -115,12 +116,11 @@ void module_loaded(size_t module_idx) {
     Nemi* st = nmt_getst();
 
     g.module_idx = module_idx;
-
-    nmt_assign_module_keybind(st, module_idx, 
-            keybind_toggle_fn, keybind_toggle, ARRAY_LEN(keybind_toggle));
+    nmt_assign_module_keybind(st, module_idx, keybind_toggle_fn, keybind_toggle, ARRAY_LEN(keybind_toggle));
 }
 
-
+/*
 void module_quit() {
 }
+*/
 

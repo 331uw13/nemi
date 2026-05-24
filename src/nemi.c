@@ -308,17 +308,25 @@ void nmt_clear_region(Nemi* st, int x, int y, int w, int h) {
 
 
 
-static
-void p_nmt_term_select_process_callback__render(Nemi* st, NTerminal* term, int row, int col_beg, int row_length) {
 
+
+static
+void p_nmterm_select_callback__render(void* user_pointer, ssize_t row, ssize_t row_length, ssize_t col_begin) {
+    Nemi* st = (Nemi*)user_pointer;
     leaf_draw_rect
     (
-        nmt_coltox(st, col_beg),
-        nmt_rowtoy(st, row - term->yscroll),
+        nmt_coltox(st, col_begin),
+        nmt_rowtoy(st, row - st->terminal->yscroll),
         st->font.char_width * row_length,
-        st->font.char_height,
+        st->font.char_height + st->cfg.main.line_padding,
         st->cfg.colors[NEMI_COLOR_TERM_SELECT_REG]   
     );
+}
+
+static
+size_t p_nmterm_select_callback__get_row_length(void* user_pointer, ssize_t row) {
+    Nemi* st = (Nemi*)user_pointer;
+    return nmterm_get_row_length(st->terminal, row);
 }
 
 void nmt_update_frame(Nemi* st) {
@@ -356,7 +364,14 @@ void nmt_update_frame(Nemi* st) {
         // The select region is needed to render separatly from cells.
         // because the terminal will only render when cells change and we are not changing cells data.
         if(st->terminal->select.active) {
-            nmterm_select_process(st, st->terminal, p_nmt_term_select_process_callback__render);
+            nmt_select_process
+            (
+                st->terminal->select,
+                p_nmterm_select_callback__get_row_length,
+                p_nmterm_select_callback__render,
+                st
+            );
+            //nmterm_process_select_region(st, st->terminal, p_nmt_term_select_process_callback__render);
         }       
 
         for(size_t i = 0; i < st->num_loaded_modules; i++) {

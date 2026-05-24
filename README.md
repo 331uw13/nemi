@@ -4,7 +4,7 @@
 Nemi by default is a terminal emulator with only basic essentials. 
 But you can easily use modules, to add features which never existed before!
 Modules are dynamically loaded libraries. (read more from documentation)
-Only ASCII characters are supported (at least for now)
+Only ASCII characters are supported.
 ```
 > No AI code is used.
 
@@ -30,8 +30,7 @@ freetype2
 # Documentation
 
 >[!NOTE]
-> Work in progress...
-See `documentation` directory.
+> Work in progress... See `documentation` directory.
 
 
 <h1>

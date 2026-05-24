@@ -323,79 +323,17 @@ void nmterm_hide_cells(NTerminal* term, bool hidden, int col, int row, int width
 */
 
 
-void nmterm_select_begin(NTerminal* term, int col_begin, int row_begin) {
-    term->select.active = true;
-    term->select.col_beg = col_begin;
-    term->select.row_beg = row_begin;
-    term->select.col_end = term->select.col_beg;
-    term->select.row_end = term->select.row_beg;
-}
-
-void nmterm_select_update(NTerminal* term, int col, int row) {
-    if(!term->select.active) {
-        return;
-    }
-
-    term->select.col_end = col;
-    term->select.row_end = row;
-}
-
-void nmterm_select_end(NTerminal* term) {
-    term->select.active = false;
-}
-
-NTerminalSelectReg nmt_orientate_select_region(const NTerminalSelectReg* reg) {
-    /*return (NTerminalSelectReg) {
-        .active = reg->active,
-        .mode = reg->mode,
-        .col_beg = reg->col_beg,
-        .col_end = reg->col_end,
-        .row_beg = MIN_VALUE(reg->row_beg, reg->row_end),
-        .row_end = MAX_VALUE(reg->row_beg, reg->row_end)
-    };
-    */
-
-    NTerminalSelectReg o_reg;
-    o_reg.active = reg->active;
-    o_reg.mode = reg->mode;
-
-
-
-    if(reg->row_beg > reg->row_end) {
-        o_reg.row_beg = reg->row_end;
-        o_reg.row_end = reg->row_beg;
-
-        o_reg.col_end = reg->col_beg;
-        o_reg.col_beg = reg->col_end;
-    }
-    else {
-        o_reg.row_beg = reg->row_beg;
-        o_reg.row_end = reg->row_end;
-        o_reg.col_beg = reg->col_beg;
-        o_reg.col_end = reg->col_end;
-    }
-
-
-
-    return o_reg;
-}
-
-
-void nmterm_select_process(Nemi* st, NTerminal* term, void(*callback)(Nemi* st, NTerminal* term, int row, int col_beg, int row_length)) {
+/*
+void nmterm_process_select_region(Nemi* st, NTerminal* term, void(*callback)(Nemi* st, NTerminal* term, int row, int col_beg, int row_length)) {
     
     RGBColor color = (RGBColor) { 100, 100, 100 };
 
-    const int cw = st->font.char_width;
-    const int ch = st->font.char_height;
 
-
-    NTerminalSelectReg reg = nmt_orientate_select_region(&term->select);
+    NSelectRegion reg = nmt_select_orientate(&term->select);
 
     for(int row = reg.row_beg; row <= reg.row_end; row++) {
 
         switch(reg.mode) {
-        
-
             case SREG_MODE_NORMAL:
                 {
                     int real_row_length = nmterm_get_row_length(term, row);
@@ -464,10 +402,9 @@ void nmterm_select_process(Nemi* st, NTerminal* term, void(*callback)(Nemi* st, 
                 }
                 break;
         }
-
     }
-
 }
+*/
 
 int nmterm_get_row_length(NTerminal* term, int row) {
     int len = 0;
