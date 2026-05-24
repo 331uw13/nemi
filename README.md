@@ -12,9 +12,6 @@ Only ASCII characters are supported (at least for now)
 
 # Build instructions
 ```bash
-$ git clone https://github.com/331uw13/nemi.git
-$ cd nemi
-
 # First build the libvterm.
 # It is little bit modified version of: https://www.leonerd.org.uk/code/libvterm/
 $ (cd libs/libvterm-0.3.3/ && make)

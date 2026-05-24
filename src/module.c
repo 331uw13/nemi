@@ -97,7 +97,6 @@ bool nmt_is_module_loaded(NModule* module) {
     return (module != NULL && module->address != NULL);
 }
 
-
 bool nmt_module_chdir_rel(NModule* module, const char* relative_path) {
     bool ret_ok = false;
     if(relative_path == NULL) {

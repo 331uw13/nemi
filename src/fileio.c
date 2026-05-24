@@ -7,9 +7,11 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <stdlib.h>
+#include <assert.h>
+#include <dirent.h>
 
 #include "fileio.h"
-
+#include "log.h"
 
 bool file_exists(const char* path) {
     return (access(path, F_OK) == 0);
@@ -178,5 +180,63 @@ out:
     return magic_bytes;
 }
 
+FileInfo* nmt_list_files(const char* dirpath, size_t* num_files) {
+    assert(dirpath != NULL);
+    assert(num_files != NULL);
+    
+    size_t dirpath_len = strlen(dirpath);
+    assert(dirpath_len != 0);
+
+    FileInfo* files = NULL;
+   
+
+    DIR* dir = opendir(dirpath);
+    if(!dir) {
+        logprintf(LOG_ERROR, "Could not open '%s' | %s", dirpath, strerror(errno));
+        return NULL;
+    }
+
+    size_t files_allocated = 3;
+    files = malloc(sizeof *files * files_allocated);
+    *num_files = 0;
+
+    struct dirent* ent = NULL;
+    while((ent = readdir(dir))) {
+
+        if(*num_files + 1 >= files_allocated) {
+            files_allocated = *num_files + 8;
+            files = realloc
+            (
+                files,
+                files_allocated * sizeof *files
+            );
+        }
+        
+
+
+        FileInfo* finfo = &files[*num_files];
+        *num_files += 1;
+    
+        memset(finfo->name, 0, sizeof(finfo->name));
+        memset(finfo->full_path, 0, sizeof(finfo->full_path));
+
+        size_t name_len = strlen(ent->d_name);
+        size_t full_path_len  = dirpath_len;
+        
+        memcpy(finfo->name, ent->d_name, name_len);
+        memcpy(finfo->full_path, dirpath, dirpath_len);
+
+        if(finfo->full_path[ full_path_len-1 ] != '/') {
+            finfo->full_path[ full_path_len ] = '/';
+            full_path_len++;
+        }
+        memcpy(finfo->full_path + full_path_len, ent->d_name, name_len);
+        
+        stat(finfo->full_path, &finfo->sb);
+    }
+
+    closedir(dir);
+    return files;
+}
 
 

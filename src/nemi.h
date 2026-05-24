@@ -154,7 +154,6 @@ int nmt_rowtoy(Nemi* st, int row);
 
 void nmt_init_default_config(Nemi* st);
 
-
 //void restart_session(Nemi* st);
 //void hotreload_session(Nemi* st);
 //void nemi_recompile_src(Nemi* st);

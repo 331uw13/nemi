@@ -4,6 +4,8 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <stdbool.h>
+#include <sys/stat.h>
+#include <limits.h>
 
 bool file_exists(const char* path);
 bool dir_exists(const char* path);
@@ -28,6 +30,16 @@ ssize_t file_size(const char* path);
 // 'NULL' is returned if no such file was opened succesfully.
 // Otherwise returned address must be freed.
 char* file_magic_bytes(const char* path, size_t num_read_bytes);
+
+
+typedef struct FileInfo_t {
+    char name [256];
+    char full_path [PATH_MAX * 2];
+    struct stat sb;
+}
+FileInfo;
+
+FileInfo* nmt_list_files(const char* dirpath, size_t* num_files);
 
 
 
