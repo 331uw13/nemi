@@ -83,6 +83,13 @@ void nmt_select_process
             case SREG_MODE_NORMAL:
                 {
                     if(row_length == 0) {
+                        callback
+                        (
+                            user_pointer,
+                            row,
+                            0,
+                            col_begin
+                        );
                         break;
                     }
 
