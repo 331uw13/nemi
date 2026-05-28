@@ -78,8 +78,8 @@ typedef struct Nemi_t {
 
     //struct image         images [NEMI_IMAGES_MAX];
 
-    double frame_time;
-    double frame_time_begin;
+    double frame_time;       // Previous frame time. In seconds.
+    double frame_time_begin; // Time at begin of the frame. In seconds.
 
     int term_cells_render_offset_x;
     int term_cells_render_offset_y;
