@@ -7,7 +7,7 @@ It treats all files as modules which start with ELF format magic bytes.
 
 
 ## Compiling a module
-Simple example build script can be found from `nemi/modules/buildmodule.so`
+Simple example build script can be found from `nemi/modules/buildmodule.sh`
 
 # Events
 
