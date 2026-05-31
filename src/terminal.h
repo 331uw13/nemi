@@ -71,7 +71,7 @@ enum term_write_target {
 typedef struct Nemi_t Nemi;
 
 NTerminal* nmterm_spawn(Nemi* st, int rows, int cols, enum terminal_type term_type);
-void             close_terminal(NTerminal* term);
+void       nmterm_close(NTerminal* term);
 
 void nmterm_read         (Nemi* st, NTerminal* term);
 void nmterm_render       (Nemi* st, NTerminal* term);

@@ -213,7 +213,7 @@ NTerminal* nmterm_spawn(Nemi* st, int rows, int cols, enum terminal_type term_ty
     return term;
 }
 
-void close_terminal(NTerminal* term) {
+void nmterm_close(NTerminal* term) {
     if(!term) {
         return;
     }

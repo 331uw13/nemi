@@ -1,14 +1,15 @@
 #!/bin/bash
 
-# This is example script how to build modules.
+#-----------------------------------------------
+#  This is example script how to build modules
+#-----------------------------------------------
 
 
 module_name=$1
 module_cfiles=$2
 
 print_usage() {
-    echo "c files can be separated by space."
-    echo "usage: $0 <module_name.so> <c files>"
+    echo "usage: $0 <module name.so> <c file>"
 }
 
 if [ -z $module_name ]; then
@@ -20,11 +21,27 @@ if [ -z $module_cfiles ]; then
     exit
 fi
 
+
+# This is just to prevent from accidentally overwriting the source code.
+if [ -e $module_name ]; then
+    is_elf=$(file $module_name | grep "ELF")
+
+    if [ -z "$is_elf" ]; then
+        echo "Oops. you probably got the arguments in wrong places."
+        exit
+    fi
+fi
+
+echo "module: $module_name"
+echo "files: $module_cfiles"
+
 set -xe
+
 
 # The directory which libnemi.so lives, must be absolute.
 libnemi_dir="$(cd .. && pwd)"
 libnemi_srcdir="../src"
+
 
 gcc $module_cfiles \
     -shared \

@@ -167,7 +167,7 @@ void nmt_quit_session(Nemi* st) {
     leaf_unload_font(&st->font);
 
     for(uint16_t i = 0; i < st->num_terminals; i++) {
-        close_terminal(&st->terminals[i]);
+        nmterm_close(&st->terminals[i]);
     }
 
     glfwSetWindowUserPointer  (st->lfctx->glfw_win, NULL);
@@ -243,6 +243,9 @@ void nmt_load_all_modules(Nemi* st) {
             // Inform the module it was loaded.
             // By passing its index it can assign keybinds and in future maybe other things.
             size_t loaded_module_index = st->num_loaded_modules;
+            
+
+            logprintf(LOG_INFO, "Calling '%s' module_loaded(module_idx=%li)", module_ptr->path, loaded_module_index);
             module_ptr->fn_loaded(loaded_module_index);
             
             st->num_loaded_modules++;
@@ -275,6 +278,11 @@ void nmt_switch_terminal_idx(Nemi* st, uint32_t index) {
 }
 
 void nmt_switch_terminal_ptr(Nemi* st, NTerminal* term) {
+
+    logprintf(LOG_INFO, "Switching terminals: (from)%p -> (to)%p",
+            st->terminal,
+            term);
+
     if(st->terminal == term) {
         return;
     }
@@ -634,18 +642,45 @@ bool nmt_is_module_inputfocus_available(Nemi* st) {
 }
 
 bool nmt_module_gain_inputfocus(Nemi* st, size_t module_idx) {
-    if(!nmt_is_module_inputfocus_available(st)) {
+    NModule* asking_module = &st->modules[module_idx];
+
+    if(st->inputfocus_module_idx == module_idx) {
+        logprintf(LOG_WARN, "Module '%s' already has module inputfocus",
+                asking_module->path);
         return false;
     }
-    st->inputfocus_module_idx = module_idx;
 
+    if(!nmt_is_module_inputfocus_available(st)) {
+        NModule* owner_module = &st->modules[st->inputfocus_module_idx];
+
+        logprintf(LOG_ERROR, "'%s' Cannot gain module inputfocus, because its currently owned by '%s'",
+                asking_module->path,
+                owner_module->path
+        );
+        return false;
+    }
+
+    logprintf(LOG_INFO, "Module inputfocus transfered to '%s'", asking_module->path);
+    st->inputfocus_module_idx = module_idx;
     return true;
 }
 
 // Only the module which has gained inputfocus can deactivate it.
 void nmt_module_free_inputfocus(Nemi* st, size_t module_idx) {
+    NModule* asking_module = &st->modules[module_idx];
+
     if(st->inputfocus_module_idx == (ssize_t)module_idx) {
         st->inputfocus_module_idx = -1;
+        logprintf(LOG_INFO, "Module inputfocus freed by '%s'", asking_module->path);
+    }
+    else
+    if(st->inputfocus_module_idx >= 0) {
+        NModule* owner_module = &st->modules[st->inputfocus_module_idx];
+    
+        logprintf(LOG_ERROR, "'%s' Cannot free module inputfocus, because its currently owned by '%s'",
+                asking_module->path,
+                owner_module->path
+        );
     }
 }
 

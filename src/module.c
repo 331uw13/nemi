@@ -15,7 +15,7 @@
 
 bool nmt_module_load(NModule* module, const char* path) {
     *module = (NModule) {
-        .path = NULL,
+        .path = strdup(path),
         .address = NULL,
         .fn_loaded = NULL,
         .fn_quit = NULL,
@@ -87,6 +87,10 @@ void nmt_module_quit(NModule* module) {
 
     if(module->current_dir) {
         free(module->current_dir);
+    }
+
+    if(module->path) {
+        free(module->path);
     }
 
     dlclose(module->address);
