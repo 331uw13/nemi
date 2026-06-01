@@ -1,4 +1,3 @@
-
 #include "glfw_callbacks.h"
 
 #include "nemi.h"
