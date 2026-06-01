@@ -18,7 +18,9 @@ $ (cd libs/libvterm-0.3.3/ && make)
 
 # Then the project can be built with make command
 # in the project root directory.
-$ make
+$ make GRAPHICS=opengl
+
+# Rendering to linux framebuffer device will be supported later.
 ```
 ### External Dependencies
 ```bash
