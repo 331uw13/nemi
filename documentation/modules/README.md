@@ -1,4 +1,4 @@
-Modules are dynamically loaded libraries. They are linked with the main library `libnemi.so`
+Modules are dynamically loaded libraries. They are linked with the main library `libnemi.so` 
 
 ## Loading
 At the moment the directory which nemi loads all modules is `./modules`.
@@ -7,11 +7,44 @@ It treats all files as modules which start with ELF format magic bytes.
 
 
 ## Compiling a module
-Simple example build script can be found from `nemi/modules/buildmodule.sh`
+The plan is to support many graphics APIs, its recommended to read and understand the example build script
+for modules
+
+* You can find the full `buildmodule.sh` script from `nemi/modules/` directory.
+* This task will be automated in the near future, so no manual compiling is needed.
+
+```bash
+
+module_name=$1
+module_cfiles=$2
+
+# The directory which libnemi.so lives, must be absolute.
+# This assumes that the script is compiled in "nemi/modules/" directory.
+# but you probably get the point...
+libnemi_dir="$(cd .. && pwd)"
+
+# Source file directory of nemi.
+libnemi_srcdir="../src"
+
+# This can be also set to "GRAPHICS_LINUX_FBDEV" in the future,
+# to use the linux framebuffer device.
+# But the implementation is not ready yet.
+graphics_backend="GRAPHICS_OPENGL" 
+
+gcc $module_cfiles \
+    -D$graphics_backend \
+    -shared \
+    -fPIC \
+    -Wl,-rpath=$libnemi_dir \
+    -L$libnemi_dir \
+    -lnemi \
+    -I$libnemi_srcdir \
+    -o $module_name 
+```
 
 # Events
 
-Event can be enabled by creating a function implementation with a specific name.
+Event can be enabled by creating a function implementation with a specific name. 
 
 Available events:
 ```c
@@ -40,13 +73,14 @@ void module_quit() {
 ## Keybinds
 ```c
 #include "nemi.h"
+#include "leaf/keyboard.h"
 
 // Nemi uses GLFW under the hood,
-// you can find the key definitions from https://www.glfw.org/docs/latest/group__keys.html
+// you can find the key definitions from "src/leaf/keyboard.h"
 static const int keybind_test
 = [] {
-  GLFW_KEY_A,
-  GLFW_KEY_LEFT_SHIFT
+  KEYBOARD_KEY_A,
+  KEYBOARD_KEY_LEFT_SHIFT
 };
 
 void keybind_test_func() {
@@ -57,12 +91,6 @@ void module_load(size_t module_idx) {
   Nemi* st = nmt_getst(); // Global state pointer.
   nmt_assign_module_keybind(st, module_idx, keybind_test_func, keybind_test, ARRAY_LEN(keybind_test));
 }
-
-// This function is optional. can be used to free allocated memory.
-/*
-void module_quit() {
-}
-*/
 ```
 
 ## Shape Rendering
@@ -71,14 +99,14 @@ void module_quit() {
 
 
 void module_event_render() {
-  // "leaf" is very simple and pretty lightweight OpenGL and freetype2 utility.
+  // "leaf" is a graphics utility. and graphics api wrapper to be able to use multiple backends.
   // It was mainly written for this project :)
 
   // Nemi has a different framebuffer for this kind of rendering.
   // It is displayed behind the terminal cells.
 
-  // You can find more draw calls from: https://github.com/331uw13/nemi/blob/main/src/leaf/draw.h
-  // ----------------------------------
+  // You can find more draw calls from: "nemi/src/leaf/draw.h"
+  // ---------------------------------------------------------
 
   float x = 100.0f;
   float y = 100.0f;
@@ -89,7 +117,6 @@ void module_event_render() {
 
 void module_load(size_t module_idx) {
 }
-
 
 /*
 void module_quit() {
