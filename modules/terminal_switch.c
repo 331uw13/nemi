@@ -1,7 +1,10 @@
+
+// Test module to allow switching between terminals.
+// NOTE: Work in progress.
+// -------------------------------------------------
+
+
 #include "nemi.h"
-
-
-
 #define ACTIVE_TIME_TIMEOUT_SEC 1.0f
 
 
@@ -67,8 +70,6 @@ void module_event_key_input(int key, int mods) {
 
 void kb_switch() {
     reset_timeout();
-
-    logprintf(LOG_INFO, "SWITCHED %li\n", module.idx);
     nmt_module_gain_inputfocus(nmt_getst(), module.idx);
 }
 

@@ -30,7 +30,7 @@ freetype2
 # Documentation
 
 >[!NOTE]
-> Work in progress... See `documentation` directory.
+> Work in progress... See `documentation` directory. 
 
 
 <h1>

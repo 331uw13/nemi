@@ -58,34 +58,38 @@ Nemi* nmt_start_session(NemiFilepaths filepaths) {
 
     st->font.loaded = false;
 
+    // Try "full" font path first. (relative to directory where executed)
+    // Probably set to absolute path if succeed.
     if(access(st->cfg.font.filepath, R_OK) == 0) {
         leaf_load_font(&st->font, st->cfg.font.filepath);
     }
     else {
-        // Font was not found, Lets try from 'filepaths.fonts + font.filepath' next. 
+        // Font was not found, Lets try from 'filepaths.fonts + config.font.filepath' next. 
         struct string_t font_path = string_create(0);
         string_append(&font_path, filepaths.fonts, strlen(filepaths.fonts));
         if(string_lastbyte(&font_path) != '/' && st->cfg.font.filepath[0] != '/') {
             string_pushbyte(&font_path, '/');
         }
         string_append(&font_path, st->cfg.font.filepath, strlen(st->cfg.font.filepath));
+        string_nullterm(&font_path);
 
         if(access(font_path.bytes, R_OK) == 0) {
             leaf_load_font(&st->font, font_path.bytes);
         }
         else {
-            logprintf(LOG_ERROR, "Failed to find font. tried paths: '%s', '%s'",
-                    st->cfg.font.filepath, font_path.bytes);
+            logprintf(LOG_ERROR, "Failed to find font. Tried paths: '%s' and '%s'",
+                    st->cfg.font.filepath,
+                    font_path.bytes
+            );
         }
         free_string(&font_path);
     }
 
     if(!st->font.loaded) {
-        logprintf(LOG_ERROR, "Error happened while loading font.");
+        logprintf(LOG_ERROR, "Failed to load font.");
         nmt_quit_session(st);
         return NULL;
     }
-   
     
 
     st->font.center_char_to_cell = st->cfg.font.center_char_to_cell;

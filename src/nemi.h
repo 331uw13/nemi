@@ -12,24 +12,25 @@
 #include "module.h"
 #include "common.h"
 
-#define NEMI_VERSION_STR "0.00-0"
+#define NEMI_VERSION_STR "0.00-1"
 
 // Flags for 'struct nemi':
+// TODO: This is very outdated. need to revisit.
 #define FLG_HOTRELOADING_SUPPORTED   (1 << 1)
 #define FLG_RESTARTING_SUPPORTED     (1 << 2)
 #define FLG_LOADER_HOTRELOAD_SESSION (1 << 3)
 #define FLG_LOADER_RESTART_SESSION   (1 << 4)
-#define FLG_SCRIPTDRAW_ADJUSTPOS_TO_SCROLL (1 << 5)
+//#define FLG_SCRIPTDRAW_ADJUSTPOS_TO_SCROLL (1 << 5)
 
 // TODO: Add these to config.
 #define NEMI_TERMINALS_MAX 16
 #define NEMI_KEYINBUF_MAX 8
 #define NEMI_CHARINBUF_MAX 8
-#define NEMI_SCRIPTS_MAX 32
-#define NEMI_RENDERBUFS_MAX 32
-#define NEMI_MSG_LINES_MAX 64
-#define NEMI_SCRIPTS_KEYBIND_KEYS_MAX 16
-#define NEMI_IMAGES_MAX 32
+//#define NEMI_SCRIPTS_MAX 32
+//#define NEMI_RENDERBUFS_MAX 32
+//#define NEMI_MSG_LINES_MAX 64
+//#define NEMI_SCRIPTS_KEYBIND_KEYS_MAX 16
+//#define NEMI_IMAGES_MAX 32
 #define NEMI_MODULES_MAX 64
 
 
