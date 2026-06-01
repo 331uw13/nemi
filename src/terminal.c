@@ -36,6 +36,7 @@
 #include "common.h"
 #include "memory.h"
 
+#include "leaf/keyboard.h"
 
 static
 const char* get_terminaltype_shell(Nemi* st, enum terminal_type term_type) {
@@ -733,14 +734,14 @@ void nmterm_handle_key_event(Nemi* st, NTerminal* term) {
     if(st->last_key_in >= 'A' && st->last_key_in <= 'Z') {
         int key = -1;
 
-        if(st->last_keymod_in & GLFW_MOD_ALT) {
+        if(st->last_keymod_in & KEYBOARD_MOD_ALT) {
             key = st->last_key_in + 32;
             write(term->master_fd, "\x1b", 1);
         }
 
-        if(st->last_keymod_in & GLFW_MOD_CONTROL) {
+        if(st->last_keymod_in & KEYBOARD_MOD_CONTROL) {
             key = st->last_key_in & 0x1F;
-            if(st->last_key_in == GLFW_KEY_L) {
+            if(st->last_key_in == KEYBOARD_KEY_L) {
                 term->yscroll = 0; // Screen was cleared.
             }
         }
@@ -752,13 +753,13 @@ void nmterm_handle_key_event(Nemi* st, NTerminal* term) {
 
     }
     else
-    if((st->last_key_in == GLFW_KEY_LEFT
-     || st->last_key_in == GLFW_KEY_RIGHT)
-    && (st->last_keymod_in == GLFW_MOD_SHIFT)) {
-        if(st->last_key_in == GLFW_KEY_RIGHT) {
+    if((st->last_key_in == KEYBOARD_KEY_LEFT
+     || st->last_key_in == KEYBOARD_KEY_RIGHT)
+    && (st->last_keymod_in == KEYBOARD_MOD_SHIFT)) {
+        if(st->last_key_in == KEYBOARD_KEY_RIGHT) {
             write(term->master_fd, "\x1b[1;5C", 6);
         }
-        if(st->last_key_in == GLFW_KEY_LEFT) {
+        if(st->last_key_in == KEYBOARD_KEY_LEFT) {
             write(term->master_fd, "\x1b[1;5D", 6);
         }
         return;
@@ -766,36 +767,36 @@ void nmterm_handle_key_event(Nemi* st, NTerminal* term) {
 
     switch(st->last_key_in) {
 
-        case GLFW_KEY_ENTER:
+        case KEYBOARD_KEY_ENTER:
             term->yscroll = 0;
             nmterm_write(term, TERM_WRITE_PTY, "\r");
             break; 
 
-        case GLFW_KEY_ESCAPE:
+        case KEYBOARD_KEY_ESCAPE:
             nmterm_write(term, TERM_WRITE_PTY, "\x1b");
             break;
 
-        case GLFW_KEY_TAB:
+        case KEYBOARD_KEY_TAB:
             nmterm_write(term, TERM_WRITE_PTY, "\x09");
             break;
 
-        case GLFW_KEY_BACKSPACE:
+        case KEYBOARD_KEY_BACKSPACE:
             nmterm_write(term, TERM_WRITE_PTY, "\x08");
             break;
 
-        case GLFW_KEY_UP:
+        case KEYBOARD_KEY_UP:
             nmterm_write(term, TERM_WRITE_PTY, "\x1b[A");
             break;
 
-        case GLFW_KEY_DOWN:
+        case KEYBOARD_KEY_DOWN:
             nmterm_write(term, TERM_WRITE_PTY, "\x1b[B");
             break;
 
-        case GLFW_KEY_RIGHT:
+        case KEYBOARD_KEY_RIGHT:
             nmterm_write(term, TERM_WRITE_PTY, "\x1b[C");
             break;
 
-        case GLFW_KEY_LEFT:
+        case KEYBOARD_KEY_LEFT:
             nmterm_write(term, TERM_WRITE_PTY, "\x1b[D");
             break;
     }

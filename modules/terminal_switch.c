@@ -5,6 +5,7 @@
 
 
 #include "nemi.h"
+#include "leaf/keyboard.h"
 #define ACTIVE_TIME_TIMEOUT_SEC 1.0f
 
 
@@ -16,9 +17,9 @@ module;
 
 
 static const int KEYBIND_SWITCH[] = {
-    GLFW_KEY_LEFT_SHIFT,
-    GLFW_KEY_LEFT_ALT,
-    GLFW_KEY_M
+    KEYBOARD_KEY_LEFT_SHIFT,
+    KEYBOARD_KEY_LEFT_ALT,
+    KEYBOARD_KEY_M
 };
 
 

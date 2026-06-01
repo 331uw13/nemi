@@ -1,17 +1,10 @@
-#include "glfw_callbacks.h"
+#include "userinput_callbacks.h"
 
 #include "nemi.h"
 
 
-void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    (void)scancode; 
-    
-    if(action != GLFW_PRESS && action != GLFW_REPEAT) {
-        return;
-    }
-
-    
-    Nemi* st = (Nemi*)glfwGetWindowUserPointer(window);
+void userinput_key_pressed(void* user_pointer, int key, int mods) {
+    Nemi* st = (Nemi*)user_pointer;
     nmt_push_key_input(st, key);
 
     st->last_key_in = key;
@@ -38,28 +31,10 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
         }
 
     }
-
-    /*
-    if(mods == GLFW_MOD_CONTROL) {
-        switch(key) {
-       
-            case GLFW_KEY_SPACE:
-                nmt_switch_terminal_ptr(st, st->terminal_prev);
-                break;
-
-            case GLFW_KEY_X:
-                nmt_switch_terminal_ptr(st, st->messages);
-                break;
-
-                //...
-        }    
-    }
-    */
-
 }
 
-void glfw_char_callback(GLFWwindow* window, uint32_t codepoint) {
-    Nemi* st = (Nemi*)glfwGetWindowUserPointer(window);
+void userinput_char_pressed(void* user_pointer, uint32_t codepoint) {
+    Nemi* st = (Nemi*)user_pointer;
     if(codepoint >= 0x20 && codepoint <= 0x7E) {
 
         nmt_push_char_input(st, codepoint);
@@ -87,23 +62,13 @@ void glfw_char_callback(GLFWwindow* window, uint32_t codepoint) {
     }
 }
 
-void glfw_scroll_callback(GLFWwindow* window, double x_offset, double y_offset) {
-    //Nemi* st = (Nemi*)glfwGetWindowUserPointer(window);
 
-    (void)window;
-    (void)x_offset;
-    (void)y_offset;
-
-    // Currently not used...
-}
-
-void glfw_window_resize_callback(GLFWwindow* window, int width, int height) {
-    Nemi* st = (Nemi*)glfwGetWindowUserPointer(window);
+void userinput_window_resized(void* user_pointer, int width, int height) {
+    Nemi* st = (Nemi*)user_pointer;
 
     st->lfctx->win_width = width;
     st->lfctx->win_height = height;
 
-    glViewport(0, 0, width, height);
 
     st->win_cols = width / st->font.char_width;
     st->win_rows = height / (st->font.char_height + st->cfg.main.line_padding);
@@ -121,7 +86,6 @@ void glfw_window_resize_callback(GLFWwindow* window, int width, int height) {
     leaf_create_framebuffer(&st->altrender_framebuffer, st->lfctx->win_width, st->lfctx->win_height);
     //clear_region(st, 0, 0, st->lfctx->win_width, st->lfctx->win_height);
 
-
     // Inform modules.
 
     for(size_t i = 0; i < st->num_loaded_modules; i++) {
@@ -131,9 +95,14 @@ void glfw_window_resize_callback(GLFWwindow* window, int width, int height) {
             module->events.fn_window_resized();
         }
     }
+    
+
+    leaf_set_viewport(0, 0, width, height);
+    //glViewport(0, 0, width, height);
 }
 
 
+/*
 void glfw_cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
     Nemi* st = (Nemi*)glfwGetWindowUserPointer(window);
 
@@ -150,4 +119,4 @@ void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int 
         st->last_mouse_button = button;
     }
 }
-
+*/

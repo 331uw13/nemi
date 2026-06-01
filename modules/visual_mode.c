@@ -1,9 +1,9 @@
 #include "nemi.h"
-
+#include "leaf/keyboard.h"
 
 static const int keybind_toggle[] = {
-    GLFW_KEY_LEFT_CONTROL,
-    GLFW_KEY_K
+    KEYBOARD_KEY_LEFT_CONTROL,
+    KEYBOARD_KEY_K
 };
 
 
@@ -64,7 +64,7 @@ void module_event_key_input(int key, int modifiers) {
     bool cursor_moved = false;
     switch(key) {
 
-        case GLFW_KEY_S:
+        case KEYBOARD_KEY_S:
             if(st->terminal->select.active) {
                 st->terminal->select.active = false;
                 //nmt_select_end(st->terminal);
@@ -74,8 +74,8 @@ void module_event_key_input(int key, int modifiers) {
             }
             break;
 
-        case GLFW_KEY_I:
-        case GLFW_KEY_UP:
+        case KEYBOARD_KEY_I:
+        case KEYBOARD_KEY_UP:
             g.vcursor_row--;
             cursor_moved = true;
             if(modifiers & GLFW_MOD_SHIFT) {
@@ -83,8 +83,8 @@ void module_event_key_input(int key, int modifiers) {
             }
             break;
 
-        case GLFW_KEY_K:
-        case GLFW_KEY_DOWN:
+        case KEYBOARD_KEY_K:
+        case KEYBOARD_KEY_DOWN:
             g.vcursor_row++;
             cursor_moved = true;
             if(modifiers & GLFW_MOD_SHIFT) {
@@ -92,14 +92,14 @@ void module_event_key_input(int key, int modifiers) {
             }
             break;
 
-        case GLFW_KEY_J:
-        case GLFW_KEY_LEFT:
+        case KEYBOARD_KEY_J:
+        case KEYBOARD_KEY_LEFT:
             g.vcursor_col--;
             cursor_moved = true;
             break;
 
-        case GLFW_KEY_L:
-        case GLFW_KEY_RIGHT:
+        case KEYBOARD_KEY_L:
+        case KEYBOARD_KEY_RIGHT:
             g.vcursor_col++;
             cursor_moved = true;
             break;

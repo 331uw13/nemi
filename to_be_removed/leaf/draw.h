@@ -83,7 +83,6 @@ void leaf_draw_texture_rect
     int options
 );
 
-
 void leaf_draw_circle
 (
     float pos_x,

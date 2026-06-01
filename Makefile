@@ -4,28 +4,46 @@ LOADER_TARGET  = nemi
 
 LIBVTERM_DIR = ./libs/libvterm-0.3.3
 
-CC_FLAGS = \
-		   -ggdb \
-		   -Wall \
-		   -Wextra \
-		   -I/usr/include/freetype2 \
-		   -I/usr/include/libpng16 \
-		   -I$(LIBVTERM_DIR)/include 
 
-LD_FLAGS = \
-		   -lglfw \
-		   -lGL \
-		   -lGLEW \
-		   -lm \
-		   -lfreetype \
-		   -lvterm_l \
-		   -Wl,-rpath=$(LIBVTERM_DIR) -L$(LIBVTERM_DIR)
+CC_FLAGS = -ggdb -Wall -Wextra -I$(LIBVTERM_DIR)/include 
+LD_FLAGS = -lm -Wl,-rpath=$(LIBVTERM_DIR) -L$(LIBVTERM_DIR) -lvterm_l
+
+
+#CC_FLAGS = \
+#		   -ggdb \
+#		   -Wall \
+#		   -Wextra \
+#		   -I/usr/include/freetype2 \
+#		   -I/usr/include/libpng16 \
+#		   -I$(LIBVTERM_DIR)/include 
+#
+#LD_FLAGS = \
+#		   -lglfw \
+#		   -lGL \
+#		   -lGLEW \
+#		   -lm \
+#		   -lfreetype \
+#		   -lvterm_l \
+#		   -Wl,-rpath=$(LIBVTERM_DIR) -L$(LIBVTERM_DIR)
 
 
 LIBNEMI_SRC_DIR = ./src
 LOADER_SRC_DIR  = ./loader
 OBJ_DIR         = ./obj
 
+# opengl OR linux_fbdev
+GRAPHICS ?= opengl
+
+ifeq ($(GRAPHICS), opengl)
+	CC_FLAGS += -DGRAPHICS_OPENGL
+	CC_FLAGS += -I/usr/include/freetype2
+	CC_FLAGS += -I/usr/include/libpng16
+	LD_FLAGS += -lglfw
+	LD_FLAGS += -lGLEW
+	LD_FLAGS += -lfreetype
+else ifeq ($(GRAPHICS), linux_fbdev)
+	CC_FLAGS += -DGRAPHICS_LINUX_FBDEV
+endif
 
 LIBNEMI_SRC_FILES = $(shell find $(LIBNEMI_SRC_DIR) -type f -name '*.c')
 LIBNEMI_OBJ_FILES = $(patsubst $(LIBNEMI_SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(LIBNEMI_SRC_FILES))
@@ -33,7 +51,6 @@ LIBNEMI_OBJ_FILES = $(patsubst $(LIBNEMI_SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(LIBNEMI
 
 LOADER_SRC_FILES = $(shell find $(LOADER_SRC_DIR) -type f -name '*.c')
 LOADER_OBJ_FILES = $(patsubst $(LOADER_SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(LOADER_SRC_FILES))
-
 
 
 

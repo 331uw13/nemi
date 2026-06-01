@@ -32,7 +32,8 @@
 #include "nemi_config.h"
 #include "memory.h"
 #include "fileio.h"
-#include "glfw_callbacks.h"
+#include "userinput_callbacks.h"
+#include "leaf/keyboard.h"
 
 #include "thirdparty/stb_ds.h"
 
@@ -74,6 +75,9 @@ Nemi* nmt_start_session(NemiFilepaths filepaths) {
         return NULL;
     }
 
+
+    leaf_enable_vsync (st->cfg.main.vsync);
+    leaf_hide_mouse   (st->cfg.main.hide_mouse);
 
 
     st->font.loaded = false;
@@ -120,6 +124,12 @@ Nemi* nmt_start_session(NemiFilepaths filepaths) {
     leaf_set_font_color(&st->font, (RGBColor) { 255, 200, 150 });
 
 
+    // Set userinput callbacks.
+    st->lfctx->callback.user_pointer = st;
+    st->lfctx->callback.key_pressed = userinput_key_pressed;
+    st->lfctx->callback.char_pressed = userinput_char_pressed;
+    st->lfctx->callback.window_resized = userinput_window_resized;
+    /*
     glfwSetWindowUserPointer(st->lfctx->glfw_win, st);
     glfwSetInputMode          (st->lfctx->glfw_win, GLFW_STICKY_KEYS, GLFW_FALSE);
     glfwSetKeyCallback        (st->lfctx->glfw_win, glfw_key_callback);
@@ -128,7 +138,7 @@ Nemi* nmt_start_session(NemiFilepaths filepaths) {
     glfwSetWindowSizeCallback (st->lfctx->glfw_win, glfw_window_resize_callback);
     glfwSetCursorPosCallback  (st->lfctx->glfw_win, glfw_cursor_position_callback);
     glfwSetMouseButtonCallback(st->lfctx->glfw_win, glfw_mouse_button_callback);
-
+    */
     // This will allocate memory for the renderer's
     // vertex buffer object. Only one is used. 
     const size_t renderer_memory_size = 1024 * sizeof(float);
@@ -166,11 +176,7 @@ Nemi* nmt_start_session(NemiFilepaths filepaths) {
         glfwSetInputMode(st->lfctx->glfw_win, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
     }
     */
-    glfwSwapInterval(st->cfg.main.vsync ? 0 : 1);
 
-    if(st->cfg.main.hide_mouse) {
-        glfwSetInputMode(st->lfctx->glfw_win, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-    }
    
 
     leaf_create_framebuffer(&st->term_cells_framebuffer, st->lfctx->win_width, st->lfctx->win_height);
@@ -193,13 +199,7 @@ void nmt_quit_session(Nemi* st) {
     for(uint16_t i = 0; i < st->num_terminals; i++) {
         nmterm_close(&st->terminals[i]);
     }
-
-    glfwSetWindowUserPointer  (st->lfctx->glfw_win, NULL);
-    glfwSetKeyCallback        (st->lfctx->glfw_win, NULL);
-    glfwSetCharCallback       (st->lfctx->glfw_win, NULL);
-    glfwSetScrollCallback     (st->lfctx->glfw_win, NULL);
-    glfwSetWindowSizeCallback (st->lfctx->glfw_win, NULL);
-
+    
     leaf_free_renderer(st->lfctx);
     leaf_quit(st->lfctx);
 
@@ -320,9 +320,11 @@ void nmt_switch_terminal_ptr(Nemi* st, NTerminal* term) {
 
 
 
+/*
 #define CLEAR_COLOR_NO_ALPHA 0.0f
 #define CLEAR_COLOR_INCLUDE_ALPHA 1.0f
 void nmt_clear_color_buffer_bit(Nemi* st, float clear_color_alpha) {
+    
     glClearColor(
             (float)st->cfg.colors[NEMI_COLOR_BG].r / 255.0f,
             (float)st->cfg.colors[NEMI_COLOR_BG].g / 255.0f,
@@ -330,12 +332,32 @@ void nmt_clear_color_buffer_bit(Nemi* st, float clear_color_alpha) {
             clear_color_alpha);
     glClear(GL_COLOR_BUFFER_BIT);
 }
+*/
 
-void nmt_clear_region(Nemi* st, int x, int y, int w, int h) {
+void nmt_clear_region(Nemi* st, int x, int y, int w, int h) { 
+    leaf_enable_scissor_test(true);
+    leaf_set_scissor_region
+    (
+        x,
+        (st->lfctx->win_height - h) - y,
+        w,
+        h
+    );
+    leaf_clear_color((RGBAColor) {
+        st->cfg.colors[NEMI_COLOR_BG].r,
+        st->cfg.colors[NEMI_COLOR_BG].g,
+        st->cfg.colors[NEMI_COLOR_BG].b,
+        0, // No alpha
+    });
+    leaf_clear();
+    leaf_enable_scissor_test(false);
+    
+    /*
     glEnable(GL_SCISSOR_TEST);
     glScissor(x, (st->lfctx->win_height - h) - y, w, h);
     nmt_clear_color_buffer_bit(st, CLEAR_COLOR_NO_ALPHA);
     glDisable(GL_SCISSOR_TEST);
+    */
 }
 
 
@@ -362,7 +384,7 @@ size_t p_nmterm_select_callback__get_row_length(void* user_pointer, ssize_t row)
 }
 
 void nmt_update_frame(Nemi* st) {
-    st->frame_time_begin = glfwGetTime();
+    st->frame_time_begin = leaf_get_time_insec();
 
 
 
@@ -391,7 +413,18 @@ void nmt_update_frame(Nemi* st) {
         // to arbitrary coordinates and not just cell coordinates
         // so it is more harder to keep track of what has changed.
         // So... it will be bit slower at least for now.
-        nmt_clear_color_buffer_bit(st, CLEAR_COLOR_NO_ALPHA);
+        leaf_clear_color
+        (
+            (RGBAColor) {
+                st->cfg.colors[NEMI_COLOR_BG].r,
+                st->cfg.colors[NEMI_COLOR_BG].g,
+                st->cfg.colors[NEMI_COLOR_BG].b,
+                0 // No alpha
+            }
+        );
+        leaf_clear();
+
+        //nmt_clear_color_buffer_bit(st, CLEAR_COLOR_NO_ALPHA);
  
         // The select region is needed to render separatly from cells.
         // because the terminal will only render when cells change and we are not changing cells data.
@@ -417,10 +450,21 @@ void nmt_update_frame(Nemi* st) {
         leaf_renderer_flush(st->lfctx);
     }
 
-
+    // Ennable the default framebuffer.
     leaf_use_framebuffer(NULL);
-    nmt_clear_color_buffer_bit(st, CLEAR_COLOR_INCLUDE_ALPHA);
-    glClear(GL_COLOR_BUFFER_BIT);
+    
+    leaf_clear_color
+    (
+        (RGBAColor) {
+            st->cfg.colors[NEMI_COLOR_BG].r,
+            st->cfg.colors[NEMI_COLOR_BG].g,
+            st->cfg.colors[NEMI_COLOR_BG].b,
+            255 // Alpha.
+        }
+    );
+    leaf_clear();
+    //nmt_clear_color_buffer_bit(st, CLEAR_COLOR_INCLUDE_ALPHA);
+    //glClear(GL_COLOR_BUFFER_BIT);
 
     leaf_draw_texture_rect(0, 0,
             st->altrender_framebuffer.width,
@@ -445,17 +489,17 @@ void nmt_update_frame(Nemi* st) {
     st->last_char_in = 0;
     st->last_key_in = 0;
     st->last_mouse_button = -1;
-    glfwSwapBuffers(st->lfctx->glfw_win);
     
-    glfwPollEvents();
+
+    leaf_swap_buffers();
+    leaf_get_events();
+
+    //glfwSwapBuffers(st->lfctx->glfw_win);
+    //glfwPollEvents();
     //usleep(10000);
 
-    st->frame_time = glfwGetTime() - st->frame_time_begin;
+    st->frame_time = leaf_get_time_insec() - st->frame_time_begin;
 
-}
-
-bool nmt_key_down(Nemi* st, int key) {
-    return (glfwGetKey(st->lfctx->glfw_win, key) == GLFW_PRESS);
 }
 
 void nmt_init_default_config(Nemi* st) {
@@ -553,12 +597,13 @@ void nmt_keyinput_events_for_modules(Nemi* st, int key, int mods) {
         return;
     }
 
-    int pressed_keys[GLFW_KEY_LAST] = { 0 };
+    int pressed_keys[KEYBOARD_KEY_LAST] = { 0 };
     size_t num_pressed_keys = 0;
 
-    for(int i = GLFW_KEY_SPACE; i < GLFW_KEY_LAST; i++) {
-        if(glfwGetKey(st->lfctx->glfw_win, i) == GLFW_PRESS) {
-            
+    for(int i = KEYBOARD_KEY_SPACE; i < KEYBOARD_KEY_LAST; i++) {
+        if(leaf_key_down(i)) {
+
+            // (leaf uses glfw if using opengl for graphics)
             // There is maybe some issue how glfw resets some key states when glfwGetKey is used...
             // At least on i3wm, the super key state may never be reset until its pressed again.
             // That will result the keyhash being "wrong"
@@ -566,26 +611,26 @@ void nmt_keyinput_events_for_modules(Nemi* st, int key, int mods) {
             // Maybe there is some other way to fix this but for now
             // lets double check the key modifiers.
 
-            if(i == GLFW_KEY_LEFT_ALT || i == GLFW_KEY_RIGHT_ALT) {
-                if(!(mods & GLFW_MOD_ALT)) {
+            if(i == KEYBOARD_KEY_LEFT_ALT || i == KEYBOARD_KEY_RIGHT_ALT) {
+                if(!(mods & KEYBOARD_MOD_ALT)) {
                     continue;
                 }
             }
             else
-            if(i == GLFW_KEY_LEFT_SUPER || i == GLFW_KEY_RIGHT_SUPER) {
-                if(!(mods & GLFW_MOD_SUPER)) {
+            if(i == KEYBOARD_KEY_LEFT_SUPER || i == KEYBOARD_KEY_RIGHT_SUPER) {
+                if(!(mods & KEYBOARD_MOD_SUPER)) {
                     continue;
                 }
             }
             else
-            if(i == GLFW_KEY_LEFT_CONTROL || i == GLFW_KEY_RIGHT_CONTROL) {
-                if(!(mods & GLFW_MOD_CONTROL)) {
+            if(i == KEYBOARD_KEY_LEFT_CONTROL || i == KEYBOARD_KEY_RIGHT_CONTROL) {
+                if(!(mods & KEYBOARD_MOD_CONTROL)) {
                     continue;
                 }
             }
             else
-            if(i == GLFW_KEY_LEFT_SHIFT || i == GLFW_KEY_RIGHT_SHIFT) {
-                if(!(mods & GLFW_MOD_SHIFT)) {
+            if(i == KEYBOARD_KEY_LEFT_SHIFT || i == KEYBOARD_KEY_RIGHT_SHIFT) {
+                if(!(mods & KEYBOARD_MOD_SHIFT)) {
                     continue;
                 }
             }
@@ -635,14 +680,14 @@ int nmt_rowtoy(Nemi* st, int row) {
 void nmt_font_scale(Nemi* st, float offset) {
     leaf_set_font_scale(&st->font, st->font.scale + offset);
 
-    // We can call glfw window resize callback here
-    // it resizes the terminals rows and columns too.
-    glfw_window_resize_callback(st->lfctx->glfw_win, st->lfctx->win_width, st->lfctx->win_height);
+    // TODO: This should be refactored.
+    // this function call will cause the framebuffers to be reset 
+    // Doing it this way may not be good idea, if this function behaviour changes in the future.
+    userinput_window_resized(st, st->lfctx->win_width, st->lfctx->win_height);
 }
 
 void nmt_set_font_scale(Nemi* st, float scale) {
     leaf_set_font_scale(&st->font, scale);
-    glfw_window_resize_callback(st->lfctx->glfw_win, st->lfctx->win_width, st->lfctx->win_height);
 }
 
 void nmt_create_msg(Nemi* st, const char* msg, ...) {

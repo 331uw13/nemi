@@ -22,9 +22,9 @@
 #define NEMI_H
 
 #include <stdint.h>
-
-
 #include "leaf/leaf.h"
+
+
 #include "nemi_config.h"
 #include "terminal.h"
 #include "log.h"
@@ -105,17 +105,6 @@ typedef struct Nemi_t {
     int term_cells_render_offset_x;
     int term_cells_render_offset_y;
 
-    // When scripts want to make user input
-    // to the terminal ignored we will keep track of
-    // how many scripts ignored it
-    // because if another script ignores input and another unignores it
-    // it will not work as expected.
-    // FIXME: The counters get confused very rarely and locks the input forever.
-    // TODO: Try to create "focus" system for scripts (?)
-    //int term_ignore_char_input_counter;
-    //int term_ignore_key_input_counter;
-
-
     // Terminal framebuffer is separated
     // because terminals keep track of "front" and "back" cell buffers
     // to optimize rendering.
@@ -145,7 +134,7 @@ void nmt_set_font_scale(Nemi* st, float scale);
 void nmt_create_msg(Nemi* st, const char* msg, ...);
 //int  nmt_load_image(Nemi* st, const char* filepath);
 //void nmt_unload_image(struct image* img);
-bool nmt_key_down(Nemi* st, int key);
+//bool nmt_key_down(Nemi* st, int key);
 
 // Switch current terminal.
 void nmt_switch_terminal_idx(Nemi* st, uint32_t index);

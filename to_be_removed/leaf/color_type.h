@@ -11,12 +11,5 @@ typedef struct RGBColor_t { // 0 - 255
 }
 RGBColor;
 
-typedef struct RGBAColor_t { // 0 - 255
-    uint8_t r;
-    uint8_t g;
-    uint8_t b;
-    uint8_t a;
-}
-RGBAColor;
 
 #endif

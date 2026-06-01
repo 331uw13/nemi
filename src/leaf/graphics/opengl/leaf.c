@@ -21,12 +21,121 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <GL/glew.h>
+#include <GLFW/glfw3.h>
+#include "../../leaf.h"
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "thirdparty/stb_image.h"
+#include "../../thirdparty/stb_image.h"
 
-#include "leaf.h"
+
 #include "shaders.h"
+
+
+static struct {
+    GLFWwindow* glfw_win;
+    
+    size_t   renderer_num_vertex_positions;
+    size_t   renderer_vbo_memsize;
+    size_t   renderer_vbo_size;
+    size_t   renderer_vbo_data_offset;
+    size_t   renderer_vbo_num_vertices;
+
+    uint32_t renderer_vao;
+    uint32_t renderer_vbo;
+    uint32_t renderer_shader;
+
+    uint32_t renderer_tex_vao;
+    uint32_t renderer_tex_vbo;
+    uint32_t renderer_tex_shader;
+
+}
+g_lf = {
+    .glfw_win = NULL,
+    .renderer_num_vertex_positions = 0,
+    .renderer_vbo_memsize = 0,
+    .renderer_vbo_size = 0,
+    .renderer_vbo_data_offset = 0,
+    .renderer_vbo_num_vertices = 0,
+    .renderer_vao = 0,
+    .renderer_vbo = 0,
+    .renderer_shader = 0,
+    .renderer_tex_vao = 0,
+    .renderer_tex_vbo = 0,
+    .renderer_tex_shader = 0
+};
+
+uint32_t p_leaf_get_renderer_tex_shader() {
+    return g_lf.renderer_tex_shader;
+}
+
+uint32_t p_leaf_get_renderer_tex_vao() {
+    return g_lf.renderer_tex_vao;
+}
+
+uint32_t p_leaf_get_renderer_tex_vbo() {
+    return g_lf.renderer_tex_vbo;
+}
+
+bool leaf_should_quit() {
+    return glfwWindowShouldClose(g_lf.glfw_win);
+}
+
+void leaf_swap_buffers() {
+    glfwSwapBuffers(g_lf.glfw_win);
+}
+
+void leaf_get_events() {
+    glfwPollEvents();
+}
+
+void leaf_set_viewport(int x, int y, int w, int h) {
+    glViewport(x, y, w, h);
+}
+
+void leaf_hide_mouse(bool is_hidden) {
+    glfwSetInputMode(g_lf.glfw_win, GLFW_CURSOR, is_hidden ? GLFW_CURSOR_HIDDEN : GLFW_CURSOR_NORMAL);
+}
+
+bool leaf_key_down(int key) {
+    return glfwGetKey(g_lf.glfw_win, key) == GLFW_PRESS;
+}
+
+void leaf_enable_vsync(bool is_enabled) {
+    glfwSwapInterval(is_enabled ? 0 : 1);
+}
+
+double leaf_get_time_insec() {
+    return glfwGetTime();
+}
+
+void leaf_clear_color(RGBAColor color) {
+    glClearColor
+    (
+        (float)color.r / 255.0f,
+        (float)color.g / 255.0f,
+        (float)color.b / 255.0f,
+        (float)color.a / 255.0f
+    );
+}
+
+void leaf_clear() {
+    glClear(GL_COLOR_BUFFER_BIT);
+}
+
+void leaf_enable_scissor_test(bool is_enabled) {
+    if(is_enabled) {
+        glEnable(GL_SCISSOR_TEST);
+    }
+    else {
+        glDisable(GL_SCISSOR_TEST);
+    }
+}
+
+void leaf_set_scissor_region(int x, int y, int w, int h) {
+    glScissor(x, y, w, h);
+}
+
+
 
 static const char RENDERER_VERTEX_SHADER_SRC[] = {
     "#version 330 core\n"
@@ -82,13 +191,53 @@ static const char RENDERER_TEX_FRAGMENT_SHADER_SRC[] = {
 };
 
 
+void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if(action == GLFW_RELEASE) {
+        return;
+    }
+    
+    LeafCtx* ctx = (LeafCtx*)glfwGetWindowUserPointer(window);
+    if(ctx->callback.key_pressed == NULL) {
+        return;
+    }
+
+    ctx->callback.key_pressed(ctx->callback.user_pointer, key, mods);
+}
+
+void glfw_char_callback(GLFWwindow* window, uint32_t codepoint) {
+    LeafCtx* ctx = (LeafCtx*)glfwGetWindowUserPointer(window);
+    if(ctx->callback.char_pressed == NULL) {
+        return;
+    }
+        
+    ctx->callback.char_pressed(ctx->callback.user_pointer, codepoint);
+}
+
+void glfw_window_resize_callback(GLFWwindow* window, int width, int height) {
+    LeafCtx* ctx = (LeafCtx*)glfwGetWindowUserPointer(window);
+    if(ctx->callback.window_resized == NULL) {
+        return;
+    }
+        
+    ctx->callback.window_resized(ctx->callback.user_pointer, width, height);
+}
+
+//void glfw_scroll_callback(GLFWwindow* window, double x_offset, double y_offset);
+//void glfw_cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
+//void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+
 LeafCtx* leaf_open(const char* title, int width, int height, int flags) {
     LeafCtx* ctx = malloc(sizeof *ctx);
     if(!ctx) {
         goto out;
     }
 
-    ctx->glfw_win = NULL;
+    ctx->callback.key_pressed = NULL;
+    ctx->callback.char_pressed = NULL;
+    ctx->callback.window_resized = NULL;
+
+    g_lf.glfw_win = NULL;
+    //g_lf.glfw_win = NULL;
     ctx->win_width = width;
     ctx->win_height = height;
 
@@ -102,8 +251,8 @@ LeafCtx* leaf_open(const char* title, int width, int height, int flags) {
         glfwWindowHint(GLFW_RESIZABLE, false);
     }
 
-    ctx->glfw_win = glfwCreateWindow(width, height, title, NULL, NULL);
-    if(!ctx->glfw_win) {
+    g_lf.glfw_win = glfwCreateWindow(width, height, title, NULL, NULL);
+    if(!g_lf.glfw_win) {
         fprintf(stderr, "Failed to create window\n");
         leaf_quit(ctx);
         ctx = NULL;
@@ -111,13 +260,13 @@ LeafCtx* leaf_open(const char* title, int width, int height, int flags) {
     }
 
     if(flags & LEAF_NORESIZE) {
-        glfwSetWindowSizeLimits(ctx->glfw_win, width, height, GLFW_DONT_CARE, GLFW_DONT_CARE);
+        glfwSetWindowSizeLimits(g_lf.glfw_win, width, height, GLFW_DONT_CARE, GLFW_DONT_CARE);
     }
     else {
-        glfwSetWindowSizeLimits(ctx->glfw_win, 500, 500, 6000, 3000);
+        glfwSetWindowSizeLimits(g_lf.glfw_win, 500, 500, 6000, 3000);
     }
 
-    glfwMakeContextCurrent(ctx->glfw_win);
+    glfwMakeContextCurrent(g_lf.glfw_win);
     
     GLenum glew_err = glewInit();
     if(glew_err != GLEW_OK) {
@@ -134,14 +283,24 @@ LeafCtx* leaf_open(const char* title, int width, int height, int flags) {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+    glfwSetWindowUserPointer  (g_lf.glfw_win, ctx);
+    glfwSetInputMode          (g_lf.glfw_win, GLFW_STICKY_KEYS, GLFW_FALSE);
+    glfwSetKeyCallback        (g_lf.glfw_win, glfw_key_callback);
+    glfwSetCharCallback       (g_lf.glfw_win, glfw_char_callback);
+    glfwSetWindowSizeCallback (g_lf.glfw_win, glfw_window_resize_callback);
 
-    ctx->renderer_vao = 0;
-    ctx->renderer_vbo = 0;
-    ctx->renderer_shader = 0;
-    ctx->renderer_num_vertex_positions = 0;
-    ctx->renderer_vbo_memsize = 0;
-    ctx->renderer_vbo_size = 0;
-
+    //glfwSetScrollCallback     (g_lf.glfw_win, glfw_scroll_callback);
+    //glfwSetCursorPosCallback  (g_lf.glfw_win, glfw_cursor_position_callback);
+    //glfwSetMouseButtonCallback(g_lf.glfw_win, glfw_mouse_button_callback);
+    
+    /*
+    renderer_vao = 0;
+    renderer_vbo = 0;
+    renderer_shader = 0;
+    renderer_num_vertex_positions = 0;
+    renderer_vbo_memsize = 0;
+    renderer_vbo_size = 0;
+    */
 out:
     return ctx;
 }
@@ -152,8 +311,8 @@ void leaf_quit(LeafCtx* ctx) {
         return;
     }
 
-    if(ctx->glfw_win) {
-        glfwDestroyWindow(ctx->glfw_win);
+    if(g_lf.glfw_win) {
+        glfwDestroyWindow(g_lf.glfw_win);
     }
 
     glfwTerminate();
@@ -161,16 +320,16 @@ void leaf_quit(LeafCtx* ctx) {
 }
 
 void leaf_init_renderer(LeafCtx* ctx, size_t vbo_memsize) {    
-    glGenVertexArrays(1, &ctx->renderer_vao);
-    glBindVertexArray(ctx->renderer_vao);
+    glGenVertexArrays(1, &g_lf.renderer_vao);
+    glBindVertexArray(g_lf.renderer_vao);
 
-    glGenBuffers(1, &ctx->renderer_vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, ctx->renderer_vbo);
+    glGenBuffers(1, &g_lf.renderer_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, g_lf.renderer_vbo);
     glBufferData(GL_ARRAY_BUFFER, vbo_memsize, NULL, GL_STATIC_DRAW);
 
-    ctx->renderer_vbo_memsize = vbo_memsize;
-    ctx->renderer_vbo_data_offset = 0;
-    ctx->renderer_vbo_num_vertices = 0;
+    g_lf.renderer_vbo_memsize = vbo_memsize;
+    g_lf.renderer_vbo_data_offset = 0;
+    g_lf.renderer_vbo_num_vertices = 0;
     size_t stride_size = (2 + 3) * sizeof(float);
 
 
@@ -190,14 +349,12 @@ void leaf_init_renderer(LeafCtx* ctx, size_t vbo_memsize) {
 
     // For textures
  
-    glGenVertexArrays(1, &ctx->renderer_tex_vao);
-    glBindVertexArray(ctx->renderer_tex_vao);
+    glGenVertexArrays(1, &g_lf.renderer_tex_vao);
+    glBindVertexArray(g_lf.renderer_tex_vao);
 
-    glGenBuffers(1, &ctx->renderer_tex_vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, ctx->renderer_tex_vbo);
+    glGenBuffers(1, &g_lf.renderer_tex_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, g_lf.renderer_tex_vbo);
     glBufferData(GL_ARRAY_BUFFER, vbo_memsize, NULL, GL_STATIC_DRAW);
-
-    //ctx->renderer_vbo_memsize = vbo_memsize;
 
 
     stride_size = (2 + 3 + 2) * sizeof(float);
@@ -221,26 +378,26 @@ void leaf_init_renderer(LeafCtx* ctx, size_t vbo_memsize) {
    
 
     // Compile rendering shaders.
-    ctx->renderer_shader = create_shader_program
+    g_lf.renderer_shader = create_shader_program
         (RENDERER_VERTEX_SHADER_SRC, RENDERER_FRAGMENT_SHADER_SRC);
 
     // Compile rendering shaders.
-    ctx->renderer_tex_shader = create_shader_program
+    g_lf.renderer_tex_shader = create_shader_program
         (RENDERER_TEX_VERTEX_SHADER_SRC, RENDERER_TEX_FRAGMENT_SHADER_SRC);
 }
 
 void leaf_free_renderer(LeafCtx* ctx) {
-    if(ctx->renderer_vao > 0) {
-        glDeleteVertexArrays(1, &ctx->renderer_vao);
-        ctx->renderer_vao = 0;
+    if(g_lf.renderer_vao > 0) {
+        glDeleteVertexArrays(1, &g_lf.renderer_vao);
+        g_lf.renderer_vao = 0;
     }
-    if(ctx->renderer_vbo > 0) {
-        glDeleteBuffers(1, &ctx->renderer_vbo);
-        ctx->renderer_vbo = 0;
+    if(g_lf.renderer_vbo > 0) {
+        glDeleteBuffers(1, &g_lf.renderer_vbo);
+        g_lf.renderer_vbo = 0;
     }
-    if(ctx->renderer_shader > 0) {
-        glDeleteProgram(ctx->renderer_shader);
-        ctx->renderer_shader = 0;
+    if(g_lf.renderer_shader > 0) {
+        glDeleteProgram(g_lf.renderer_shader);
+        g_lf.renderer_shader = 0;
     }
 }
 
@@ -251,32 +408,15 @@ void leaf_render_vertices(LeafCtx* ctx, float* vertices, size_t vertices_memsize
                 __FILE__, __func__);
         return;
     }
-
-    /*
-    if(vertices_memsize >= ctx->renderer_vbo_memsize) {
-        fprintf(stderr, "(%s) %s(): Renderer VBO doesnt have enough memory allocated.\n",
-                __FILE__, __func__);
-        return;
-    }
-    */
-
-    /*
-    glBindBuffer(GL_ARRAY_BUFFER, ctx->renderer_vbo);
-    glBufferSubData(GL_ARRAY_BUFFER, ctx->renderer_vbo_data_offset, vertices_memsize, vertices);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    ctx->renderer_vbo_data_offset += vertices_memsize;
-    ctx->renderer_vbo_num_vertices += 6;//((vertices_memsize / sizeof(float)) / 5);
-    */
     
-    glBindBuffer(GL_ARRAY_BUFFER, ctx->renderer_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, g_lf.renderer_vbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, vertices_memsize, vertices);
     
     const int num_vertex_positions = ((vertices_memsize / sizeof(float)) / 5) * 2;
    
-    glBindVertexArray(ctx->renderer_vao);
+    glBindVertexArray(g_lf.renderer_vao);
    
-    glUseProgram(ctx->renderer_shader);
+    glUseProgram(g_lf.renderer_shader);
     glDrawArrays(GL_TRIANGLES, 0, num_vertex_positions);
     
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -285,26 +425,28 @@ void leaf_render_vertices(LeafCtx* ctx, float* vertices, size_t vertices_memsize
 
 void leaf_renderer_flush(LeafCtx* ctx) {
 
-    glBindBuffer(GL_ARRAY_BUFFER, ctx->renderer_vbo);
-    glBindVertexArray(ctx->renderer_vao);
-    glUseProgram(ctx->renderer_shader);
+    glBindBuffer(GL_ARRAY_BUFFER, g_lf.renderer_vbo);
+    glBindVertexArray(g_lf.renderer_vao);
+    glUseProgram(g_lf.renderer_shader);
 
-    glDrawArrays(GL_TRIANGLES, 0, ctx->renderer_vbo_num_vertices);
+    glDrawArrays(GL_TRIANGLES, 0, g_lf.renderer_vbo_num_vertices);
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
-    ctx->renderer_vbo_data_offset = 0;
-    ctx->renderer_vbo_num_vertices = 0;
+    g_lf.renderer_vbo_data_offset = 0;
+    g_lf.renderer_vbo_num_vertices = 0;
 }
 
-uint32_t leaf_load_texture(const char* path, int* width, int* height) {
+LeafTexture leaf_load_texture(const char* path) {
+    int width = 0;
+    int height = 0;
     uint32_t tex = 0;
     int channels = 0;
 
     stbi_set_flip_vertically_on_load(true);
-    uint8_t* image = stbi_load(path, width, height, &channels, 0);
+    uint8_t* image = stbi_load(path, &width, &height, &channels, 0);
 
-    printf("%s(): %s: %i, %i\n", __func__, path, *width, *height);
+    printf("%s(): %s: %i, %i\n", __func__, path, width, height);
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
 
@@ -320,39 +462,19 @@ uint32_t leaf_load_texture(const char* path, int* width, int* height) {
 
     glTexImage2D(GL_TEXTURE_2D,
             0, ch, 
-            *width, *height,
+            width, height,
             0, ch, GL_UNSIGNED_BYTE, image);
 
     glBindTexture(GL_TEXTURE_2D, 0);
     stbi_image_free(image);
-    return tex;
-}
-
-float lerp(float x, float y, float t) {
-    return x + t * (y - x);
-}
-
-RGBColor leaf_color_lerp(RGBColor x, RGBColor y, float t) {
-
-    float ir = lerp((float)x.r, (float)y.r, t);
-    float ig = lerp((float)x.g, (float)y.g, t);
-    float ib = lerp((float)x.b, (float)y.b, t);
-
-    // Clamp values.
-    ir = (ir < 0.0f) ? 0.0f : (ir > (float)UINT8_MAX) ? (float)UINT8_MAX : ir;
-    ig = (ig < 0.0f) ? 0.0f : (ig > (float)UINT8_MAX) ? (float)UINT8_MAX : ig;
-    ib = (ib < 0.0f) ? 0.0f : (ib > (float)UINT8_MAX) ? (float)UINT8_MAX : ib;
-
-    return (RGBColor) { (uint8_t)ir, (uint8_t)ig, (uint8_t)ib };
-}
-
-RGBColor hexrgb_to_color_type(int hexrgb) {
-    return (RGBColor) {
-        (hexrgb & 0xFF0000) >> 16,
-        (hexrgb & 0x00FF00) >> 8,
-        (hexrgb & 0x0000FF)
+    return (LeafTexture) {
+        .id = tex,
+        .width = width,
+        .height = height
     };
 }
+
+
 
 bool leaf_create_framebuffer(LeafFramebuffer* fb, uint32_t width, uint32_t height) {
     fb->fbo = 0;
