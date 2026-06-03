@@ -47,6 +47,37 @@ Nemi* nmt_getst() {
     return g_nemi_state;
 }
 
+
+static
+void p_find_and_open_font_file(Nemi* st, const NemiFilepaths* filepaths, const char* config_entry) {
+    // Try "full" font path first. (relative to directory where executed)
+    // Probably set to absolute path if succeed.
+    if(access(config_entry, R_OK) == 0) {
+        leaf_load_font(&st->font, config_entry);
+    }
+    else {
+        // Font was not found, Lets try from 'filepaths.fonts + config.font.filepath' next. 
+        struct string_t font_path = string_create(0);
+        string_append(&font_path, filepaths->fonts, strlen(filepaths->fonts));
+        if(string_lastbyte(&font_path) != '/' && st->cfg.font.filepath[0] != '/') {
+            string_pushbyte(&font_path, '/');
+        }
+        string_append(&font_path, config_entry, strlen(config_entry));
+        string_nullterm(&font_path);
+
+        if(access(font_path.bytes, R_OK) == 0) {
+            leaf_load_font(&st->font, font_path.bytes);
+        }
+        else {
+            logprintf(LOG_ERROR, "Failed to find font. Tried paths: '%s' and '%s'",
+                    st->cfg.font.filepath,
+                    font_path.bytes
+            );
+        }
+        free_string(&font_path);
+    }
+}
+
 Nemi* nmt_start_session(NemiFilepaths filepaths) {
 
     setlocale(LC_ALL, "C"); // Restart from loader may mess with locale.
@@ -64,10 +95,17 @@ Nemi* nmt_start_session(NemiFilepaths filepaths) {
     st->lfctx = leaf_open("/dev/fb0", 0, 0, 0);
 #endif
 
+    if(st->lfctx == NULL) {
+        free(st);
+        return NULL;
+    }
+
     st->num_terminals = 0;
     st->inputfocus_module_idx = -1;
     st->term_cells_render_offset_x = 0;
     st->term_cells_render_offset_y = 0;
+    st->term_cells_framebuffer = (LeafFramebuffer){0};
+    st->altrender_framebuffer = (LeafFramebuffer){0};
     nmt_zero_input_buffers(st);
     nmt_init_default_config(st);
 
@@ -83,33 +121,13 @@ Nemi* nmt_start_session(NemiFilepaths filepaths) {
 
 
     st->font.loaded = false;
-
-    // Try "full" font path first. (relative to directory where executed)
-    // Probably set to absolute path if succeed.
-    if(access(st->cfg.font.filepath, R_OK) == 0) {
-        leaf_load_font(&st->font, st->cfg.font.filepath);
-    }
-    else {
-        // Font was not found, Lets try from 'filepaths.fonts + config.font.filepath' next. 
-        struct string_t font_path = string_create(0);
-        string_append(&font_path, filepaths.fonts, strlen(filepaths.fonts));
-        if(string_lastbyte(&font_path) != '/' && st->cfg.font.filepath[0] != '/') {
-            string_pushbyte(&font_path, '/');
-        }
-        string_append(&font_path, st->cfg.font.filepath, strlen(st->cfg.font.filepath));
-        string_nullterm(&font_path);
-
-        if(access(font_path.bytes, R_OK) == 0) {
-            leaf_load_font(&st->font, font_path.bytes);
-        }
-        else {
-            logprintf(LOG_ERROR, "Failed to find font. Tried paths: '%s' and '%s'",
-                    st->cfg.font.filepath,
-                    font_path.bytes
-            );
-        }
-        free_string(&font_path);
-    }
+           
+#ifdef GRAPHICS_OPENGL
+    p_find_and_open_font_file(st, &filepaths, st->cfg.font.filepath);
+#endif
+#ifdef GRAPHICS_LINUX_FBDEV
+    p_find_and_open_font_file(st, &filepaths, st->cfg.font.filepath_psf);
+#endif
 
     if(!st->font.loaded) {
         logprintf(LOG_ERROR, "Failed to load font.");
@@ -120,7 +138,7 @@ Nemi* nmt_start_session(NemiFilepaths filepaths) {
 
     st->font.center_char_to_cell = st->cfg.font.center_char_to_cell;
     st->font.spacing = 0.2f;
-    leaf_set_font_space_width(&st->font, st->font.max_bitmap_width / 2.0f);
+    leaf_set_font_space_width(&st->font, st->font.real_char_width / 2.0f);
     leaf_set_font_scale(&st->font, st->cfg.font.scale);
 
     leaf_set_font_color(&st->font, (RGBColor) { 255, 200, 150 });
@@ -341,14 +359,15 @@ void nmt_clear_color_buffer_bit(Nemi* st, float clear_color_alpha) {
 */
 
 void nmt_clear_region(Nemi* st, int x, int y, int w, int h) { 
+    
     leaf_enable_scissor_test(true);
-    leaf_set_scissor_region
-    (
-        x,
-        (st->lfctx->win_height - h) - y,
-        w,
-        h
-    );
+    
+#ifdef GRAPHICS_OPENGL
+    leaf_set_scissor_region(x, (st->lfctx->win_height - h) - y, w, h);
+#endif
+#ifdef GRAPHICS_LINUX_FBDEV
+    leaf_set_scissor_region(x, y, w, h);
+#endif
     leaf_clear_color((RGBAColor) {
         st->cfg.colors[NEMI_COLOR_BG].r,
         st->cfg.colors[NEMI_COLOR_BG].g,
@@ -393,7 +412,6 @@ void nmt_update_frame(Nemi* st) {
     st->frame_time_begin = leaf_get_time_insec();
 
 
-
     nmterm_update_blink_timer(st, st->terminal);
 
     // Render terminal cells to 'term_cells_framebuffer'
@@ -405,7 +423,6 @@ void nmt_update_frame(Nemi* st) {
         // And saves the result to the framebuffer's texture so it can be reused.
         nmterm_read(st, st->terminal);
         nmterm_render(st, st->terminal);
-
 
         
 #ifdef GRAPHICS_OPENGL
@@ -461,6 +478,7 @@ void nmt_update_frame(Nemi* st) {
 #endif
     }
 
+#ifdef GRAPHICS_OPENGL
     // Ennable the default framebuffer.
     leaf_use_framebuffer(NULL);
     
@@ -477,7 +495,6 @@ void nmt_update_frame(Nemi* st) {
     //nmt_clear_color_buffer_bit(st, CLEAR_COLOR_INCLUDE_ALPHA);
     //glClear(GL_COLOR_BUFFER_BIT);
 
-#ifdef GRAPHICS_OPENGL
     leaf_draw_texture_rect(0, 0,
             st->altrender_framebuffer.width,
             st->altrender_framebuffer.height,
@@ -493,13 +510,14 @@ void nmt_update_frame(Nemi* st) {
             st->term_cells_framebuffer.texture,
             (RGBColor){ 255, 255, 255 },
             LEAF_TEXTURE_NO_OPTIONS);
-#endif
-
-    /*
+#endif // GRAPHICS_OPENGL
 #ifdef GRAPHICS_LINUX_FBDEV
-#pragma message "TODO: Need someway to output buffers to the main framebuffer"
-#endif
-*/
+
+    p_leaf_draw_framebuffer(&st->term_cells_framebuffer);
+    //p_leaf_draw_framebuffer(&st->altrender_framebuffer);
+
+#endif // GRAPHICS_LINUX_FBDEV
+
 
     //leaf_renderer_flush(st->lfctx);
     //leaf_font_render(&st->font);
@@ -510,7 +528,7 @@ void nmt_update_frame(Nemi* st) {
     
 
     leaf_swap_buffers();
-    leaf_get_events();
+    leaf_get_events(st->lfctx);
 
     //glfwSwapBuffers(st->lfctx->glfw_win);
     //glfwPollEvents();
@@ -518,6 +536,15 @@ void nmt_update_frame(Nemi* st) {
 
     st->frame_time = leaf_get_time_insec() - st->frame_time_begin;
 
+    
+        /*
+    leaf_draw_char(&st->font, 1500, 100, 'A');
+
+    leaf_swap_buffers();
+    leaf_get_events();
+
+    st->frame_time = leaf_get_time_insec() - st->frame_time_begin;
+        */
 }
 
 void nmt_init_default_config(Nemi* st) {
@@ -701,6 +728,7 @@ void nmt_font_scale(Nemi* st, float offset) {
     // TODO: This should be refactored.
     // this function call will cause the framebuffers to be reset 
     // Doing it this way may not be good idea, if this function behaviour changes in the future.
+
     userinput_window_resized(st, st->lfctx->win_width, st->lfctx->win_height);
 }
 

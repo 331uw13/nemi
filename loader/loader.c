@@ -140,6 +140,9 @@ int main(int argc, char** argv) {
 
 
     Nemi* st = nemi.start_session(filepaths);
+    if(st == NULL) {
+        return 1;
+    }
 
     while(!nemi.leaf.should_quit()) {
         nemi.update_frame(st);

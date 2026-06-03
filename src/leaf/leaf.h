@@ -20,11 +20,6 @@
 */
 
 
-/* ---------------------------------------------------------
-    
-
-------------------------------------------------------------*/
-
 #ifndef LEAF_H
 #define LEAF_H
 
@@ -68,7 +63,7 @@ void     leaf_quit (LeafCtx* ctx);
 
 bool     leaf_should_quit();
 void     leaf_swap_buffers();
-void     leaf_get_events();
+void     leaf_get_events(LeafCtx* ctx);
 void     leaf_set_viewport(int x, int y, int w, int h);
 void     leaf_hide_mouse(bool is_hidden);
 void     leaf_enable_vsync(bool is_enabled);
@@ -97,7 +92,6 @@ LeafTexture leaf_load_texture  (const char* path);
 
 
 #ifdef GRAPHICS_OPENGL
-#pragma message "(debug) Graphics = OpenGL"
 
 // Renderer must be initialized if OpenGL
 void leaf_init_renderer        (LeafCtx* ctx, size_t vbo_memsize);
@@ -116,10 +110,10 @@ uint32_t p_leaf_get_renderer_tex_vbo();
 
 
 #ifdef GRAPHICS_LINUX_FBDEV
-#pragma message "(debug) Graphics = Linux framebuffer device"
 
 void p_leaf_set_activefb_pixel(size_t pixel_index, RGBColor color);
 void p_leaf_set_activefb_pixel_xy(int x, int y, RGBColor color);
+void p_leaf_draw_framebuffer(LeafFramebuffer* fb);
 
 #endif // GRAPHICS_LINUX_FBDEV
 

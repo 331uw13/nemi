@@ -19,6 +19,7 @@
     3. This notice may not be removed or altered from any source distribution.
 */
 #ifdef GRAPHICS_OPENGL
+#pragma message "(debug) Graphics = OpenGL"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -86,7 +87,8 @@ void leaf_swap_buffers() {
     glfwSwapBuffers(g_lf.glfw_win);
 }
 
-void leaf_get_events() {
+void leaf_get_events(LeafCtx* ctx) {
+    (void)ctx;
     glfwPollEvents();
 }
 
@@ -530,4 +532,6 @@ void leaf_use_framebuffer(LeafFramebuffer* fb) {
     glViewport(0, 0, fb->width, fb->height);
 }
 
+#else
+#pragma message "(debug) [DISABLED] Graphics = OpenGL"
 #endif // GRAPHICS_OPENGL

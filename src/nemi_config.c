@@ -122,6 +122,10 @@ int config_handler__font_ini
         cfg->font.filepath = strdup(value);
     }
     else
+    if(STR_MATCH(name, "filepath_psf")) {
+        cfg->font.filepath_psf = strdup(value);
+    }
+    else
     if(STR_MATCH(name, "center_char_to_cell")) {
         cfg->font.center_char_to_cell = strtobool(value);
     }
@@ -467,5 +471,6 @@ bool nmt_read_configs(Nemi* st, char* configs_dir) {
 void nmt_free_configs(Nemi* st) {
     freeif(st->cfg.main.shell);
     freeif(st->cfg.font.filepath);
+    freeif(st->cfg.font.filepath_psf);
 }
 

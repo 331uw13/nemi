@@ -65,6 +65,7 @@ typedef struct NemiConfig_t {
     
     struct {
         char* filepath;
+        char* filepath_psf;
         bool center_char_to_cell;
         float char_spacing;
         float italic_tilt;

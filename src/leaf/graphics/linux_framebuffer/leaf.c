@@ -1,14 +1,21 @@
+#ifdef GRAPHICS_LINUX_FBDEV
+#pragma message "(debug) Graphics = Linux framebuffer"
+
 #include <errno.h>
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <termios.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <sys/select.h>
 #include <linux/fb.h>
 #include <time.h>
-#include <assert.h>
+#include <signal.h>
+
 
 #include "../../leaf.h"
 
@@ -17,7 +24,8 @@
 static struct {
     
     struct fb_var_screeninfo vinfo;
-   
+
+    struct termios termios_old;
 
     // This is kind of same as OpenGL's GL_SCISSOR_TEST
     struct {
@@ -44,23 +52,60 @@ g_lf = {
 };
 
 
+static
+void p_reset_termios_mode() {
+    int console_fd = open("/dev/tty", O_RDWR);
+    if(console_fd < 0) {
+        fprintf(stderr, "%s: %s(): Failed to open console (/dev/tty). | %s\n",
+                __FILE__, __func__, strerror(errno));
+        return;
+    }
+
+    tcsetattr(console_fd, TCSANOW, &g_lf.termios_old);
+    close(console_fd);
+    printf("%s(): (debug) termios mode is reset.\n", __func__);
+}
+
+/*
+void signal_handler_reset_termios_and_exit(int sig) {
+    printf("%s(): (debug) SIGINT\n", __func__);
+    (void)sig;
+    p_reset_termios_mode();
+    exit(sig);
+}
+*/
+
 void p_leaf_set_activefb_pixel(size_t pixel_index, RGBColor color) {
-    assert((pixel_index + 3) < g_lf.active_fb->memsize);
+    if(pixel_index + 3 >= g_lf.active_fb->memsize) {
+        //asm("int3");
+        return;
+    }
+
     // TODO: Scissor test is currently ignored.
 
     // TODO: This currently ignores 'bits_per_pixel' and color byte order.
     // it is different on some machines.
-    g_lf.active_fb->address[ pixel_index + 0 ] = (color.r & 0xFF0000) >> 16;
-    g_lf.active_fb->address[ pixel_index + 1 ] = (color.g & 0x00FF00) >> 8;
-    g_lf.active_fb->address[ pixel_index + 2 ] = (color.b & 0x0000FF);
+    g_lf.active_fb->address[ pixel_index + 0 ] = color.r;
+    g_lf.active_fb->address[ pixel_index + 1 ] = color.g;
+    g_lf.active_fb->address[ pixel_index + 2 ] = color.b;
     g_lf.active_fb->address[ pixel_index + 3 ] = 255;
-
 }
 
 void p_leaf_set_activefb_pixel_xy(int x, int y, RGBColor color) {
-    p_leaf_set_activefb_pixel(y + x * g_lf.active_fb->width, color);
+    p_leaf_set_activefb_pixel(
+            (x + y * g_lf.active_fb->width) * g_lf.fb_bytes_per_pixel, color);
+    //asm("int3");
 }
 
+void p_leaf_draw_framebuffer(LeafFramebuffer* fb) {
+    for(size_t i = 0; i < fb->memsize; i++) {
+        if(i >= g_lf.main_fb.memsize) {
+            break;
+        }
+
+        g_lf.main_fb.address[i] = fb->address[i];
+    }
+}
 
 LeafCtx* leaf_open (const char* fb_device, int width, int height, int flags) {
     (void)width;   // Its probably not ideal for this program to be able to
@@ -123,14 +168,43 @@ LeafCtx* leaf_open (const char* fb_device, int width, int height, int flags) {
     }
 
     g_lf.active_fb = &g_lf.main_fb;
-
     close(fbdev_fd);
+
+
+
+    // Set input mode so we can capture it instead of user
+    // writing to the console.
+
+    // Save current mode first so it can be reset after exit.
+    int console_fd = open("/dev/tty", O_RDWR);
+    if(console_fd < 0) {
+        fprintf(stderr, "%s: %s(): Failed to open console (/dev/tty). | %s\n",
+                __FILE__, __func__, strerror(errno));
+        leaf_quit(ctx);
+        ctx = NULL;
+        goto out;
+    }
+
+
+    tcgetattr(console_fd, &g_lf.termios_old);
+    struct termios termios_new = g_lf.termios_old;
+
+    cfmakeraw(&termios_new);
+
+    termios_new.c_cc[VTIME] = 1;
+    tcsetattr(console_fd, TCSANOW, &termios_new);
+
+    //signal(SIGINT, signal_handler_reset_termios_and_exit);
+
+    close(console_fd);
     
 out:
     return ctx;
 }
 
 void leaf_quit(LeafCtx* ctx) {
+
+    p_reset_termios_mode();
 
     if(g_lf.main_fb.address != NULL
     && g_lf.main_fb.address != MAP_FAILED) {
@@ -152,8 +226,33 @@ void leaf_swap_buffers() {
 }
 
 
-void leaf_get_events() {
-    // TODO: Get user input.
+
+static
+bool p_get_next_key(uint8_t* k) {
+    struct timeval tv = {0, 0}; 
+    fd_set readfds;
+ 
+    FD_ZERO(&readfds);
+    FD_SET(STDIN_FILENO, &readfds); 
+
+    if(select(1, &readfds, NULL, NULL, &tv) > 0) {
+        read(STDIN_FILENO, k, 1);
+        return true;
+    }
+    return false;
+}
+
+void leaf_get_events(LeafCtx* ctx) {
+
+    uint8_t key = 0;
+    if(p_get_next_key(&key)) {
+        
+        if(ctx->callback.char_pressed) {
+            ctx->callback.char_pressed(ctx->callback.user_pointer, key);
+        }
+
+    }
+
 }
 
 void leaf_set_viewport(int x, int y, int w, int h) {
@@ -191,7 +290,7 @@ void leaf_clear_color(RGBAColor color) {
 }
 
 void leaf_clear() {
-    if(g_lf.scissor_test.enabled) {
+    /*if(g_lf.scissor_test.enabled) {
         const int y_beg = g_lf.scissor_test.y;
         const int x_beg = g_lf.scissor_test.x;
         const int y_end = g_lf.scissor_test.y + g_lf.scissor_test.height;
@@ -206,7 +305,7 @@ void leaf_clear() {
         for(size_t i = 0; i < g_lf.active_fb->memsize; i++) {
             p_leaf_set_activefb_pixel(i, g_lf.fb_clear_color);
         }
-    }
+    }*/
 }
 
 void leaf_enable_scissor_test (bool is_enabled) {
@@ -255,3 +354,7 @@ LeafTexture leaf_load_texture(const char* path) {
     return (LeafTexture){};
 }
 
+
+#else
+#pragma message "(debug) [DISABLED] Graphics = Linux framebuffer"
+#endif // GRAPHICS_LINUX_FBDEV

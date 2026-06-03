@@ -203,8 +203,8 @@ NTerminal* nmterm_spawn(Nemi* st, int rows, int cols, enum terminal_type term_ty
     //init_scrollback_buffer(term);
     term->vt = vterm_new(rows, cols);
     
-    // Even tho UTF-8 is not supported by font renderer
-    // at the moment. Some applications are *completely* unusable
+    // Even if UTF-8 is not supported by font renderer
+    // at the moment. Some applications are completely unusable
     // if this is set to 'false'
     vterm_set_utf8(term->vt, true);
 
@@ -474,11 +474,9 @@ bool render_cell(Nemi* st, NTerminal* term, VTermScreenCell* cell, VTermPos pos)
 
     int char_x = nmt_coltox(st, pos.col) * st->cfg.font.char_spacing;
     int char_y = nmt_rowtoy(st, pos.row);
- 
 
+    //asm("int3");
 
-
-    
     bool draw_bg = false;
 
     RGBColor fg_color = convert_cell_color_or_default(term, &cell->fg, st->cfg.colors[NEMI_COLOR_FG]);
@@ -506,7 +504,7 @@ bool render_cell(Nemi* st, NTerminal* term, VTermScreenCell* cell, VTermPos pos)
     }
 
     st->font.italic = (cell->attrs.italic) ? st->cfg.font.italic_tilt : 0.0f;
-
+    
 
 
     // Font renderer dont support UTF-8 at the moment.

@@ -32,7 +32,7 @@ LOADER_SRC_DIR  = ./loader
 OBJ_DIR         = ./obj
 
 # opengl OR linux_fbdev
-GRAPHICS ?= opengl
+GRAPHICS ?= none
 
 ifeq ($(GRAPHICS), opengl)
 	CC_FLAGS += -DGRAPHICS_OPENGL
@@ -42,6 +42,7 @@ ifeq ($(GRAPHICS), opengl)
 	LD_FLAGS += -lGLEW
 	LD_FLAGS += -lfreetype
 else ifeq ($(GRAPHICS), linux_fbdev)
+	LD_FLAGS += -lz
 	CC_FLAGS += -DGRAPHICS_LINUX_FBDEV
 endif
 
@@ -54,7 +55,22 @@ LOADER_OBJ_FILES = $(patsubst $(LOADER_SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(LOADER_SR
 
 
 
-all: $(LIBNEMI_TARGET) $(LOADER_TARGET)
+all: pre_build $(LIBNEMI_TARGET) $(LOADER_TARGET)
+
+
+pre_build:
+ifeq ($(GRAPHICS), opengl)
+	@echo "Compiling for graphics wrapper for OpenGL"
+else ifeq ($(GRAPHICS), linux_fbdev)
+	@echo "Compiling for graphics wrapper for Linux framebuffer"
+else
+	@echo "Graphics backend options are:"
+	@echo "'opengl'      : Uses GLFW, GLEW and Freetype2"
+	@echo "'linux_fbdev' : Uses linux framebuffer device (/dev/fb0), No GPU acceleration."
+	@echo -e "\nExample: $$ make GRAPHICS=opengl"
+	@echo    "Remember to do clean build, if switching between these options."
+	exit 1
+endif
 
 # Compile and link libnemi.
 

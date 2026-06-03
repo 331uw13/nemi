@@ -60,8 +60,8 @@ float leaf_draw_char
    // float ch_width = glyph->width * font->scale;
    // float ch_height = glyph->height * font->scale;
 
-    float ch_width = (float)font->max_bitmap_width * font->scale;
-    float ch_height = (float)font->max_bitmap_height * font->scale;
+    float ch_width = (float)font->real_char_width * font->scale;
+    float ch_height = (float)font->real_char_height * font->scale;
 
     float cw = ch_width / (float)g_leaf_ctx->win_width;
     float ch = ch_height / (float)g_leaf_ctx->win_height;
@@ -277,6 +277,7 @@ void leaf_draw_texture_rect
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
+/*
 void leaf_draw_circle
 (
     float pos_x,
@@ -381,6 +382,7 @@ void leaf_draw_rect_fade
         leaf_render_vertices(g_leaf_ctx, vertices, sizeof(vertices));
     }
 }
+*/
 
 
 #endif // GRAPHICS_OPENGL

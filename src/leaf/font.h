@@ -79,26 +79,30 @@ typedef struct LeafFont_t {
 
     float scale;
     
-    // Space widht and tab width are in scale
-    // if their functions are used to set them.
+    // NOTE:
+    // Do not modify the variables related
+    // to character size and spacing directly.
+    // They in scale only if their designated functions are used.
+
     float space_width;
     float tab_width;
 
-    // Space and tab width but not in scale.
-    float real_space_width;
-    float real_tab_width;
-
-    uint32_t max_bitmap_width;
-    uint32_t max_bitmap_height;
-
+    // Character size in scale.
     int char_width;
     int char_height;
 
-    float italic;
+    float italic; // TODO: Rename.
 
     // Small space between characters.
-    // In scale if leaf_set_font_spacing() is used.
     float spacing; 
+
+    // Space and tab width (Not in scale!)
+    float real_space_width;
+    float real_tab_width;
+   
+    // Character size  (Not in scale!)
+    int real_char_width;
+    int real_char_height;
 
     
 #ifdef GRAPHICS_OPENGL
@@ -119,6 +123,11 @@ typedef struct LeafFont_t {
 
 #ifdef GRAPHICS_LINUX_FBDEV
 
+    RGBColor char_color;
+
+    uint8_t* psf_data;
+    size_t   psf_data_size;
+
     PSFVersion psf_version;
     union {
         PSF1_Header psf1;
@@ -126,8 +135,6 @@ typedef struct LeafFont_t {
     }
     psf_header;
 
-    uint8_t* psf_data;
-    size_t   psf_data_size;
 
 #endif // GRAPHICS_LINUX_FBDEV
 
@@ -138,10 +145,18 @@ typedef struct LeafFont_t {
 }
 LeafFont;
 
-//struct leaf_ctx_t;
+
 
 bool leaf_load_font(LeafFont* font, const char* filepath);
 void leaf_unload_font(LeafFont* font);
+
+
+// OpenGL specific.
+void leaf_font_render(LeafFont* font);
+
+
+
+// See 'font_common.c' for implementations:
 
 void leaf_set_font_scale        (LeafFont* font, float scale);
 void leaf_set_font_color        (LeafFont* font, RGBColor color);
@@ -149,6 +164,7 @@ void leaf_set_font_space_width  (LeafFont* font, float space_width);
 void leaf_set_font_tab_width    (LeafFont* font, float tab_width);
 void leaf_set_font_spacing      (LeafFont* font, float spacing);
 
+/*
 void leaf_measure_text
 (
     LeafFont* font, 
@@ -157,7 +173,7 @@ void leaf_measure_text
     const char* text,
     ssize_t text_length
 );
+*/
 
-void leaf_font_render(LeafFont* font);
 
 #endif

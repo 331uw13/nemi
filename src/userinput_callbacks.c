@@ -69,12 +69,14 @@ void userinput_window_resized(void* user_pointer, int width, int height) {
     st->lfctx->win_width = width;
     st->lfctx->win_height = height;
 
+    leaf_set_viewport(0, 0, width, height);
 
     st->win_cols = width / st->font.char_width;
     st->win_rows = height / (st->font.char_height + st->cfg.main.line_padding);
 
     st->win_cols -= 1;
     st->win_rows -= 1;
+    
 
     for(size_t i = 0; i < st->num_terminals; i++) {
         nmterm_handle_resize_event(st, &st->terminals[i]);
@@ -95,10 +97,6 @@ void userinput_window_resized(void* user_pointer, int width, int height) {
             module->events.fn_window_resized();
         }
     }
-    
-
-    leaf_set_viewport(0, 0, width, height);
-    //glViewport(0, 0, width, height);
 }
 
 

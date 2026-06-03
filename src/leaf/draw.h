@@ -84,6 +84,7 @@ void leaf_draw_texture_rect
 );
 
 
+/*
 void leaf_draw_circle
 (
     float pos_x,
@@ -105,6 +106,7 @@ void leaf_draw_rect_fade
     RGBColor color_B,
     int fade_dir
 );
+*/
 
 
 typedef struct LeafCtx_t LeafCtx; // leaf_context

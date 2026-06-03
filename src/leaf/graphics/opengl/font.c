@@ -96,12 +96,12 @@ void leaf_font_render(LeafFont* font) {
 
     shader_uniform1f(font->shader, "u_tex_w", font->texture_width);
     shader_uniform1f(font->shader, "u_tex_h", font->texture_height);
-    shader_uniform1f(font->shader, "u_chr_w", font->max_bitmap_width);
-    shader_uniform1f(font->shader, "u_chr_h", font->max_bitmap_height);
+    shader_uniform1f(font->shader, "u_chr_w", font->real_char_width);
+    shader_uniform1f(font->shader, "u_chr_h", font->real_char_height);
     shader_uniform1f(font->shader, "u_scale", font->scale);
     /*
     shader_uniform1f(font->shader, "u_chr_w", 
-            (float)font->max_bitmap_width / (float)lfctx->win_width);
+            (float)font->real_char_width / (float)lfctx->win_width);
     */
 
     glActiveTexture(GL_TEXTURE0);
@@ -138,8 +138,8 @@ bool leaf_load_font(LeafFont* font, const char* filepath) {
     FT_Set_Pixel_Sizes(face, 0, 32);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-    font->max_bitmap_width = 0;
-    font->max_bitmap_height = 0;
+    font->real_char_width = 0;
+    font->real_char_height = 0;
     font->shader = 0;
     font->texture = 0;
     font->texture_width = 0;
@@ -177,11 +177,11 @@ bool leaf_load_font(LeafFont* font, const char* filepath) {
         uint32_t bitmap_width = face->glyph->bitmap.width;
         uint32_t bitmap_height = face->glyph->bitmap.rows;
 
-        if(bitmap_width > font->max_bitmap_width) {
-            font->max_bitmap_width = bitmap_width;
+        if(bitmap_width > font->real_char_width) {
+            font->real_char_width = bitmap_width;
         }
-        if(bitmap_height > font->max_bitmap_height) {
-            font->max_bitmap_height = bitmap_height;
+        if(bitmap_height > font->real_char_height) {
+            font->real_char_height = bitmap_height;
         }
 
         LeafFontGlyph* glyph = &font->glyphs[c - 0x20];
@@ -199,8 +199,8 @@ bool leaf_load_font(LeafFont* font, const char* filepath) {
     // We are going to create very wide texture
     // where all characters are in the same row
 
-    font->texture_width  = FONT_NUM_CHARS * font->max_bitmap_width;
-    font->texture_height  = font->max_bitmap_height;
+    font->texture_width  = FONT_NUM_CHARS * font->real_char_width;
+    font->texture_height  = font->real_char_height;
 
     // Add safe amount of extra space for characters
     // in y axis because they have to be offset later
@@ -228,14 +228,14 @@ bool leaf_load_font(LeafFont* font, const char* filepath) {
             for(uint32_t col = 0; col < bitmap->width; col++) {
                 
                 int y = row;
-                int x = col + char_index * font->max_bitmap_width;
+                int x = col + char_index * font->real_char_width;
 
                 // Offset the character to correct Y position.
                 // For example: ", - * +". are at different y levels
-                y += (font->max_bitmap_height - bitmap->rows);
+                y += (font->real_char_height - bitmap->rows);
                 y += (bitmap->rows - face->glyph->bitmap_top);
                 
-                x += (font->max_bitmap_width - bitmap->width) / 3;
+                x += (font->real_char_width - bitmap->width) / 3;
 
                 int    byte = bitmap->buffer[row * bitmap->width + col];
                 size_t idx  = y * font->texture_width + x;
@@ -369,10 +369,11 @@ void leaf_unload_font(LeafFont* font) {
     glDeleteTextures(1, &font->texture);
 }
 
+/*
 void leaf_set_font_scale(LeafFont* font, float scale) {
     font->scale = scale;
-    font->char_width = (font->max_bitmap_width * scale) / 2;
-    font->char_height = (font->max_bitmap_height * scale) / 2;
+    font->char_width = (font->real_char_width * scale) / 2;
+    font->char_height = (font->real_char_height * scale) / 2;
    
     leaf_set_font_space_width(font, font->real_space_width);
     leaf_set_font_tab_width(font, font->real_tab_width);
@@ -421,12 +422,12 @@ void leaf_measure_text
             continue; // Not ASCII character.
         }
         
-        if(ch == 0x20/*space*/) {
+        if(ch == 0x20) {
             *width_out += font->space_width;
             continue;
         }
         else
-        if(ch == 0x09/*horizontal tab*/) {
+        if(ch == 0x09) {
             *width_out += font->tab_width;
             continue;
         }
@@ -438,6 +439,7 @@ void leaf_measure_text
     }
 
 }
+*/
 
 
 #endif // GRAPHICS_OPENGL
