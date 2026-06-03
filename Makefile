@@ -9,30 +9,12 @@ CC_FLAGS = -ggdb -Wall -Wextra -I$(LIBVTERM_DIR)/include
 LD_FLAGS = -lm -Wl,-rpath=$(LIBVTERM_DIR) -L$(LIBVTERM_DIR) -lvterm_l
 
 
-#CC_FLAGS = \
-#		   -ggdb \
-#		   -Wall \
-#		   -Wextra \
-#		   -I/usr/include/freetype2 \
-#		   -I/usr/include/libpng16 \
-#		   -I$(LIBVTERM_DIR)/include 
-#
-#LD_FLAGS = \
-#		   -lglfw \
-#		   -lGL \
-#		   -lGLEW \
-#		   -lm \
-#		   -lfreetype \
-#		   -lvterm_l \
-#		   -Wl,-rpath=$(LIBVTERM_DIR) -L$(LIBVTERM_DIR)
-
 
 LIBNEMI_SRC_DIR = ./src
 LOADER_SRC_DIR  = ./loader
 OBJ_DIR         = ./obj
 
-# opengl OR linux_fbdev
-GRAPHICS ?= none
+GRAPHICS ?= opengl
 
 ifeq ($(GRAPHICS), opengl)
 	CC_FLAGS += -DGRAPHICS_OPENGL
@@ -41,9 +23,6 @@ ifeq ($(GRAPHICS), opengl)
 	LD_FLAGS += -lglfw
 	LD_FLAGS += -lGLEW
 	LD_FLAGS += -lfreetype
-else ifeq ($(GRAPHICS), linux_fbdev)
-	LD_FLAGS += -lz
-	CC_FLAGS += -DGRAPHICS_LINUX_FBDEV
 endif
 
 LIBNEMI_SRC_FILES = $(shell find $(LIBNEMI_SRC_DIR) -type f -name '*.c')
@@ -59,16 +38,9 @@ all: pre_build $(LIBNEMI_TARGET) $(LOADER_TARGET)
 
 
 pre_build:
-ifeq ($(GRAPHICS), opengl)
-	@echo "Compiling for graphics wrapper for OpenGL"
-else ifeq ($(GRAPHICS), linux_fbdev)
-	@echo "Compiling for graphics wrapper for Linux framebuffer"
-else
+ifneq ($(GRAPHICS), opengl)
 	@echo "Graphics backend options are:"
-	@echo "'opengl'      : Uses GLFW, GLEW and Freetype2"
-	@echo "'linux_fbdev' : Uses linux framebuffer device (/dev/fb0), No GPU acceleration."
-	@echo -e "\nExample: $$ make GRAPHICS=opengl"
-	@echo    "Remember to do clean build, if switching between these options."
+	@echo "'opengl'     : Uses GLFW, GLEW and Freetype2"
 	exit 1
 endif
 

@@ -30,7 +30,6 @@
 #include "color_type.h"
 
 
-#ifdef GRAPHICS_OPENGL
 #define FONT_NUM_CHARS 95
 
 typedef struct LeafFontGlyph_t {
@@ -43,37 +42,6 @@ typedef struct LeafFontGlyph_t {
     int atlas_x;
 }
 LeafFontGlyph;
-#endif // GRAPHICS_OPENGL
-
-#ifdef GRAPHICS_LINUX_FBDEV
-
-typedef struct PSF1_Header_t {
-    uint8_t magic_bytes[2];
-    uint8_t mode;
-    uint8_t char_size;
-}
-PSF1_Header;
-
-typedef struct PSF2_Header_t {
-    uint8_t  magic_bytes[4];
-    uint32_t version;
-    uint32_t header_size;
-    uint32_t flags;
-    uint32_t length;
-    uint32_t char_size;
-    uint32_t height;
-    uint32_t width;
-}
-PSF2_Header;
-
-typedef enum PSFVersion_e {
-    PSF_VERSION_1,
-    PSF_VERSION_2
-}
-PSFVersion;
-
-#endif // GRAPHICS_LINUX_FBDEV
-
 
 typedef struct LeafFont_t {
 
@@ -101,8 +69,8 @@ typedef struct LeafFont_t {
     float real_tab_width;
    
     // Character size  (Not in scale!)
-    int real_char_width;
-    int real_char_height;
+    uint32_t real_char_width;
+    uint32_t real_char_height;
 
     
 #ifdef GRAPHICS_OPENGL
@@ -121,22 +89,6 @@ typedef struct LeafFont_t {
     float    char_color_b;
 #endif // GRAPHICS_OPENGL
 
-#ifdef GRAPHICS_LINUX_FBDEV
-
-    RGBColor char_color;
-
-    uint8_t* psf_data;
-    size_t   psf_data_size;
-
-    PSFVersion psf_version;
-    union {
-        PSF1_Header psf1;
-        PSF2_Header psf2;
-    }
-    psf_header;
-
-
-#endif // GRAPHICS_LINUX_FBDEV
 
     bool loaded;
     

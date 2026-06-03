@@ -88,12 +88,7 @@ Nemi* nmt_start_session(NemiFilepaths filepaths) {
     st->frame_time_begin = 0.0;
     st->flags = 0;
     
-#ifdef GRAPHICS_OPENGL
     st->lfctx = leaf_open("Nemi - Terminal Emulator", 900, 700, 0);
-#endif
-#ifdef GRAPHICS_LINUX_FBDEV
-    st->lfctx = leaf_open("/dev/fb0", 0, 0, 0);
-#endif
 
     if(st->lfctx == NULL) {
         free(st);
@@ -122,13 +117,13 @@ Nemi* nmt_start_session(NemiFilepaths filepaths) {
 
     st->font.loaded = false;
            
-#ifdef GRAPHICS_OPENGL
     p_find_and_open_font_file(st, &filepaths, st->cfg.font.filepath);
-#endif
+
+/*#endif
 #ifdef GRAPHICS_LINUX_FBDEV
     p_find_and_open_font_file(st, &filepaths, st->cfg.font.filepath_psf);
 #endif
-
+*/
     if(!st->font.loaded) {
         logprintf(LOG_ERROR, "Failed to load font.");
         nmt_quit_session(st);
@@ -160,12 +155,10 @@ Nemi* nmt_start_session(NemiFilepaths filepaths) {
     glfwSetMouseButtonCallback(st->lfctx->glfw_win, glfw_mouse_button_callback);
     */
     
-#ifdef GRAPHICS_OPENGL
     // This will allocate memory for the renderer's
     // vertex buffer object. Only one is used. 
     const size_t renderer_memory_size = 1024 * sizeof(float);
     leaf_init_renderer(st->lfctx, renderer_memory_size);
-#endif
 
     st->win_cols = st->lfctx->win_width / st->font.char_width;
     st->win_rows = st->lfctx->win_height / (st->font.char_height + st->cfg.main.line_padding);
@@ -222,9 +215,7 @@ void nmt_quit_session(Nemi* st) {
         nmterm_close(&st->terminals[i]);
     }
     
-#ifdef GRAPHICS_OPENGL
     leaf_free_renderer(st->lfctx);
-#endif
     leaf_quit(st->lfctx);
 
     for(size_t i = 0; i < NEMI_MODULES_MAX; i++) {
@@ -359,15 +350,8 @@ void nmt_clear_color_buffer_bit(Nemi* st, float clear_color_alpha) {
 */
 
 void nmt_clear_region(Nemi* st, int x, int y, int w, int h) { 
-    
     leaf_enable_scissor_test(true);
-    
-#ifdef GRAPHICS_OPENGL
     leaf_set_scissor_region(x, (st->lfctx->win_height - h) - y, w, h);
-#endif
-#ifdef GRAPHICS_LINUX_FBDEV
-    leaf_set_scissor_region(x, y, w, h);
-#endif
     leaf_clear_color((RGBAColor) {
         st->cfg.colors[NEMI_COLOR_BG].r,
         st->cfg.colors[NEMI_COLOR_BG].g,
@@ -376,13 +360,6 @@ void nmt_clear_region(Nemi* st, int x, int y, int w, int h) {
     });
     leaf_clear();
     leaf_enable_scissor_test(false);
-    
-    /*
-    glEnable(GL_SCISSOR_TEST);
-    glScissor(x, (st->lfctx->win_height - h) - y, w, h);
-    nmt_clear_color_buffer_bit(st, CLEAR_COLOR_NO_ALPHA);
-    glDisable(GL_SCISSOR_TEST);
-    */
 }
 
 
@@ -425,10 +402,8 @@ void nmt_update_frame(Nemi* st) {
         nmterm_render(st, st->terminal);
 
         
-#ifdef GRAPHICS_OPENGL
         leaf_font_render(&st->font);
         leaf_renderer_flush(st->lfctx);
-#endif
     }
 
     // Render anything else to 'altrender_framebuffer'
@@ -472,13 +447,10 @@ void nmt_update_frame(Nemi* st) {
             }
         }
 
-#ifdef GRAPHICS_OPENGL
         leaf_font_render(&st->font);
         leaf_renderer_flush(st->lfctx);
-#endif
     }
 
-#ifdef GRAPHICS_OPENGL
     // Ennable the default framebuffer.
     leaf_use_framebuffer(NULL);
     
@@ -510,14 +482,6 @@ void nmt_update_frame(Nemi* st) {
             st->term_cells_framebuffer.texture,
             (RGBColor){ 255, 255, 255 },
             LEAF_TEXTURE_NO_OPTIONS);
-#endif // GRAPHICS_OPENGL
-#ifdef GRAPHICS_LINUX_FBDEV
-
-    p_leaf_draw_framebuffer(&st->term_cells_framebuffer);
-    //p_leaf_draw_framebuffer(&st->altrender_framebuffer);
-
-#endif // GRAPHICS_LINUX_FBDEV
-
 
     //leaf_renderer_flush(st->lfctx);
     //leaf_font_render(&st->font);
