@@ -685,7 +685,10 @@ void nmterm_render(Nemi* st, NTerminal* term) {
 void nmterm_update_blink_timer(Nemi* st, NTerminal* term) {
     // https://en.wikipedia.org/wiki/Triangle_wave
     // Here triangle wave amplitude is 1.0 and lowest point is 0.0
-    float tri_wave = 0.5+(1.0/M_PI)*asin(sin(glfwGetTime() * st->cfg.main.blink_speed));
+    float tri_wave = 
+        0.5 + (1.0/M_PI)
+         * asin(sin(leaf_get_time_insec()
+                     * st->cfg.main.blink_speed));
 
     term->blink_timer = pow(tri_wave, st->cfg.main.soft_blink_pow);
    

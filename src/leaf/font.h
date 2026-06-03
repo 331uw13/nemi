@@ -22,13 +22,16 @@
 #ifndef LEAF_FONT_H
 #define LEAF_FONT_H
 
+#include <sys/types.h>
+#include <stddef.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "color_type.h"
 
 
+#ifdef GRAPHICS_OPENGL
 #define FONT_NUM_CHARS 95
-
 
 typedef struct LeafFontGlyph_t {
     int width;
@@ -40,14 +43,39 @@ typedef struct LeafFontGlyph_t {
     int atlas_x;
 }
 LeafFontGlyph;
+#endif // GRAPHICS_OPENGL
+
+#ifdef GRAPHICS_LINUX_FBDEV
+
+typedef struct PSF1_Header_t {
+    uint8_t magic_bytes[2];
+    uint8_t mode;
+    uint8_t char_size;
+}
+PSF1_Header;
+
+typedef struct PSF2_Header_t {
+    uint8_t  magic_bytes[4];
+    uint32_t version;
+    uint32_t header_size;
+    uint32_t flags;
+    uint32_t length;
+    uint32_t char_size;
+    uint32_t height;
+    uint32_t width;
+}
+PSF2_Header;
+
+typedef enum PSFVersion_e {
+    PSF_VERSION_1,
+    PSF_VERSION_2
+}
+PSFVersion;
+
+#endif // GRAPHICS_LINUX_FBDEV
+
 
 typedef struct LeafFont_t {
-    LeafFontGlyph glyphs[FONT_NUM_CHARS];
-    bool loaded;
-    
-    // By default set to 'false'
-    bool center_char_to_cell;
-    
 
     float scale;
     
@@ -72,7 +100,9 @@ typedef struct LeafFont_t {
     // In scale if leaf_set_font_spacing() is used.
     float spacing; 
 
-
+    
+#ifdef GRAPHICS_OPENGL
+    LeafFontGlyph glyphs[FONT_NUM_CHARS];
     uint32_t texture;
     uint32_t texture_width;
     uint32_t texture_height;
@@ -82,15 +112,34 @@ typedef struct LeafFont_t {
     size_t   vbo_memsize;
     size_t   vbo_data_offset;
     size_t   vbo_num_vertices;
-
     float    char_color_r;
     float    char_color_g;
     float    char_color_b;
-    //int shader_color_uniloc; // Uniform locatio for 'font_color'
+#endif // GRAPHICS_OPENGL
+
+#ifdef GRAPHICS_LINUX_FBDEV
+
+    PSFVersion psf_version;
+    union {
+        PSF1_Header psf1;
+        PSF2_Header psf2;
+    }
+    psf_header;
+
+    uint8_t* psf_data;
+    size_t   psf_data_size;
+
+#endif // GRAPHICS_LINUX_FBDEV
+
+    bool loaded;
+    
+    // By default set to 'false'
+    bool center_char_to_cell;
 }
 LeafFont;
 
-struct leaf_ctx_t;
+//struct leaf_ctx_t;
+
 bool leaf_load_font(LeafFont* font, const char* filepath);
 void leaf_unload_font(LeafFont* font);
 

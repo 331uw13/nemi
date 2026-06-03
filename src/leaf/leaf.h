@@ -32,21 +32,12 @@
 #include "draw.h"
 #include "texture.h"
 #include "common.h"
+#include "framebuffer.h"
 //#include <GLFW/glfw3.h>
 
 
 
 
-
-
-typedef struct LeafFramebuffer_t {
-    uint32_t texture;
-    uint32_t fbo;
-    uint32_t rbo;
-    uint32_t width;
-    uint32_t height;
-}
-LeafFramebuffer;
 
 
 typedef struct LeafCtx_t {
@@ -72,7 +63,7 @@ LeafCtx;
 
 // The graphics backend needs to implement these.
 
-LeafCtx* leaf_open (const char* title, int width, int height, int flags);
+LeafCtx* leaf_open (const char* title_or_device, int width, int height, int flags);
 void     leaf_quit (LeafCtx* ctx);
 
 bool     leaf_should_quit();
@@ -126,6 +117,10 @@ uint32_t p_leaf_get_renderer_tex_vbo();
 
 #ifdef GRAPHICS_LINUX_FBDEV
 #pragma message "(debug) Graphics = Linux framebuffer device"
+
+void p_leaf_set_activefb_pixel(size_t pixel_index, RGBColor color);
+void p_leaf_set_activefb_pixel_xy(int x, int y, RGBColor color);
+
 #endif // GRAPHICS_LINUX_FBDEV
 
 

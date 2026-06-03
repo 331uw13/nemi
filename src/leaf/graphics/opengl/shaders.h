@@ -18,6 +18,7 @@
        misrepresented as being the original software.
     3. This notice may not be removed or altered from any source distribution.
 */
+#ifdef GRAPHICS_OPENGL
 #ifndef LEAF_SHADER_H
 #define LEAF_SHADER_H
 
@@ -30,3 +31,5 @@ void     shader_uniform1f       (uint32_t shader, const char* name, float v);
 
 
 #endif
+
+#endif // GRAPHICS_OPENGL

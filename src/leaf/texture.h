@@ -6,17 +6,22 @@
 
 
 #ifdef GRAPHICS_OPENGL
-
 typedef struct LeafTexture_t {
     uint32_t id;
     int width;
     int height;
 }
 LeafTexture;
+#endif // GRAPHICS_OPENGL
 
-#endif
 
 
+#ifdef GRAPHICS_LINUX_FBDEV
+typedef struct LeafTexture_t {
+    
+}
+LeafTexture;
+#endif // GRAPHICS_LINUX_FBDEV
 
 
 #endif

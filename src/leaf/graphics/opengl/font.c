@@ -18,6 +18,9 @@
        misrepresented as being the original software.
     3. This notice may not be removed or altered from any source distribution.
 */
+
+#ifdef GRAPHICS_OPENGL
+
 #include <stdio.h>
 #include <GL/glew.h>
 #include <freetype2/ft2build.h>
@@ -436,3 +439,5 @@ void leaf_measure_text
 
 }
 
+
+#endif // GRAPHICS_OPENGL

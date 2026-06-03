@@ -32,7 +32,8 @@ nemi = {
     .lib = NULL,
     .start_session = NULL,
     .quit_session = NULL,
-    .update_frame = NULL
+    .update_frame = NULL,
+    .leaf.should_quit = NULL
 };
 
 

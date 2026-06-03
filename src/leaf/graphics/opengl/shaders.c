@@ -18,6 +18,9 @@
        misrepresented as being the original software.
     3. This notice may not be removed or altered from any source distribution.
 */
+
+#ifdef GRAPHICS_OPENGL
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <GL/glew.h>
@@ -143,3 +146,5 @@ void shader_uniform1f(uint32_t shader, const char* name, float v) {
     glUniform1f(glGetUniformLocation(shader, name), v);
 }
 
+
+#endif // GRAPHICS_OPENGL

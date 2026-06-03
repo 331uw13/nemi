@@ -47,11 +47,6 @@ Nemi* nmt_getst() {
     return g_nemi_state;
 }
 
-void nmt_prepare_from_hotreload(Nemi* st) {
-    leaf_set_drawing_context(st->lfctx);
-    g_nemi_state = st;
-}
-
 Nemi* nmt_start_session(NemiFilepaths filepaths) {
 
     setlocale(LC_ALL, "C"); // Restart from loader may mess with locale.
@@ -61,7 +56,14 @@ Nemi* nmt_start_session(NemiFilepaths filepaths) {
     st->frame_time = 0.001;
     st->frame_time_begin = 0.0;
     st->flags = 0;
+    
+#ifdef GRAPHICS_OPENGL
     st->lfctx = leaf_open("Nemi - Terminal Emulator", 900, 700, 0);
+#endif
+#ifdef GRAPHICS_LINUX_FBDEV
+    st->lfctx = leaf_open("/dev/fb0", 0, 0, 0);
+#endif
+
     st->num_terminals = 0;
     st->inputfocus_module_idx = -1;
     st->term_cells_render_offset_x = 0;
@@ -139,11 +141,13 @@ Nemi* nmt_start_session(NemiFilepaths filepaths) {
     glfwSetCursorPosCallback  (st->lfctx->glfw_win, glfw_cursor_position_callback);
     glfwSetMouseButtonCallback(st->lfctx->glfw_win, glfw_mouse_button_callback);
     */
+    
+#ifdef GRAPHICS_OPENGL
     // This will allocate memory for the renderer's
     // vertex buffer object. Only one is used. 
     const size_t renderer_memory_size = 1024 * sizeof(float);
     leaf_init_renderer(st->lfctx, renderer_memory_size);
-    
+#endif
 
     st->win_cols = st->lfctx->win_width / st->font.char_width;
     st->win_rows = st->lfctx->win_height / (st->font.char_height + st->cfg.main.line_padding);
@@ -200,7 +204,9 @@ void nmt_quit_session(Nemi* st) {
         nmterm_close(&st->terminals[i]);
     }
     
+#ifdef GRAPHICS_OPENGL
     leaf_free_renderer(st->lfctx);
+#endif
     leaf_quit(st->lfctx);
 
     for(size_t i = 0; i < NEMI_MODULES_MAX; i++) {
@@ -401,8 +407,11 @@ void nmt_update_frame(Nemi* st) {
         nmterm_render(st, st->terminal);
 
 
+        
+#ifdef GRAPHICS_OPENGL
         leaf_font_render(&st->font);
         leaf_renderer_flush(st->lfctx);
+#endif
     }
 
     // Render anything else to 'altrender_framebuffer'
@@ -446,8 +455,10 @@ void nmt_update_frame(Nemi* st) {
             }
         }
 
+#ifdef GRAPHICS_OPENGL
         leaf_font_render(&st->font);
         leaf_renderer_flush(st->lfctx);
+#endif
     }
 
     // Ennable the default framebuffer.
@@ -466,6 +477,7 @@ void nmt_update_frame(Nemi* st) {
     //nmt_clear_color_buffer_bit(st, CLEAR_COLOR_INCLUDE_ALPHA);
     //glClear(GL_COLOR_BUFFER_BIT);
 
+#ifdef GRAPHICS_OPENGL
     leaf_draw_texture_rect(0, 0,
             st->altrender_framebuffer.width,
             st->altrender_framebuffer.height,
@@ -481,7 +493,13 @@ void nmt_update_frame(Nemi* st) {
             st->term_cells_framebuffer.texture,
             (RGBColor){ 255, 255, 255 },
             LEAF_TEXTURE_NO_OPTIONS);
+#endif
 
+    /*
+#ifdef GRAPHICS_LINUX_FBDEV
+#pragma message "TODO: Need someway to output buffers to the main framebuffer"
+#endif
+*/
 
     //leaf_renderer_flush(st->lfctx);
     //leaf_font_render(&st->font);

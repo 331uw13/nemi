@@ -19,6 +19,8 @@
     3. This notice may not be removed or altered from any source distribution.
 */
 
+#ifdef GRAPHICS_OPENGL
+
 #include <GL/glew.h>
 #include <string.h>
 #include <math.h>
@@ -381,3 +383,4 @@ void leaf_draw_rect_fade
 }
 
 
+#endif // GRAPHICS_OPENGL
