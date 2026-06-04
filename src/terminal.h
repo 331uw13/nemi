@@ -24,6 +24,7 @@
 #include <pty.h>
 #include "vterm.h"
 
+#include "leaf/framebuffer.h"
 #include "string.h"
 #include "select_region.h"
 
@@ -33,6 +34,8 @@ enum terminal_type {
     SHELL_TERMINAL
 };
 
+// The terminal box is the final position where
+// it will be rendered. Scale is just font scale, but it basically scales the whole thing.
 typedef struct NTerminalBox_t {
     float scale;
     int x;
@@ -42,6 +45,8 @@ NTerminalBox;
 
 
 typedef struct NTerminal_t {
+    LeafFramebuffer cell_framebuffer; // Framebuffer for cells.
+    LeafFramebuffer arbt_framebuffer; // Framebuffer for "arbitrary draws".
     NSelectRegion select;
     NTerminalBox  box;
 
@@ -80,8 +85,6 @@ typedef struct NTerminal_t {
     int          flags;
     int          master_fd;
     pid_t        pid;
-
-
 }
 NTerminal;
 

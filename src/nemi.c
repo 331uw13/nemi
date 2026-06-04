@@ -97,10 +97,10 @@ Nemi* nmt_start_session(NemiFilepaths filepaths) {
 
     st->num_terminals = 0;
     st->inputfocus_module_idx = -1;
-    st->term_cells_render_offset_x = 0;
-    st->term_cells_render_offset_y = 0;
-    st->term_cells_framebuffer = (LeafFramebuffer){0};
-    st->altrender_framebuffer = (LeafFramebuffer){0};
+    //st->term_cells_render_offset_x = 0;
+    //st->term_cells_render_offset_y = 0;
+    //st->term_cells_framebuffer = (LeafFramebuffer){0};
+    //st->altrender_framebuffer = (LeafFramebuffer){0};
     nmt_zero_input_buffers(st);
     nmt_init_default_config(st);
 
@@ -186,8 +186,8 @@ Nemi* nmt_start_session(NemiFilepaths filepaths) {
 
    
 
-    leaf_create_framebuffer(&st->term_cells_framebuffer, st->lfctx->win_width, st->lfctx->win_height);
-    leaf_create_framebuffer(&st->altrender_framebuffer, st->lfctx->win_width, st->lfctx->win_height);
+    //leaf_create_framebuffer(&st->term_cells_framebuffer, st->lfctx->win_width, st->lfctx->win_height);
+    //leaf_create_framebuffer(&st->altrender_framebuffer, st->lfctx->win_width, st->lfctx->win_height);
 
     //clear_region(st, 0, 0, st->lfctx->win_width, st->lfctx->win_height);
     
@@ -214,7 +214,7 @@ void nmt_quit_session(Nemi* st) {
         nmt_module_quit(&st->modules[i]);
     }
 
-    leaf_free_framebuffer(&st->term_cells_framebuffer);
+    //leaf_free_framebuffer(&st->term_cells_framebuffer);
     nmt_free_configs(st);
 
     log_close();
@@ -377,21 +377,56 @@ size_t p_nmterm_select_callback__get_row_length(void* user_pointer, ssize_t row)
     return nmterm_get_row_length(st->terminal, row);
 }
 
-void nmt_update_frame(Nemi* st) {
-    st->frame_time_begin = leaf_get_time_insec();
 
+static
+void p_render_terminal_background(Nemi* st, NTerminal* term) {
+    leaf_draw_rect
+    (
+        term->box.x,
+        term->box.y,
+        st->font.char_width * term->cols + st->cfg.main.padding_x*2,
+        (st->font.char_height + st->cfg.main.line_padding) * term->rows + st->cfg.main.padding_y*2,
+        st->cfg.colors[NEMI_COLOR_BG]
+    );
+}
 
-    nmterm_update_blink_timer(st, st->terminal);
+static
+void p_render_terminal_framebuffers(Nemi* st, NTerminal* term) {
+
+    leaf_draw_texture_rect(
+             term->box.x,
+            -term->box.y,
+            term->arbt_framebuffer.width,
+            term->arbt_framebuffer.height,
+            term->arbt_framebuffer.texture,
+            (RGBColor){ 255, 255, 255 },
+            LEAF_TEXTURE_NO_OPTIONS);
+
+    leaf_draw_texture_rect(
+             term->box.x,
+            -term->box.y,
+            term->cell_framebuffer.width,
+            term->cell_framebuffer.height,
+            term->cell_framebuffer.texture,
+            (RGBColor){ 255, 255, 255 },
+            LEAF_TEXTURE_NO_OPTIONS);
+}
+
+static
+void p_update_terminal(Nemi* st, NTerminal* term) {
+
+    nmterm_update_blink_timer(st, term);
 
     // Render terminal cells to 'term_cells_framebuffer'
-    leaf_use_framebuffer(&st->term_cells_framebuffer);
+    //leaf_use_framebuffer(&st->term_cells_framebuffer);
+    leaf_use_framebuffer(&term->cell_framebuffer);
     {
-        // We are not going to clear the color buffer bit here
+        // We are not going to clear the color buffer here
         // for the whole framebuffer before rendering, because
         // the terminal's keep track of what is needed to be rendered again.
         // And saves the result to the framebuffer's texture so it can be reused.
-        nmterm_read(st, st->terminal);
-        nmterm_render(st, st->terminal);
+        nmterm_read(st, term);
+        nmterm_render(st, term);
 
 
         leaf_font_render(&st->font);
@@ -399,7 +434,7 @@ void nmt_update_frame(Nemi* st) {
     }
 
     // Render anything else to 'altrender_framebuffer'
-    leaf_use_framebuffer(&st->altrender_framebuffer);
+    leaf_use_framebuffer(&term->arbt_framebuffer);
     {
         // For alternative framebuffer the whole screen is cleared
         // before rendering again, because the modules can render
@@ -412,7 +447,7 @@ void nmt_update_frame(Nemi* st) {
                 st->cfg.colors[NEMI_COLOR_BG].r,
                 st->cfg.colors[NEMI_COLOR_BG].g,
                 st->cfg.colors[NEMI_COLOR_BG].b,
-                0 // No alpha
+                0
             }
         );
         leaf_clear();
@@ -421,17 +456,17 @@ void nmt_update_frame(Nemi* st) {
  
         // The select region is needed to render separatly from cells.
         // because the terminal will only render when cells change and we are not changing cells data.
-        if(st->terminal->select.active) {
+        if(term->select.active) {
             nmt_select_process
             (
-                st->terminal->select,
+                term->select,
                 p_nmterm_select_callback__get_row_length,
                 p_nmterm_select_callback__render,
                 st
             );
-            //nmterm_process_select_region(st, st->terminal, p_nmt_term_select_process_callback__render);
         }       
 
+        // Let modules draw to the terminal arbitrary framebuffer.
         for(size_t i = 0; i < st->num_loaded_modules; i++) {
             NModule* module = &st->modules[i];
             if(module->events.fn_render) {
@@ -444,39 +479,31 @@ void nmt_update_frame(Nemi* st) {
     }
 
     // Ennable the default framebuffer.
-    leaf_use_framebuffer(NULL);
-    
+    // The terminal framebuffers are as textures at the moment.
+    leaf_use_framebuffer(NULL); 
+    p_render_terminal_background(st, term);
+    p_render_terminal_framebuffers(st, term);
+
+}
+
+void nmt_update_frame(Nemi* st) {
+    st->frame_time_begin = leaf_get_time_insec();
+
+    // Clear default framebuffer.
+    leaf_use_framebuffer(NULL); 
     leaf_clear_color
     (
         (RGBAColor) {
             st->cfg.colors[NEMI_COLOR_BG].r,
             st->cfg.colors[NEMI_COLOR_BG].g,
             st->cfg.colors[NEMI_COLOR_BG].b,
-            255 // Alpha.
+            255
         }
     );
     leaf_clear();
-    //nmt_clear_color_buffer_bit(st, CLEAR_COLOR_INCLUDE_ALPHA);
-    //glClear(GL_COLOR_BUFFER_BIT);
 
-    leaf_draw_texture_rect(0, 0,
-            st->altrender_framebuffer.width,
-            st->altrender_framebuffer.height,
-            st->altrender_framebuffer.texture,
-            (RGBColor){ 255, 255, 255 },
-            LEAF_TEXTURE_NO_OPTIONS);
+    p_update_terminal(st, st->terminal);
 
-    leaf_draw_texture_rect(
-             st->term_cells_render_offset_x,
-            -st->term_cells_render_offset_y,
-            st->term_cells_framebuffer.width,
-            st->term_cells_framebuffer.height,
-            st->term_cells_framebuffer.texture,
-            (RGBColor){ 255, 255, 255 },
-            LEAF_TEXTURE_NO_OPTIONS);
-
-    //leaf_renderer_flush(st->lfctx);
-    //leaf_font_render(&st->font);
 
     st->last_char_in = 0;
     st->last_key_in = 0;
@@ -486,21 +513,7 @@ void nmt_update_frame(Nemi* st) {
     leaf_swap_buffers();
     leaf_get_events(st->lfctx);
 
-    //glfwSwapBuffers(st->lfctx->glfw_win);
-    //glfwPollEvents();
-    //usleep(10000);
-
     st->frame_time = leaf_get_time_insec() - st->frame_time_begin;
-
-    
-        /*
-    leaf_draw_char(&st->font, 1500, 100, 'A');
-
-    leaf_swap_buffers();
-    leaf_get_events();
-
-    st->frame_time = leaf_get_time_insec() - st->frame_time_begin;
-        */
 }
 
 void nmt_init_default_config(Nemi* st) {

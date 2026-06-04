@@ -176,6 +176,9 @@ NTerminal* nmterm_spawn(Nemi* st, int rows, int cols, enum terminal_type term_ty
         setenv("TERM", "xterm-256color", 1);
         execlp(shell, shell, NULL);
     }
+    
+    leaf_create_framebuffer(&term->cell_framebuffer, st->lfctx->win_width, st->lfctx->win_height);
+    leaf_create_framebuffer(&term->arbt_framebuffer, st->lfctx->win_width, st->lfctx->win_height);
 
     term->rows = rows;
     term->cols = cols;
@@ -247,6 +250,9 @@ void nmterm_close(NTerminal* term) {
     if(term->master_fd < 0) {
         return;
     }
+    
+    leaf_free_framebuffer(&term->cell_framebuffer);
+    leaf_free_framebuffer(&term->arbt_framebuffer);
 
     //freeif(term->hidden_cells);
     freeif(term->front_cell_buffer);
@@ -478,8 +484,8 @@ bool render_cell(Nemi* st, NTerminal* term, VTermScreenCell* cell, VTermPos pos)
     }
     */
 
-    int char_x = term->box.x + nmt_coltox(st, pos.col) * st->cfg.font.char_spacing;
-    int char_y = term->box.y + nmt_rowtoy(st, pos.row);
+    int char_x = nmt_coltox(st, pos.col) * st->cfg.font.char_spacing;
+    int char_y = nmt_rowtoy(st, pos.row);
 
     //asm("int3");
 
@@ -579,8 +585,8 @@ void nmterm_render_cursor(Nemi* st, NTerminal* term) {
         return;
     }
 
-    int cursor_draw_x = term->box.x + nmt_coltox(st, cursor_draw_col) * st->cfg.font.char_spacing;
-    int cursor_draw_y = term->box.y + nmt_rowtoy(st, cursor_draw_row);
+    int cursor_draw_x = nmt_coltox(st, cursor_draw_col) * st->cfg.font.char_spacing;
+    int cursor_draw_y = nmt_rowtoy(st, cursor_draw_row);
 
     VTermScreenCell old_cursor_cell;
     VTermPos old_cursor_pos = (VTermPos){
@@ -594,8 +600,8 @@ void nmterm_render_cursor(Nemi* st, NTerminal* term) {
     }
 
     nmt_clear_region(st,
-            term->box.x + nmt_coltox(st, term->cursor_old_col), 
-            term->box.y + nmt_rowtoy(st, term->cursor_old_row - term->yscroll),
+            nmt_coltox(st, term->cursor_old_col), 
+            nmt_rowtoy(st, term->cursor_old_row - term->yscroll),
             st->font.char_width,
             st->font.char_height);
     //clear_cell(st, term->cursor_old_col, term->cursor_old_row - term->yscroll);
@@ -636,11 +642,11 @@ void nmterm_set_row_dirty(NTerminal* term, int row) {
 void nmterm_clear_screen_row(Nemi* st, NTerminal* term, int row) {
     
     LeafFramebuffer* prev_fb = leaf_get_active_framebuffer();
-    leaf_use_framebuffer(&st->term_cells_framebuffer);
+    leaf_use_framebuffer(&term->cell_framebuffer);
 
     nmt_clear_region(st,
-            term->box.x, 
-            term->box.y + nmt_rowtoy(st, row),
+            0, 
+            nmt_rowtoy(st, row),
             st->font.char_width * (term->cols + 1),
             st->font.char_height + st->cfg.main.line_padding);
     
@@ -858,6 +864,12 @@ void nmterm_handle_resize_event(Nemi* st, NTerminal* term) {
 
     ioctl(term->master_fd, TIOCSWINSZ, &ws);
 
+   
+    // TODO: We maybedont always need the whole window sized framebuffer.
+    leaf_free_framebuffer(&term->cell_framebuffer);
+    leaf_free_framebuffer(&term->arbt_framebuffer);
+    leaf_create_framebuffer(&term->cell_framebuffer, st->lfctx->win_width, st->lfctx->win_height);
+    leaf_create_framebuffer(&term->arbt_framebuffer, st->lfctx->win_width, st->lfctx->win_height);
 
     /*
     term->hidden_cells = 

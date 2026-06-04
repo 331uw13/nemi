@@ -141,10 +141,12 @@ void userinput_window_resized(void* user_pointer, int width, int height) {
         nmterm_handle_resize_event(st, &st->terminals[i]);
     }
 
+    /*
     leaf_free_framebuffer(&st->term_cells_framebuffer);
     leaf_free_framebuffer(&st->altrender_framebuffer);
     leaf_create_framebuffer(&st->term_cells_framebuffer, st->lfctx->win_width, st->lfctx->win_height);
     leaf_create_framebuffer(&st->altrender_framebuffer, st->lfctx->win_width, st->lfctx->win_height);
+    */
     //clear_region(st, 0, 0, st->lfctx->win_width, st->lfctx->win_height);
 
     // Inform modules.
