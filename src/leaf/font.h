@@ -60,6 +60,7 @@ typedef struct LeafFont_t {
     int char_height;
 
     float italic; // TODO: Rename.
+    float bold;
 
     // Small space between characters.
     float spacing; 
@@ -73,7 +74,6 @@ typedef struct LeafFont_t {
     uint32_t real_char_height;
 
     
-#ifdef GRAPHICS_OPENGL
     LeafFontGlyph glyphs[FONT_NUM_CHARS];
     uint32_t texture;
     uint32_t texture_width;
@@ -87,8 +87,6 @@ typedef struct LeafFont_t {
     float    char_color_r;
     float    char_color_g;
     float    char_color_b;
-#endif // GRAPHICS_OPENGL
-
 
     bool loaded;
     

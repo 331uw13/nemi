@@ -73,12 +73,12 @@ float leaf_draw_char
     
 
     float glyph_vertices[] = {
-        x,    y-ch, 0.0f, 1.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, y, font->italic,  
-        x,    y,    0.0f, 0.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, y, font->italic,  
-        x+cw, y,    1.0f, 0.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, y, font->italic, 
-        x,    y-ch, 0.0f, 1.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, y, font->italic, 
-        x+cw, y,    1.0f, 0.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, y, font->italic, 
-        x+cw, y-ch, 1.0f, 1.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, y, font->italic
+        x,    y-ch, 0.0f, 1.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, y, font->italic, font->bold,  
+        x,    y,    0.0f, 0.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, y, font->italic, font->bold,  
+        x+cw, y,    1.0f, 0.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, y, font->italic, font->bold, 
+        x,    y-ch, 0.0f, 1.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, y, font->italic, font->bold, 
+        x+cw, y,    1.0f, 0.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, y, font->italic, font->bold, 
+        x+cw, y-ch, 1.0f, 1.0f, glyph->atlas_x, font->char_color_r, font->char_color_g, font->char_color_b, y, font->italic, font->bold
     };
 
     glBindBuffer(GL_ARRAY_BUFFER, font->vbo);

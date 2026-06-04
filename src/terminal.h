@@ -33,15 +33,21 @@ enum terminal_type {
     SHELL_TERMINAL
 };
 
+typedef struct NTerminalBox_t {
+    float scale;
+    int x;
+    int y;
+}
+NTerminalBox;
+
 
 typedef struct NTerminal_t {
-    int          flags;
-    int          master_fd;
-    pid_t        pid;
+    NSelectRegion select;
+    NTerminalBox  box;
+
     VTerm*       vt;
     VTermScreen* vtscrn;
     VTermState*  vtstate;
-    enum terminal_type type;
 
     // Back and front cell buffers for knowing what cells to render
     // so we dont need to render already rendered cells again.
@@ -52,8 +58,6 @@ typedef struct NTerminal_t {
     // 'dirty_rows' memory capacity is resized along side
     // with back and front cell buffers.
     bool* dirty_rows; 
-
-    bool is_altbuffer_active;
 
     int yscroll;
     //struct scrollback sb;
@@ -68,16 +72,16 @@ typedef struct NTerminal_t {
     int cursor_old_row;
 
 
-    NSelectRegion select;
-
     float blink_timer;
+    
+    enum terminal_type type;
+    bool is_altbuffer_active;
 
-    // TODO: This needs fixing.
-    // Users can hide terminal's cells.
-    // This is done because then they can render
-    // anything they want from scripts without
-    // the terminal's cells being in the way.
-    //bool* hidden_cells;
+    int          flags;
+    int          master_fd;
+    pid_t        pid;
+
+
 }
 NTerminal;
 

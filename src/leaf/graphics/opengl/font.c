@@ -36,57 +36,78 @@
 
 static const char FONT_VERTEX_SHADER_SRC[] = {
     "#version 330 core\n"    
-    "layout (location = 0) in vec2 in_pos;"
-    "layout (location = 1) in vec2 in_tex_coords;"
-    "layout (location = 2) in float in_atlas_offset;"
-    "layout (location = 3) in vec3  in_char_color;"
-    "layout (location = 4) in float in_char_origin_y;"
-    "layout (location = 5) in float in_char_italic;"
-    "uniform float u_scale;"
-    
-    "out vec2 tex_coords;" 
-    "out vec3 color;"
-    "out float atlas_offset;"
-    "out float glyph_width;"
-    
-    "void main() {"
-        "tex_coords   = in_tex_coords;"
-        "atlas_offset = in_atlas_offset;"
-        "color        = in_char_color;"
+    "layout (location = 0) in vec2 in_pos;\n"
+    "layout (location = 1) in vec2 in_tex_coords;\n"
+    "layout (location = 2) in float in_atlas_offset;\n"
+    "layout (location = 3) in vec3  in_char_color;\n"
+    "layout (location = 4) in float in_char_origin_y;\n"
+    "layout (location = 5) in float in_char_italic;\n"
+    "layout (location = 6) in float in_char_bold;\n"
+    "uniform float u_scale;\n"
+   
+    "out vec2 tex_coords;\n" 
+    "out vec3 color;\n"
+    "out float atlas_offset;\n"
+    "out float glyph_width;\n"
+    "out float char_bold;\n"
+    "void main() {\n"
+        "tex_coords   = in_tex_coords;\n"
+        "atlas_offset = in_atlas_offset;\n"
+        "color        = in_char_color;\n"
+        "char_bold = in_char_bold;\n"
         
-        "vec2 p = in_pos;"
-        "p.x += (p.y - in_char_origin_y) * (in_char_italic * 0.5);"
-        "gl_Position = vec4(p.x, p.y, 0.0, 1.0);"
-    "}"
+        "vec2 p = in_pos;\n"
+        "p.x += (p.y - in_char_origin_y) * (in_char_italic * 0.5);\n"
+        "gl_Position = vec4(p.x, p.y, 0.0, 1.0);\n"
+    "}\n"
 };
 
 static const char FONT_FRAGMENT_SHADER_SRC[] = {
     "#version 330 core\n"    
-    "out vec4 out_color;"  
-    "in vec2 tex_coords;"  
-    "in vec3 color;"
-    "in float atlas_offset;"
-    "in float glyph_width;"
-    
-    "uniform float u_tex_w;"
-    "uniform float u_tex_h;"
-    "uniform float u_chr_w;"
-    "uniform float u_chr_h;"
-    "uniform sampler2D tex;"
-  
-    "void main() {"
-        "float char_w = u_chr_w / u_tex_w;"
-        "float char_h = u_chr_h / u_tex_h + 0.1;" // Small offset to zoom character height a bit out
+    "out vec4 out_color;\n"  
+    "in vec2 tex_coords;\n"  
+    "in vec3 color;\n"
+    "in float atlas_offset;\n"
+    "in float glyph_width;\n"
+    "in float char_bold;\n"
+
+    "uniform float u_tex_w;\n"
+    "uniform float u_tex_h;\n"
+    "uniform float u_chr_w;\n"
+    "uniform float u_chr_h;\n"
+    "uniform sampler2D tex;\n"
+
+    "void main() {\n"
+        "float char_w = u_chr_w / u_tex_w;\n"
+        "float char_h = u_chr_h / u_tex_h + 0.1;\n" // Small offset to zoom character height a bit out
                                                   // to make room for characters who go a bit outside
                                                   // for example: ;j and g
-        "float tex_x = (atlas_offset + tex_coords.x) * char_w;"
-        "float tex_y =                 tex_coords.y  * char_h;"
-        "vec2 texc = vec2(tex_x, tex_y);"
-        "float c = texture(tex, texc).r;"
+        "float tex_x = (atlas_offset + tex_coords.x) * char_w;\n"
+        "float tex_y =                 tex_coords.y  * char_h;\n"
+        "vec2 texc = vec2(tex_x, tex_y);\n"
+        "float c = texture(tex, texc).r;\n"
+        // This fixes the issue with font getting very small
+        // it becomes unreadable very fast.
+        // It looks better when sampling nearby pixels and mixing them.
+        "float px = 1.0f / u_tex_w;\n"
+        "float py = 1.0f / u_tex_h;\n"
+        "float s01 = texture(tex, texc + vec2(px, 0)).r;\n"
+        "float s02 = texture(tex, texc + vec2(-px, 0)).r;\n"
+        "c = mix(c, mix(s01, s02, 0.5f), 0.5f);\n"
+
+        // The bold setting works kind of the same way.
+        "float b01 = texture(tex, texc + vec2(px, 0)).r   * 0.9;"
+        "float b03 = texture(tex, texc + vec2(px*2, 0)).r * 0.4;"
+        "float b02 = texture(tex, texc + vec2(-px, 0)).r  * 0.9;"
+        "float b04 = texture(tex, texc + vec2(-px*2, 0)).r * 0.4;"
+        "float b10 = texture(tex, texc + vec2(0, py)).r    * 0.9;"
+        "float b20 = texture(tex, texc + vec2(0, -py)).r   * 0.9;"
+        "float bs = 0.8;"
+        "c += (b01*bs + b02*bs + b10*bs + b20*bs + b03*bs + b04*bs) * char_bold;"
         
-        "float a = smoothstep(0.0f, 1.0f, c);"
-        "out_color = vec4(color, a);"
-    "}"
+        "float a = smoothstep(0.2f, 1.0f, c);\n"
+        "out_color = vec4(color, a);\n"
+    "}\n"
 };
 
 void leaf_font_render(LeafFont* font) {
@@ -99,6 +120,7 @@ void leaf_font_render(LeafFont* font) {
     shader_uniform1f(font->shader, "u_chr_w", font->real_char_width);
     shader_uniform1f(font->shader, "u_chr_h", font->real_char_height);
     shader_uniform1f(font->shader, "u_scale", font->scale);
+    //shader_uniform1f(font->shader, "u_bold", font->bold);
     /*
     shader_uniform1f(font->shader, "u_chr_w", 
             (float)font->real_char_width / (float)lfctx->win_width);
@@ -135,7 +157,7 @@ bool leaf_load_font(LeafFont* font, const char* filepath) {
         goto error;
     }
 
-    FT_Set_Pixel_Sizes(face, 0, 32);
+    FT_Set_Pixel_Sizes(face, 0, 64);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
     font->real_char_width = 0;
@@ -145,7 +167,6 @@ bool leaf_load_font(LeafFont* font, const char* filepath) {
     font->texture_width = 0;
     font->texture_height = 0;
     font->center_char_to_cell = false;
-    font->italic = 0.0f;
     font->vbo_data_offset = 0;
 
     font->shader = create_shader_program(
@@ -153,6 +174,11 @@ bool leaf_load_font(LeafFont* font, const char* filepath) {
             FONT_FRAGMENT_SHADER_SRC);
     
     if(!font->shader) {
+        fprintf(stderr, "--- Font Vertex Shader ---\n%s\n", 
+                FONT_VERTEX_SHADER_SRC);
+        
+        fprintf(stderr, "\n--- Font Fragment Shader ---\n%s\n", 
+                FONT_FRAGMENT_SHADER_SRC);
         goto error_and_done;
     }
 
@@ -204,7 +230,7 @@ bool leaf_load_font(LeafFont* font, const char* filepath) {
 
     // Add safe amount of extra space for characters
     // in y axis because they have to be offset later
-    font->texture_height += 30;
+    font->texture_height += 70;
 
     size_t num_pixels = font->texture_width * font->texture_height;
     uint8_t* pixels = calloc(num_pixels, sizeof *pixels);
@@ -278,7 +304,7 @@ bool leaf_load_font(LeafFont* font, const char* filepath) {
     // char blue,
     // char origin y
     // char italic
-    const int stride_num_floats = 2 + 2 + 1 + 3 + 1 + 1;
+    const int stride_num_floats = 2 + 2 + 1 + 3 + 1 + 1 + 1;
 
     font->vbo_memsize = (100 * 100) * (sizeof(float) * (stride_num_floats * 6));
     glGenBuffers(1, &font->vbo);
@@ -317,11 +343,18 @@ bool leaf_load_font(LeafFont* font, const char* filepath) {
     glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE,
             stride_size, (void*)(9*sizeof(float)));
     glEnableVertexAttribArray(5);
+    
+    // Character bold
+    glVertexAttribPointer(6, 1, GL_FLOAT, GL_FALSE,
+            stride_size, (void*)(10*sizeof(float)));
+    glEnableVertexAttribArray(6);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);  
     
 
+    font->italic = 0.0f;
+    font->bold   = 0.0f;
     font->char_width = 0;
     font->char_height = 0;
     leaf_set_font_scale(font, 4.0f);
@@ -331,7 +364,7 @@ bool leaf_load_font(LeafFont* font, const char* filepath) {
     leaf_set_font_spacing(font, 1.0f);
     leaf_set_font_space_width(font, 8);
     leaf_set_font_tab_width(font, 8*4);
-   
+
 
     printf("%s: LeafFont texture: %ix%i\n", __FILE__,
             font->texture_width,

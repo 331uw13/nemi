@@ -151,7 +151,7 @@ static const char RENDERER_VERTEX_SHADER_SRC[] = {
     "    v_color = vertex_color;\n"
     "    gl_Position = vec4(vertex_pos.x, vertex_pos.y, 0.0, 1.0);\n"
     "    \n"
-    "}\n",
+    "}\n"
 };
 
 static const char RENDERER_FRAGMENT_SHADER_SRC[] = {
@@ -161,7 +161,7 @@ static const char RENDERER_FRAGMENT_SHADER_SRC[] = {
     "\n"
     "void main() {\n"
     "    out_color = vec4(v_color, 1.0);\n"
-    "}\n",
+    "}\n"
 };
 
 
@@ -378,6 +378,7 @@ void leaf_init_renderer(LeafCtx* ctx, size_t vbo_memsize) {
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+
 
    
 

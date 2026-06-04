@@ -198,6 +198,12 @@ NTerminal* nmterm_spawn(Nemi* st, int rows, int cols, enum terminal_type term_ty
     term->select.row_end = 0;
     term->select.mode = SREG_MODE_NORMAL;
 
+    term->box = (NTerminalBox) {
+        .scale = 0.9f,
+        .x = 0,
+        .y = 0
+    };
+
     //term->hidden_cells = calloc(term->cols * term->rows, sizeof *term->uhidden_cells);
 
     //init_scrollback_buffer(term);
@@ -472,8 +478,8 @@ bool render_cell(Nemi* st, NTerminal* term, VTermScreenCell* cell, VTermPos pos)
     }
     */
 
-    int char_x = nmt_coltox(st, pos.col) * st->cfg.font.char_spacing;
-    int char_y = nmt_rowtoy(st, pos.row);
+    int char_x = term->box.x + nmt_coltox(st, pos.col) * st->cfg.font.char_spacing;
+    int char_y = term->box.y + nmt_rowtoy(st, pos.row);
 
     //asm("int3");
 
@@ -503,6 +509,10 @@ bool render_cell(Nemi* st, NTerminal* term, VTermScreenCell* cell, VTermPos pos)
         draw_bg = true;
     }
 
+    if(cell->attrs.bold) {
+        st->font.bold = 2.0f;
+    }
+
     st->font.italic = (cell->attrs.italic) ? st->cfg.font.italic_tilt : 0.0f;
     
 
@@ -524,6 +534,7 @@ bool render_cell(Nemi* st, NTerminal* term, VTermScreenCell* cell, VTermPos pos)
                 bg_color);
     }
 
+    leaf_set_font_scale(&st->font, term->box.scale);
     leaf_set_font_color(&st->font, fg_color);
     leaf_draw_char(&st->font, char_x, char_y, cell_char);
 
@@ -537,6 +548,7 @@ bool render_cell(Nemi* st, NTerminal* term, VTermScreenCell* cell, VTermPos pos)
                 fg_color);
     }
 
+    st->font.bold = 0.0f;
     st->font.italic = 0.0f;
     return true;
 }
@@ -567,8 +579,8 @@ void nmterm_render_cursor(Nemi* st, NTerminal* term) {
         return;
     }
 
-    int cursor_draw_x = nmt_coltox(st, cursor_draw_col) * st->cfg.font.char_spacing;
-    int cursor_draw_y = nmt_rowtoy(st, cursor_draw_row);
+    int cursor_draw_x = term->box.x + nmt_coltox(st, cursor_draw_col) * st->cfg.font.char_spacing;
+    int cursor_draw_y = term->box.y + nmt_rowtoy(st, cursor_draw_row);
 
     VTermScreenCell old_cursor_cell;
     VTermPos old_cursor_pos = (VTermPos){
@@ -581,7 +593,12 @@ void nmterm_render_cursor(Nemi* st, NTerminal* term) {
         render_cell(st, term, &old_cursor_cell, old_cursor_pos);
     }
 
-    clear_cell(st, term->cursor_old_col, term->cursor_old_row - term->yscroll);
+    nmt_clear_region(st,
+            term->box.x + nmt_coltox(st, term->cursor_old_col), 
+            term->box.y + nmt_rowtoy(st, term->cursor_old_row),
+            st->font.char_width,
+            st->font.char_height);
+    //clear_cell(st, term->cursor_old_col, term->cursor_old_row - term->yscroll);
 
 
     RGBColor cursor_color = st->cfg.colors[NEMI_COLOR_CURSOR];
@@ -645,16 +662,16 @@ void nmterm_render(Nemi* st, NTerminal* term) {
     }
 
 
+    // Render cells, but only ones which changed.
     int cleared_rows = 0;
-
     for(int row = 0; row < term->rows; row++) {
         if(!term->dirty_rows[row]) {
             continue;
         }
 
         nmt_clear_region(st,
-                0, 
-                nmt_rowtoy(st, row),
+                term->box.x, 
+                term->box.y + nmt_rowtoy(st, row),
                 st->lfctx->win_width,
                 st->font.char_height + st->cfg.main.line_padding);
 

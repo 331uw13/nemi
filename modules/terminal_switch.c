@@ -63,8 +63,6 @@ void module_event_render() {
 void module_event_key_input(int key, int mods) {
     if(is_module_active()) {
         reset_timeout();
-
-        logprintf(LOG_INFO, "%i", key);
     }
 }
 
