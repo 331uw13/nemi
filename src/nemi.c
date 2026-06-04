@@ -393,7 +393,7 @@ void nmt_update_frame(Nemi* st) {
         nmterm_read(st, st->terminal);
         nmterm_render(st, st->terminal);
 
-        
+
         leaf_font_render(&st->font);
         leaf_renderer_flush();
     }

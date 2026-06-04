@@ -118,8 +118,8 @@ void nmterm_set_row_dirty           (NTerminal* term, int row); // Causes a row 
 void nmterm_clear_screen_row        (Nemi* st, NTerminal* term, int row);
 void nmterm_yscroll                 (NTerminal* term, int offset);
 void nmterm_yscroll_to              (NTerminal* term, int point);
-//void nmterm_process_select_region   (Nemi* st, NTerminal* term, void(*callback)(Nemi* st, NTerminal* term, int row, int col_beg, int row_length));
 int  nmterm_get_row_length          (NTerminal* term, int row);
+void nmterm_box_move                (NTerminal* term, int new_box_x, int new_box_y);
 
 /*
 // Available type is "block"(block select) or "normal".

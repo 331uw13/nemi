@@ -25,8 +25,6 @@
 
 void userinput_mouse_moved(void* user_pointer, float new_x, float new_y) {
     Nemi* st = (Nemi*)user_pointer;
-    st->mouse_x = new_x;
-    st->mouse_y = new_y;
 
     for(size_t i = 0; i < st->num_loaded_modules; i++) {
         NModule* module = &st->modules[i];
@@ -35,6 +33,9 @@ void userinput_mouse_moved(void* user_pointer, float new_x, float new_y) {
             module->events.fn_mouse_moved(new_x, new_y);
         }
     }
+    
+    st->mouse_x = new_x;
+    st->mouse_y = new_y;
 }
 
 void userinput_mouse_pressed(void* user_pointer, int button) {

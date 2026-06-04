@@ -1072,7 +1072,7 @@ void nmterm_yscroll_to(NTerminal* term, int point) {
     // We mayb need to clear the rows at the bottom.
     if(old_yscroll < term->yscroll && term->yscroll > 0) {
 
-        int rows_end_was = term->rows - MAX_VALUE(old_yscroll, 0);
+        //int rows_end_was = term->rows - MAX_VALUE(old_yscroll, 0);
         int rows_end_now = term->rows - MAX_VALUE(term->yscroll, 0);
 
 
@@ -1082,7 +1082,16 @@ void nmterm_yscroll_to(NTerminal* term, int point) {
 }
 
 
+void nmterm_box_move(NTerminal* term, int new_box_x, int new_box_y) {
+   
+    term->box.x = new_box_x;
+    term->box.y = new_box_y;
 
+    for(int i = 0; i < term->rows; i++) {
+        nmterm_set_row_dirty(term, i);
+    }
+
+}
 
 
 void nmterm_clear(NTerminal* term) {
