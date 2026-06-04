@@ -57,10 +57,13 @@ typedef struct NModule_t {
 
     struct {
     
-        void(*fn_render)();
-        void(*fn_char_input)(char c);
-        void(*fn_key_input)(int key, int modifiers);
-        void(*fn_window_resized)();
+        void (*fn_render)();
+        void (*fn_char_input)(char c);
+        void (*fn_key_input)(int key, int modifiers);
+        void (*fn_window_resized)();
+        void (*fn_mouse_moved)(float new_x, float new_y);
+        void (*fn_mouse_pressed)(int button);
+        void (*fn_mouse_scroll)(int direction);
         // ...
 
     }

@@ -141,24 +141,16 @@ Nemi* nmt_start_session(NemiFilepaths filepaths) {
 
     // Set userinput callbacks.
     st->lfctx->callback.user_pointer = st;
-    st->lfctx->callback.key_pressed = userinput_key_pressed;
-    st->lfctx->callback.char_pressed = userinput_char_pressed;
+    st->lfctx->callback.key_pressed    = userinput_key_pressed;
+    st->lfctx->callback.char_pressed   = userinput_char_pressed;
     st->lfctx->callback.window_resized = userinput_window_resized;
-    /*
-    glfwSetWindowUserPointer(st->lfctx->glfw_win, st);
-    glfwSetInputMode          (st->lfctx->glfw_win, GLFW_STICKY_KEYS, GLFW_FALSE);
-    glfwSetKeyCallback        (st->lfctx->glfw_win, glfw_key_callback);
-    glfwSetCharCallback       (st->lfctx->glfw_win, glfw_char_callback);
-    glfwSetScrollCallback     (st->lfctx->glfw_win, glfw_scroll_callback);
-    glfwSetWindowSizeCallback (st->lfctx->glfw_win, glfw_window_resize_callback);
-    glfwSetCursorPosCallback  (st->lfctx->glfw_win, glfw_cursor_position_callback);
-    glfwSetMouseButtonCallback(st->lfctx->glfw_win, glfw_mouse_button_callback);
-    */
-    
+    st->lfctx->callback.mouse_moved    = userinput_mouse_moved;
+    st->lfctx->callback.mouse_pressed  = userinput_mouse_pressed;
+    st->lfctx->callback.mouse_scroll   = userinput_mouse_scroll;
+
     // This will allocate memory for the renderer's
     // vertex buffer object. Only one is used. 
-    const size_t renderer_memory_size = 1024 * sizeof(float);
-    leaf_init_renderer(st->lfctx, renderer_memory_size);
+    leaf_init_renderer(1024 * sizeof(float));
 
     st->win_cols = st->lfctx->win_width / st->font.char_width;
     st->win_rows = st->lfctx->win_height / (st->font.char_height + st->cfg.main.line_padding);
@@ -215,7 +207,7 @@ void nmt_quit_session(Nemi* st) {
         nmterm_close(&st->terminals[i]);
     }
     
-    leaf_free_renderer(st->lfctx);
+    leaf_free_renderer();
     leaf_quit(st->lfctx);
 
     for(size_t i = 0; i < NEMI_MODULES_MAX; i++) {
@@ -403,7 +395,7 @@ void nmt_update_frame(Nemi* st) {
 
         
         leaf_font_render(&st->font);
-        leaf_renderer_flush(st->lfctx);
+        leaf_renderer_flush();
     }
 
     // Render anything else to 'altrender_framebuffer'
@@ -448,7 +440,7 @@ void nmt_update_frame(Nemi* st) {
         }
 
         leaf_font_render(&st->font);
-        leaf_renderer_flush(st->lfctx);
+        leaf_renderer_flush();
     }
 
     // Ennable the default framebuffer.

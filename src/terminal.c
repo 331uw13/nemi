@@ -199,7 +199,7 @@ NTerminal* nmterm_spawn(Nemi* st, int rows, int cols, enum terminal_type term_ty
     term->select.mode = SREG_MODE_NORMAL;
 
     term->box = (NTerminalBox) {
-        .scale = 0.9f,
+        .scale = 0.8f,
         .x = 0,
         .y = 0
     };
@@ -595,7 +595,7 @@ void nmterm_render_cursor(Nemi* st, NTerminal* term) {
 
     nmt_clear_region(st,
             term->box.x + nmt_coltox(st, term->cursor_old_col), 
-            term->box.y + nmt_rowtoy(st, term->cursor_old_row),
+            term->box.y + nmt_rowtoy(st, term->cursor_old_row - term->yscroll),
             st->font.char_width,
             st->font.char_height);
     //clear_cell(st, term->cursor_old_col, term->cursor_old_row - term->yscroll);
@@ -633,17 +633,43 @@ void nmterm_set_row_dirty(NTerminal* term, int row) {
     term->dirty_rows[row] = true;
 }
 
+void nmterm_clear_screen_row(Nemi* st, NTerminal* term, int row) {
+    
+    LeafFramebuffer* prev_fb = leaf_get_active_framebuffer();
+    leaf_use_framebuffer(&st->term_cells_framebuffer);
+
+    nmt_clear_region(st,
+            term->box.x, 
+            term->box.y + nmt_rowtoy(st, row),
+            st->font.char_width * (term->cols + 1),
+            st->font.char_height + st->cfg.main.line_padding);
+    
+    leaf_use_framebuffer(prev_fb);
+}
+
 void nmterm_render(Nemi* st, NTerminal* term) {
     vterm_get_size(term->vt, &term->rows, &term->cols);
     if(vterm_screen_is_altscreen(term->vtscrn)) {
         term->yscroll = 0;
     }
+    
+    const int rows_end = term->rows - MAX_VALUE(term->yscroll, 0);
+
+    if(rows_end < 0) {
+        return;
+    }
+
+    if(rows_end > term->rows) {
+        logprintf(LOG_ERROR, "Failed to calculate terminal rows end. Did the MAX_VALUE macro change?");
+        asm("int3");
+        abort();
+    }
 
     // Update front buffer.
-    for(int row = 0; row < term->rows; row++) {
+    for(int row = 0; row < rows_end; row++) {
         for(int col = 0; col < term->cols; col++) {
             int actual_row = row + term->yscroll;
-           
+     
             VTermScreenCell* back_cell  = &term->back_cell_buffer  [col + row * term->cols];
             VTermScreenCell* front_cell = &term->front_cell_buffer [col + row * term->cols];
 
@@ -656,37 +682,31 @@ void nmterm_render(Nemi* st, NTerminal* term) {
                 term->dirty_rows[row] = true;
                 copy_cell(front_cell, back_cell);
             }
-
-            //copy_cell(front_cell, back_cell);
         }
     }
 
 
+
     // Render cells, but only ones which changed.
     int cleared_rows = 0;
-    for(int row = 0; row < term->rows; row++) {
+    
+    //printf("%s: scroll:%i - rows_end:%i\n", __func__, term->yscroll, rows_end);
+    for(int row = 0; row < rows_end; row++) {
         if(!term->dirty_rows[row]) {
             continue;
         }
 
-        nmt_clear_region(st,
-                term->box.x, 
-                term->box.y + nmt_rowtoy(st, row),
-                st->lfctx->win_width,
-                st->font.char_height + st->cfg.main.line_padding);
-
+        nmterm_clear_screen_row(st, term, row);
 
         for(int col = 0; col < term->cols; col++) {
-
-            //int char_x = coltox(st, col) * st->cfg.font.char_spacing;
-            //int char_y = rowtoy(st, row);
-        
             VTermScreenCell* front_cell = &term->front_cell_buffer[col + row * term->cols];
             render_cell(st, term, front_cell, (VTermPos){ row, col });
         }
 
         cleared_rows++;
     }
+        
+
 
     //printf("Cleared rows: %i\n", cleared_rows);
 
@@ -962,11 +982,13 @@ void nmterm_clear_cell_custom_attrs(NTerminal* term, VTermPos pos) {
     vterm_screen_clear_cell_custom_attrs(term->vtscrn, pos);
 }
 
+/*
 void swap_int(int* a, int* b) {
     int tmp = *a;
     *a = *b;
     *b = tmp;
 }
+*/
 
 /*
 void nmterm_copy_to_clipboard(Nemi* st, NTerminal* term, const char* type,
@@ -1038,13 +1060,25 @@ void nmterm_copy_to_clipboard(Nemi* st, NTerminal* term, const char* type,
 */
 
 void nmterm_yscroll(NTerminal* term, int offset) {
-    nmterm_set_row_dirty(term, term->cursor_row - term->yscroll);
-    term->yscroll += offset;
+    nmterm_yscroll_to(term, term->yscroll + offset);
 }
 
 void nmterm_yscroll_to(NTerminal* term, int point) {
-    nmterm_set_row_dirty(term, term->cursor_row - term->yscroll);
+    int old_yscroll = term->yscroll;
     term->yscroll = point;
+
+    nmterm_set_row_dirty(term, term->cursor_row - term->yscroll);
+
+    // We mayb need to clear the rows at the bottom.
+    if(old_yscroll < term->yscroll && term->yscroll > 0) {
+
+        int rows_end_was = term->rows - MAX_VALUE(old_yscroll, 0);
+        int rows_end_now = term->rows - MAX_VALUE(term->yscroll, 0);
+
+
+        Nemi* st = nmt_getst();
+        nmterm_clear_screen_row(st, term, rows_end_now);
+    }
 }
 
 

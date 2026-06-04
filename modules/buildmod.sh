@@ -43,9 +43,6 @@ libnemi_dir="$(cd .. && pwd)"
 libnemi_srcdir="../src"
 
 
-# This can be also set to "GRAPHICS_LINUX_FBDEV" in the future,
-# to use the linux framebuffer device.
-# But the implementation is not ready yet.
 graphics_backend="GRAPHICS_OPENGL" 
 
 gcc $module_cfiles \

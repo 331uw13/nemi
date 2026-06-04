@@ -38,10 +38,12 @@
 typedef struct LeafCtx_t {
 
     struct {
-        void(*key_pressed)    (void* user_ptr, int key, int mods);
-        void(*char_pressed)   (void* user_ptr, uint32_t codepoint);
-        void(*window_resized) (void* user_ptr, int width, int height);
-    
+        void (*key_pressed)    (void* user_ptr, int key, int mods);
+        void (*char_pressed)   (void* user_ptr, uint32_t codepoint);
+        void (*window_resized) (void* user_ptr, int width, int height);
+        void (*mouse_pressed)  (void* user_ptr, int button);
+        void (*mouse_moved)    (void* user_ptr, float new_x, float new_y);
+        void (*mouse_scroll)   (void* user_ptr, int direction);
         void* user_pointer;
     }
     callback;
@@ -68,6 +70,7 @@ void     leaf_set_viewport(int x, int y, int w, int h);
 void     leaf_hide_mouse(bool is_hidden);
 void     leaf_enable_vsync(bool is_enabled);
 bool     leaf_key_down(int key); // see 'keyboard.h' for keys.
+bool     leaf_mouse_down(int mouse_button); // see 'mouse.h' for mouse buttons.
 double   leaf_get_time_insec();
 
 void     leaf_clear_color  (RGBAColor color);
@@ -87,6 +90,7 @@ void     leaf_set_scissor_region  (int x, int y, int w, int h);
 bool leaf_create_framebuffer   (LeafFramebuffer* fb, uint32_t width, uint32_t height);
 void leaf_use_framebuffer      (LeafFramebuffer* fb);
 void leaf_free_framebuffer     (LeafFramebuffer* fb);
+LeafFramebuffer* leaf_get_active_framebuffer();
 
 LeafTexture leaf_load_texture  (const char* path);
 
@@ -94,12 +98,12 @@ LeafTexture leaf_load_texture  (const char* path);
 #ifdef GRAPHICS_OPENGL
 
 // Renderer must be initialized if OpenGL
-void leaf_init_renderer        (LeafCtx* ctx, size_t vbo_memsize);
-void leaf_free_renderer        (LeafCtx* ctx);
+void leaf_init_renderer        (size_t vbo_memsize);
+void leaf_free_renderer        ();
 
 // One vertex is: [x, y, r, g, b]
-void leaf_render_vertices      (LeafCtx* ctx, float* vertices, size_t vertices_memsize);
-void leaf_renderer_flush       (LeafCtx* ctx);
+void leaf_render_vertices      (float* vertices, size_t vertices_memsize);
+void leaf_renderer_flush       ();
 
 // graphics/opengl/draw.c needs these.
 uint32_t p_leaf_get_renderer_tex_shader();

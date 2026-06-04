@@ -4,11 +4,15 @@
 Nemi by default is a terminal emulator with only basic essentials. 
 But you can easily use modules, to add features which never existed before!
 Modules are dynamically loaded libraries. (read more from documentation)
-Only ASCII characters are supported.
+
+    Only ASCII characters are supported for now.
+
+ Warning:
+    Enabling modules without first understanding their code is not advised.
+    Because modules allow for arbitrary code execution (this is by design),
+    The modules are not sandboxed.
 ```
 > No AI code is used.
-
-
 
 # Build instructions
 ```bash

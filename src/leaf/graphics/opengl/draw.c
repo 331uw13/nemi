@@ -194,7 +194,7 @@ void leaf_draw_rect
         x+w, y-h, r, g, b
     };
 
-    leaf_render_vertices(g_leaf_ctx, vertices, sizeof(vertices));
+    leaf_render_vertices(vertices, sizeof(vertices));
 }
 
 void leaf_draw_texture_rect

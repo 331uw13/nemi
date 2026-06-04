@@ -1,7 +1,66 @@
+/* License: zlib
+
+   Copyright (C) 2026 (331uw13/eeiuwie)
+
+    This software is provided 'as-is', without any express or implied
+    warranty.  In no event will the authors be held liable for any damages
+    arising from the use of this software.
+
+    Permission is granted to anyone to use this software for any purpose,
+    including commercial applications, and to alter it and redistribute it
+    freely, subject to the following restrictions:
+
+    1. The origin of this software must not be misrepresented; you must not
+       claim that you wrote the original software. If you use this software
+       in a product, an acknowledgment in the product documentation would be
+       appreciated but is not required.
+    2. Altered source versions must be plainly marked as such, and must not be
+       misrepresented as being the original software.
+    3. This notice may not be removed or altered from any source distribution.
+*/
 #include "userinput_callbacks.h"
 
 #include "nemi.h"
 
+
+void userinput_mouse_moved(void* user_pointer, float new_x, float new_y) {
+    Nemi* st = (Nemi*)user_pointer;
+    st->mouse_x = new_x;
+    st->mouse_y = new_y;
+
+    for(size_t i = 0; i < st->num_loaded_modules; i++) {
+        NModule* module = &st->modules[i];
+
+        if(module->events.fn_mouse_moved) {
+            module->events.fn_mouse_moved(new_x, new_y);
+        }
+    }
+}
+
+void userinput_mouse_pressed(void* user_pointer, int button) {
+    Nemi* st = (Nemi*)user_pointer;
+    st->last_mouse_button = button;
+
+    for(size_t i = 0; i < st->num_loaded_modules; i++) {
+        NModule* module = &st->modules[i];
+
+        if(module->events.fn_mouse_pressed) {
+            module->events.fn_mouse_pressed(button);
+        }
+    }
+}
+
+void userinput_mouse_scroll(void* user_pointer, int direction) {
+    Nemi* st = (Nemi*)user_pointer;
+    
+    for(size_t i = 0; i < st->num_loaded_modules; i++) {
+        NModule* module = &st->modules[i];
+
+        if(module->events.fn_mouse_scroll) {
+            module->events.fn_mouse_scroll(direction);
+        }
+    }
+}
 
 void userinput_key_pressed(void* user_pointer, int key, int mods) {
     Nemi* st = (Nemi*)user_pointer;
@@ -29,7 +88,6 @@ void userinput_key_pressed(void* user_pointer, int key, int mods) {
         if(module->events.fn_key_input) {
             module->events.fn_key_input(key, mods);
         }
-
     }
 }
 

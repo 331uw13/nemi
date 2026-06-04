@@ -105,7 +105,7 @@ static const char FONT_FRAGMENT_SHADER_SRC[] = {
         "float bs = 0.8;"
         "c += (b01*bs + b02*bs + b10*bs + b20*bs + b03*bs + b04*bs) * char_bold;"
         
-        "float a = smoothstep(0.2f, 1.0f, c);\n"
+        "float a = smoothstep(0.0f, 0.8f, c);\n"
         "out_color = vec4(color, a);\n"
     "}\n"
 };
@@ -190,6 +190,8 @@ bool leaf_load_font(LeafFont* font, const char* filepath) {
     //FT_Bitmap bitmaps [FONT_NUM_CHARS];
     //size_t bitmaps_idx = 0;
 
+    int max_bearing_top = INT_MIN;
+
     // Load characters first
     // and get the font character max width and height.
     for(uint32_t c = first_ascii_char; c < last_ascii_char; c++) {
@@ -203,11 +205,18 @@ bool leaf_load_font(LeafFont* font, const char* filepath) {
         uint32_t bitmap_width = face->glyph->bitmap.width;
         uint32_t bitmap_height = face->glyph->bitmap.rows;
 
+        // Keep track of max char width and height.
         if(bitmap_width > font->real_char_width) {
             font->real_char_width = bitmap_width;
         }
         if(bitmap_height > font->real_char_height) {
             font->real_char_height = bitmap_height;
+        }
+
+        // Keep track of max bearing top
+        // for calculating the texture atlas height later.
+        if(max_bearing_top < face->glyph->bitmap_top) {
+            max_bearing_top = face->glyph->bitmap_top;
         }
 
         LeafFontGlyph* glyph = &font->glyphs[c - 0x20];
@@ -226,11 +235,8 @@ bool leaf_load_font(LeafFont* font, const char* filepath) {
     // where all characters are in the same row
 
     font->texture_width  = FONT_NUM_CHARS * font->real_char_width;
-    font->texture_height  = font->real_char_height;
+    font->texture_height = font->real_char_height + max_bearing_top * 2;
 
-    // Add safe amount of extra space for characters
-    // in y axis because they have to be offset later
-    font->texture_height += 70;
 
     size_t num_pixels = font->texture_width * font->texture_height;
     uint8_t* pixels = calloc(num_pixels, sizeof *pixels);

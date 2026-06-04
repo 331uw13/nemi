@@ -115,6 +115,7 @@ void nmterm_clear_cell_custom_fg (NTerminal* term, VTermPos pos);
 void nmterm_set_cell_custom_attrs   (NTerminal* term, VTermPos pos, int attrs);
 void nmterm_clear_cell_custom_attrs (NTerminal* term, VTermPos pos);
 void nmterm_set_row_dirty           (NTerminal* term, int row); // Causes a row to be re-rendered.
+void nmterm_clear_screen_row        (Nemi* st, NTerminal* term, int row);
 void nmterm_yscroll                 (NTerminal* term, int offset);
 void nmterm_yscroll_to              (NTerminal* term, int point);
 //void nmterm_process_select_region   (Nemi* st, NTerminal* term, void(*callback)(Nemi* st, NTerminal* term, int row, int col_beg, int row_length));

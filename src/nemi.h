@@ -73,10 +73,14 @@ typedef struct Nemi_t {
     int win_cols;
 
     // User input.
-    int  last_key_in;
-    char last_char_in;
-    int  last_keymod_in;
-    int  last_mouse_button;
+    // 'last_...' input variables are set only for one frame.
+    // So that means very simple if statement can be used
+    // even in continuously executing loops, eg, frame update.
+    int  last_key_in;        // see 'leaf/keyboard.h'
+    char last_char_in;       //
+    int  last_keymod_in;     // see 'leaf/keyboard.h'
+    int  last_mouse_button;  // see 'leaf/mouse.h'
+   
     float mouse_x;
     float mouse_y;
 

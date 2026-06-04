@@ -52,6 +52,9 @@ void module_event_render();
 void module_event_key_input(int key, int key_modifiers);
 void module_event_char_input(char ch);
 void module_event_window_resized();
+void module_event_mouse_moved(float new_x, float new_y);
+void module_event_mouse_pressed(int button);
+void module_event_mouse_scroll(int direction);
 ```
 
 # Examples

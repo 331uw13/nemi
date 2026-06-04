@@ -86,7 +86,9 @@ bool nmt_module_load(NModule* module, const char* path) {
     module->events.fn_char_input      = dlsym(module->address, "module_event_char_input");
     module->events.fn_key_input       = dlsym(module->address, "module_event_key_input");
     module->events.fn_window_resized  = dlsym(module->address, "module_event_window_resized");
-
+    module->events.fn_mouse_moved     = dlsym(module->address, "module_event_mouse_moved");
+    module->events.fn_mouse_pressed   = dlsym(module->address, "module_event_mouse_pressed");
+    module->events.fn_mouse_scroll    = dlsym(module->address, "module_event_mouse_scroll");
 
     module->current_dir = calloc(PATH_MAX, sizeof *module->current_dir);
     getcwd(module->current_dir, PATH_MAX);
@@ -142,7 +144,7 @@ bool nmt_module_chdir_rel(NModule* module, const char* relative_path) {
     char dirname[PATH_MAX] = { 0 };
     size_t dirname_len = 0;
 
-    char* c = relative_path;
+    char* c = (char*)relative_path;
     char* rel_path_end = relative_path + rel_path_len;
    
 

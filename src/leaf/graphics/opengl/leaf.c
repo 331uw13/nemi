@@ -43,6 +43,8 @@ static struct {
     size_t   renderer_vbo_data_offset;
     size_t   renderer_vbo_num_vertices;
 
+    LeafFramebuffer* active_framebuffer_ptr;
+
     uint32_t renderer_vao;
     uint32_t renderer_vbo;
     uint32_t renderer_shader;
@@ -64,7 +66,8 @@ g_lf = {
     .renderer_shader = 0,
     .renderer_tex_vao = 0,
     .renderer_tex_vbo = 0,
-    .renderer_tex_shader = 0
+    .renderer_tex_shader = 0,
+    .active_framebuffer_ptr = NULL
 };
 
 uint32_t p_leaf_get_renderer_tex_shader() {
@@ -102,6 +105,10 @@ void leaf_hide_mouse(bool is_hidden) {
 
 bool leaf_key_down(int key) {
     return glfwGetKey(g_lf.glfw_win, key) == GLFW_PRESS;
+}
+
+bool leaf_mouse_down(int mouse_button) {
+    return glfwGetMouseButton(g_lf.glfw_win, mouse_button) == GLFW_PRESS;
 }
 
 void leaf_enable_vsync(bool is_enabled) {
@@ -196,6 +203,7 @@ static const char RENDERER_TEX_FRAGMENT_SHADER_SRC[] = {
 
 
 void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    (void)scancode;
     if(action == GLFW_RELEASE) {
         return;
     }
@@ -226,9 +234,39 @@ void glfw_window_resize_callback(GLFWwindow* window, int width, int height) {
     ctx->callback.window_resized(ctx->callback.user_pointer, width, height);
 }
 
-//void glfw_scroll_callback(GLFWwindow* window, double x_offset, double y_offset);
-//void glfw_cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
-//void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+void glfw_scroll_callback(GLFWwindow* window, double x_offset, double y_offset) {
+    (void)x_offset;
+    LeafCtx* ctx = (LeafCtx*)glfwGetWindowUserPointer(window);
+    if(ctx->callback.mouse_scroll == NULL) {
+        return;
+    }
+
+    ctx->callback.mouse_scroll(ctx->callback.user_pointer, (int)y_offset);
+}
+
+void glfw_cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
+    LeafCtx* ctx = (LeafCtx*)glfwGetWindowUserPointer(window);
+    if(ctx->callback.mouse_moved == NULL) {
+        return;
+    }
+
+    ctx->callback.mouse_moved(ctx->callback.user_pointer, (float)xpos, (float)ypos);
+}
+
+void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    (void)mods;
+    if(action == GLFW_PRESS) {
+        return;
+    }
+
+    LeafCtx* ctx = (LeafCtx*)glfwGetWindowUserPointer(window);
+
+    if(ctx->callback.mouse_pressed == NULL) {
+        return;
+    }
+
+    ctx->callback.mouse_pressed(ctx->callback.user_pointer, button);
+}
 
 LeafCtx* leaf_open(const char* title, int width, int height, int flags) {
     LeafCtx* ctx = malloc(sizeof *ctx);
@@ -239,7 +277,9 @@ LeafCtx* leaf_open(const char* title, int width, int height, int flags) {
     ctx->callback.key_pressed = NULL;
     ctx->callback.char_pressed = NULL;
     ctx->callback.window_resized = NULL;
-
+    ctx->callback.mouse_moved = NULL;
+    ctx->callback.mouse_pressed = NULL;
+    ctx->callback.mouse_scroll = NULL;
     g_lf.glfw_win = NULL;
     //g_lf.glfw_win = NULL;
     ctx->win_width = width;
@@ -292,7 +332,9 @@ LeafCtx* leaf_open(const char* title, int width, int height, int flags) {
     glfwSetKeyCallback        (g_lf.glfw_win, glfw_key_callback);
     glfwSetCharCallback       (g_lf.glfw_win, glfw_char_callback);
     glfwSetWindowSizeCallback (g_lf.glfw_win, glfw_window_resize_callback);
-
+    glfwSetScrollCallback     (g_lf.glfw_win, glfw_scroll_callback);
+    glfwSetCursorPosCallback  (g_lf.glfw_win, glfw_cursor_position_callback);
+    glfwSetMouseButtonCallback(g_lf.glfw_win, glfw_mouse_button_callback);
     //glfwSetScrollCallback     (g_lf.glfw_win, glfw_scroll_callback);
     //glfwSetCursorPosCallback  (g_lf.glfw_win, glfw_cursor_position_callback);
     //glfwSetMouseButtonCallback(g_lf.glfw_win, glfw_mouse_button_callback);
@@ -323,7 +365,7 @@ void leaf_quit(LeafCtx* ctx) {
     free(ctx);
 }
 
-void leaf_init_renderer(LeafCtx* ctx, size_t vbo_memsize) {    
+void leaf_init_renderer(size_t vbo_memsize) {    
     glGenVertexArrays(1, &g_lf.renderer_vao);
     glBindVertexArray(g_lf.renderer_vao);
 
@@ -391,7 +433,7 @@ void leaf_init_renderer(LeafCtx* ctx, size_t vbo_memsize) {
         (RENDERER_TEX_VERTEX_SHADER_SRC, RENDERER_TEX_FRAGMENT_SHADER_SRC);
 }
 
-void leaf_free_renderer(LeafCtx* ctx) {
+void leaf_free_renderer() {
     if(g_lf.renderer_vao > 0) {
         glDeleteVertexArrays(1, &g_lf.renderer_vao);
         g_lf.renderer_vao = 0;
@@ -406,7 +448,7 @@ void leaf_free_renderer(LeafCtx* ctx) {
     }
 }
 
-void leaf_render_vertices(LeafCtx* ctx, float* vertices, size_t vertices_memsize) {   
+void leaf_render_vertices(float* vertices, size_t vertices_memsize) {   
     bool divisible = !(vertices_memsize % 5); // 2(x, y) + 3(r, g, b) = 5
     if(!divisible) {
         fprintf(stderr, "(%s) %s(): Vertex data format is incorrect.\n",
@@ -428,7 +470,7 @@ void leaf_render_vertices(LeafCtx* ctx, float* vertices, size_t vertices_memsize
     glBindVertexArray(0);
 }
 
-void leaf_renderer_flush(LeafCtx* ctx) {
+void leaf_renderer_flush() {
 
     glBindBuffer(GL_ARRAY_BUFFER, g_lf.renderer_vbo);
     glBindVertexArray(g_lf.renderer_vao);
@@ -531,6 +573,12 @@ void leaf_use_framebuffer(LeafFramebuffer* fb) {
 
     glBindFramebuffer(GL_FRAMEBUFFER, fb->fbo);
     glViewport(0, 0, fb->width, fb->height);
+
+    g_lf.active_framebuffer_ptr = fb;
+}
+
+LeafFramebuffer* leaf_get_active_framebuffer() {
+    return g_lf.active_framebuffer_ptr;
 }
 
 #else
